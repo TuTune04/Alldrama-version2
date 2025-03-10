@@ -1,20 +1,53 @@
 import { Request, Response } from 'express';
 import { Movie } from '../models/Movie';
 import { Genre } from '../models/Genre';
+import { Op } from 'sequelize';
 
 // Lấy danh sách phim
-export const getMovies = (req: Request, res: Response) => {
-  Movie.findAll({
-    include: [Genre],
-    order: [['createdAt', 'DESC']]
-  })
-    .then(movies => {
-      res.status(200).json(movies);
-    })
-    .catch(error => {
-      console.error('Error fetching movies:', error);
-      res.status(500).json({ message: 'Lỗi khi lấy danh sách phim' });
+export const getMovies = async (req: Request, res: Response) => {
+  try {
+    const { 
+      page = 1,
+      limit = 10,
+      sort = 'createdAt',
+      order = 'DESC'
+    } = req.query;
+
+    // Tính offset cho phân trang
+    const offset = (Number(page) - 1) * Number(limit);
+    
+    // Đảm bảo sort là một trường hợp lệ
+    const validSortFields = ['title', 'rating', 'views', 'releaseYear', 'createdAt'];
+    const sortField = validSortFields.includes(String(sort)) ? sort : 'createdAt';
+    
+    // Đảm bảo order là ASC hoặc DESC
+    const sortOrder = order === 'ASC' ? 'ASC' : 'DESC';
+
+    // Thực hiện truy vấn với phân trang
+    const { count, rows: movies } = await Movie.findAndCountAll({
+      include: [Genre],
+      order: [[String(sortField), sortOrder]],
+      limit: Number(limit),
+      offset,
+      distinct: true
     });
+    
+    // Tính toán thông tin phân trang
+    const totalPages = Math.ceil(count / Number(limit));
+    
+    return res.status(200).json({
+      movies,
+      pagination: {
+        total: count,
+        totalPages,
+        currentPage: Number(page),
+        limit: Number(limit)
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching movies:', error);
+    return res.status(500).json({ message: 'Lỗi khi lấy danh sách phim' });
+  }
 };
 
 // Lấy chi tiết phim theo ID
@@ -143,4 +176,84 @@ export const deleteMovie = (req: Request, res: Response) => {
         res.status(500).json({ message: 'Lỗi khi xóa phim' });
       }
     });
+};
+
+// Tìm kiếm phim
+export const searchMovies = async (req: Request, res: Response) => {
+  try {
+    const { 
+      q, // từ khóa tìm kiếm
+      genre, // id thể loại
+      year, // năm phát hành 
+      page = 1, // trang hiện tại
+      limit = 10, // số lượng kết quả mỗi trang
+      sort = 'createdAt', // trường để sắp xếp
+      order = 'DESC' // thứ tự sắp xếp (ASC hoặc DESC)
+    } = req.query;
+
+    // Khởi tạo điều kiện tìm kiếm
+    const whereConditions: any = {};
+    
+    // Tìm kiếm theo từ khóa (trong tiêu đề và tóm tắt)
+    if (q) {
+      whereConditions[Op.or] = [
+        { title: { [Op.iLike]: `%${q}%` } },
+        { summary: { [Op.iLike]: `%${q}%` } }
+      ];
+    }
+    
+    // Tìm kiếm theo năm phát hành
+    if (year) {
+      whereConditions.releaseYear = year;
+    }
+    
+    // Tạo điều kiện cho thể loại (nếu có)
+    let genreCondition = {};
+    if (genre) {
+      genreCondition = {
+        model: Genre,
+        where: { id: genre }
+      };
+    } else {
+      genreCondition = {
+        model: Genre
+      };
+    }
+    
+    // Tính offset cho phân trang
+    const offset = (Number(page) - 1) * Number(limit);
+    
+    // Đảm bảo sort là một trường hợp lệ
+    const validSortFields = ['title', 'rating', 'views', 'releaseYear', 'createdAt'];
+    const sortField = validSortFields.includes(String(sort)) ? sort : 'createdAt';
+    
+    // Đảm bảo order là ASC hoặc DESC
+    const sortOrder = order === 'ASC' ? 'ASC' : 'DESC';
+    
+    // Thực hiện truy vấn với phân trang
+    const { count, rows: movies } = await Movie.findAndCountAll({
+      where: whereConditions,
+      include: [genreCondition],
+      order: [[String(sortField), sortOrder]],
+      limit: Number(limit),
+      offset,
+      distinct: true // Cần thiết khi sử dụng include để có count chính xác
+    });
+    
+    // Tính toán thông tin phân trang
+    const totalPages = Math.ceil(count / Number(limit));
+    
+    return res.status(200).json({
+      movies,
+      pagination: {
+        total: count,
+        totalPages,
+        currentPage: Number(page),
+        limit: Number(limit)
+      }
+    });
+  } catch (error) {
+    console.error('Error searching movies:', error);
+    return res.status(500).json({ message: 'Lỗi khi tìm kiếm phim' });
+  }
 }; 

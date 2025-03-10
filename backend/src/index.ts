@@ -10,6 +10,7 @@ import favoriteRoutes from "./routes/favoriteRoutes";
 import watchHistoryRoutes from "./routes/watchHistoryRoutes";
 import episodeRoutes from "./routes/episodeRoutes";
 import genreRoutes from "./routes/genreRoutes";
+import statsRoutes from "./routes/statsRoutes";
 
 // Tải biến môi trường
 dotenv.config();
@@ -36,6 +37,7 @@ app.use('/api/favorites', favoriteRoutes);
 app.use('/api/watch-history', watchHistoryRoutes);
 app.use('/api/episodes', episodeRoutes);
 app.use('/api/genres', genreRoutes);
+app.use('/api/stats', statsRoutes);
 
 // Route mặc định
 app.get("/", (req: Request, res: Response) => {

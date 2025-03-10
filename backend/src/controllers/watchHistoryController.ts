@@ -11,7 +11,7 @@ export const addWatchHistory = async (req: Request, res: Response) => {
       return res.status(401).json({ message: 'Bạn cần đăng nhập để thực hiện chức năng này' });
     }
 
-    const { movieId, episodeId } = req.body;
+    const { movieId, episodeId, progress = 0, duration = 0 } = req.body;
     
     // Kiểm tra phim có tồn tại không
     const movie = await Movie.findByPk(movieId);
@@ -19,9 +19,13 @@ export const addWatchHistory = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Không tìm thấy phim' });
     }
     
+    // Thiết lập biến để xác định có tăng lượt xem hay không
+    let shouldIncreaseViews = false;
+    
     // Kiểm tra tập phim nếu có
+    let episode = null;
     if (episodeId) {
-      const episode = await Episode.findOne({
+      episode = await Episode.findOne({
         where: {
           id: episodeId,
           movieId
@@ -42,41 +46,65 @@ export const addWatchHistory = async (req: Request, res: Response) => {
       }
     });
     
-    // Nếu đã có, cập nhật thời gian xem
+    // Xác định có tăng lượt xem hay không
+    // Nếu là nội dung mới hoặc đã xem quá 1 giờ kể từ lần trước
+    if (!existingHistory) {
+      shouldIncreaseViews = true;
+    } else {
+      const lastWatchedTime = new Date(existingHistory.watchedAt).getTime();
+      const currentTime = new Date().getTime();
+      const oneHourInMs = 60 * 60 * 1000;
+      
+      // Nếu đã qua 1 giờ kể từ lần xem trước
+      if (currentTime - lastWatchedTime > oneHourInMs) {
+        shouldIncreaseViews = true;
+      }
+      
+      // Hoặc nếu tiến độ xem đã vượt qua 70% thời lượng (chỉ tính cho lần đầu tiên)
+      if (duration > 0 && progress / duration >= 0.7 && !existingHistory.isCompleted) {
+        shouldIncreaseViews = true;
+      }
+    }
+    
+    // Nếu đã có, cập nhật thời gian xem và tiến độ
+    let historyRecord;
+    
     if (existingHistory) {
+      // Cập nhật thông tin
       await existingHistory.update({
-        watchedAt: new Date()
+        watchedAt: new Date(),
+        progress: progress || existingHistory.progress,
+        duration: duration || existingHistory.duration,
+        isCompleted: progress / duration >= 0.9 // Đánh dấu là đã xem hoàn thành nếu > 90%
       });
       
-      // Lấy thông tin chi tiết
-      const historyWithDetails = await UserWatchHistory.findByPk(existingHistory.id, {
-        include: [
-          {
-            model: Movie,
-            include: [Genre]
-          },
-          {
-            model: Episode
-          }
-        ]
-      });
-      
-      return res.status(200).json({
-        message: 'Đã cập nhật lịch sử xem',
-        watchHistory: historyWithDetails
+      historyRecord = existingHistory;
+    } else {
+      // Thêm mới vào lịch sử xem
+      historyRecord = await UserWatchHistory.create({
+        userId: req.user.userId,
+        movieId,
+        episodeId,
+        watchedAt: new Date(),
+        progress,
+        duration,
+        isCompleted: progress / duration >= 0.9
       });
     }
     
-    // Nếu chưa có, thêm mới vào lịch sử xem
-    const watchHistory = await UserWatchHistory.create({
-      userId: req.user.userId,
-      movieId,
-      episodeId,
-      watchedAt: new Date()
-    });
+    // Tăng lượt xem nếu cần
+    if (shouldIncreaseViews) {
+      // Tăng lượt xem cho phim
+      await movie.increment('views', { by: 1 });
+      
+      // Tăng lượt xem cho tập phim nếu có
+      if (episode) {
+        await episode.increment('views', { by: 1 });
+      }
+    }
     
     // Lấy thông tin chi tiết
-    const historyWithDetails = await UserWatchHistory.findByPk(watchHistory.id, {
+    const historyWithDetails = await UserWatchHistory.findByPk(historyRecord.id, {
       include: [
         {
           model: Movie,
@@ -88,20 +116,10 @@ export const addWatchHistory = async (req: Request, res: Response) => {
       ]
     });
     
-    // Tăng lượt xem cho phim
-    await movie.increment('views', { by: 1 });
-    
-    // Tăng lượt xem cho tập phim nếu có
-    if (episodeId) {
-      const episode = await Episode.findByPk(episodeId);
-      if (episode) {
-        await episode.increment('views', { by: 1 });
-      }
-    }
-    
-    return res.status(201).json({
-      message: 'Đã thêm vào lịch sử xem',
-      watchHistory: historyWithDetails
+    return res.status(existingHistory ? 200 : 201).json({
+      message: existingHistory ? 'Đã cập nhật lịch sử xem' : 'Đã thêm vào lịch sử xem',
+      watchHistory: historyWithDetails,
+      viewIncreased: shouldIncreaseViews
     });
   } catch (error) {
     console.error('Error adding watch history:', error);

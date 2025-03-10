@@ -4,6 +4,11 @@ import { authenticate, requireAdmin } from '../middleware/auth';
 
 const router = express.Router();
 
+// Tìm kiếm phim
+router.get('/search', async (req: Request, res: Response) => {
+  await movieController.searchMovies(req, res);
+});
+
 // Lấy danh sách phim
 router.get('/', async (req: Request, res: Response) => {
   await movieController.getMovies(req, res);
