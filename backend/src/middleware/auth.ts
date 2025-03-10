@@ -38,6 +38,40 @@ export const authenticate = (req: Request, res: Response, next: NextFunction): v
   }
 };
 
+// Middleware xác thực tùy chọn - không bắt buộc phải có token
+export const optionalAuth = (req: Request, res: Response, next: NextFunction): void => {
+  try {
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader) {
+      // Không có token nhưng vẫn cho phép truy cập
+      next();
+      return;
+    }
+    
+    const token = authHeader.split(' ')[1]; // Bearer TOKEN
+    
+    if (!token) {
+      // Token không hợp lệ nhưng vẫn cho phép truy cập
+      next();
+      return;
+    }
+    
+    try {
+      const decoded = verifyToken(token);
+      req.user = decoded;
+    } catch (error) {
+      // Token không hợp lệ nhưng vẫn cho phép truy cập
+      console.log('Token không hợp lệ nhưng vẫn cho phép truy cập:', error);
+    }
+    
+    next();
+  } catch (error) {
+    // Xảy ra lỗi nhưng vẫn cho phép truy cập
+    next();
+  }
+};
+
 // Middleware kiểm tra vai trò admin
 export const requireAdmin = (req: Request, res: Response, next: NextFunction): void => {
   if (!req.user) {

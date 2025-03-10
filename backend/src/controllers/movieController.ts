@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { Movie } from '../models/Movie';
 import { Genre } from '../models/Genre';
 import { Op } from 'sequelize';
+import { cacheMovieData, getCachedMovieData, cacheSearchResults, getCachedSearchResults } from '../services/redisService';
 
 // Lấy danh sách phim
 export const getMovies = async (req: Request, res: Response) => {
@@ -13,6 +14,16 @@ export const getMovies = async (req: Request, res: Response) => {
       order = 'DESC'
     } = req.query;
 
+    // Tạo cache key dựa trên tham số truy vấn
+    const cacheKey = `movies:${page}:${limit}:${sort}:${order}`;
+    
+    // Kiểm tra cache
+    const cachedData = await getCachedSearchResults(cacheKey);
+    if (cachedData) {
+      console.log(`Đã lấy dữ liệu phim từ cache với key: ${cacheKey}`);
+      return res.status(200).json(cachedData);
+    }
+    
     // Tính offset cho phân trang
     const offset = (Number(page) - 1) * Number(limit);
     
@@ -28,14 +39,14 @@ export const getMovies = async (req: Request, res: Response) => {
       include: [Genre],
       order: [[String(sortField), sortOrder]],
       limit: Number(limit),
-      offset,
-      distinct: true
+      offset: offset
     });
-    
-    // Tính toán thông tin phân trang
+
+    // Tính tổng số trang
     const totalPages = Math.ceil(count / Number(limit));
     
-    return res.status(200).json({
+    // Kết quả trả về
+    const result = {
       movies,
       pagination: {
         total: count,
@@ -43,31 +54,47 @@ export const getMovies = async (req: Request, res: Response) => {
         currentPage: Number(page),
         limit: Number(limit)
       }
-    });
+    };
+    
+    // Lưu vào cache
+    await cacheSearchResults(cacheKey, result, 300); // cache 5 phút
+    
+    res.status(200).json(result);
   } catch (error) {
     console.error('Error fetching movies:', error);
-    return res.status(500).json({ message: 'Lỗi khi lấy danh sách phim' });
+    res.status(500).json({ message: 'Lỗi khi lấy danh sách phim' });
   }
 };
 
 // Lấy chi tiết phim theo ID
-export const getMovieById = (req: Request, res: Response) => {
-  const { id } = req.params;
-  
-  Movie.findByPk(id, {
-    include: [Genre]
-  })
-    .then(movie => {
-      if (!movie) {
-        return res.status(404).json({ message: 'Không tìm thấy phim' });
-      }
-      
-      res.status(200).json(movie);
-    })
-    .catch(error => {
-      console.error('Error fetching movie:', error);
-      res.status(500).json({ message: 'Lỗi khi lấy thông tin phim' });
+export const getMovieById = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    
+    // Kiểm tra cache
+    const cachedMovie = await getCachedMovieData(Number(id));
+    if (cachedMovie) {
+      console.log(`Đã lấy thông tin phim ID ${id} từ cache`);
+      return res.status(200).json(cachedMovie);
+    }
+    
+    // Không có trong cache, truy vấn database
+    const movie = await Movie.findByPk(id, {
+      include: [Genre]
     });
+    
+    if (!movie) {
+      return res.status(404).json({ message: 'Không tìm thấy phim' });
+    }
+    
+    // Lưu vào cache
+    await cacheMovieData(Number(id), movie, 3600); // cache 1 giờ
+    
+    res.status(200).json(movie);
+  } catch (error) {
+    console.error('Error fetching movie:', error);
+    res.status(500).json({ message: 'Lỗi khi lấy thông tin phim' });
+  }
 };
 
 // Tạo phim mới
@@ -191,6 +218,16 @@ export const searchMovies = async (req: Request, res: Response) => {
       order = 'DESC' // thứ tự sắp xếp (ASC hoặc DESC)
     } = req.query;
 
+    // Tạo cache key dựa trên tham số tìm kiếm
+    const cacheKey = `search:${q || ''}:${genre || ''}:${year || ''}:${page}:${limit}:${sort}:${order}`;
+    
+    // Kiểm tra cache
+    const cachedResults = await getCachedSearchResults(cacheKey);
+    if (cachedResults) {
+      console.log(`Đã lấy kết quả tìm kiếm từ cache với key: ${cacheKey}`);
+      return res.status(200).json(cachedResults);
+    }
+
     // Khởi tạo điều kiện tìm kiếm
     const whereConditions: any = {};
     
@@ -243,7 +280,8 @@ export const searchMovies = async (req: Request, res: Response) => {
     // Tính toán thông tin phân trang
     const totalPages = Math.ceil(count / Number(limit));
     
-    return res.status(200).json({
+    // Kết quả trả về
+    const result = {
       movies,
       pagination: {
         total: count,
@@ -251,7 +289,12 @@ export const searchMovies = async (req: Request, res: Response) => {
         currentPage: Number(page),
         limit: Number(limit)
       }
-    });
+    };
+    
+    // Lưu vào cache
+    await cacheSearchResults(cacheKey, result, 300); // cache 5 phút
+    
+    return res.status(200).json(result);
   } catch (error) {
     console.error('Error searching movies:', error);
     return res.status(500).json({ message: 'Lỗi khi tìm kiếm phim' });

@@ -12,6 +12,15 @@ import bcrypt from 'bcrypt';
 // Hàm tạo dữ liệu mẫu
 const seedData = async () => {
   try {
+    // Kiểm tra xem đã có dữ liệu trong database chưa
+    const userCount = await User.count();
+    if (userCount > 0) {
+      console.log('Database đã có dữ liệu, bỏ qua việc tạo dữ liệu mẫu');
+      return;
+    }
+
+    console.log('Bắt đầu tạo dữ liệu mẫu...');
+
     // Tạo người dùng mẫu
     const adminUser = await User.create({
       full_name: 'Admin User',
@@ -76,9 +85,9 @@ const seedData = async () => {
       comment: 'Phim rất hay và hấp dẫn!'
     });
 
-    console.log('Sample data created successfully');
+    console.log('Tạo dữ liệu mẫu thành công');
   } catch (error) {
-    console.error('Error creating sample data:', error);
+    console.error('Lỗi khi tạo dữ liệu mẫu:', error);
     throw error;
   }
 };
@@ -98,14 +107,14 @@ const initDatabase = async () => {
     ]);
 
     // Đồng bộ hóa cơ sở dữ liệu (tạo bảng nếu chưa tồn tại)
-    // Sử dụng force: true để xóa và tạo lại bảng (chỉ dùng trong môi trường phát triển)
-    await sequelize.sync({ force: true });
-    console.log('Database synchronized successfully');
+    // Sử dụng alter: true để cập nhật cấu trúc bảng nếu có thay đổi, nhưng không xóa dữ liệu
+    await sequelize.sync({ alter: true });
+    console.log('Đồng bộ hóa database thành công');
 
-    // Tạo dữ liệu mẫu
+    // Tạo dữ liệu mẫu (chỉ tạo nếu database trống)
     await seedData();
   } catch (error) {
-    console.error('Failed to initialize database:', error);
+    console.error('Không thể khởi tạo database:', error);
     throw error;
   }
 };

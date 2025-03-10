@@ -11,6 +11,8 @@ import watchHistoryRoutes from "./routes/watchHistoryRoutes";
 import episodeRoutes from "./routes/episodeRoutes";
 import genreRoutes from "./routes/genreRoutes";
 import statsRoutes from "./routes/statsRoutes";
+import viewRoutes from "./routes/viewRoutes";
+import { startViewsSyncJob } from "./jobs/syncViewsJob";
 
 // Tải biến môi trường
 dotenv.config();
@@ -38,6 +40,7 @@ app.use('/api/watch-history', watchHistoryRoutes);
 app.use('/api/episodes', episodeRoutes);
 app.use('/api/genres', genreRoutes);
 app.use('/api/stats', statsRoutes);
+app.use('/api/views', viewRoutes);
 
 // Route mặc định
 app.get("/", (req: Request, res: Response) => {
@@ -58,12 +61,15 @@ const startServer = async () => {
     // Khởi tạo kết nối database
     await initDatabase();
     
-    // Khởi động server
+    // Khởi động cron job đồng bộ lượt xem từ Redis vào database
+    startViewsSyncJob();
+
+    // Lắng nghe kết nối
     app.listen(PORT, () => {
-      console.log(`🚀 Server is running at http://localhost:${PORT}`);
+      console.log(`Server đang chạy trên port ${PORT}`);
     });
   } catch (error) {
-    console.error("Failed to start server:", error);
+    console.error("Không thể khởi động server:", error);
     process.exit(1);
   }
 };
