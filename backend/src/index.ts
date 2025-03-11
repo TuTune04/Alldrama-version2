@@ -12,6 +12,7 @@ import episodeRoutes from "./routes/episodeRoutes";
 import genreRoutes from "./routes/genreRoutes";
 import statsRoutes from "./routes/statsRoutes";
 import viewRoutes from "./routes/viewRoutes";
+import mediaRoutes from "./routes/mediaRoutes";
 import { startViewsSyncJob } from "./jobs/syncViewsJob";
 
 // Tải biến môi trường
@@ -28,7 +29,7 @@ app.use(express.json());
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization']
+  allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization', 'X-Worker-Secret']
 }));
 
 // Routes
@@ -41,6 +42,7 @@ app.use('/api/episodes', episodeRoutes);
 app.use('/api/genres', genreRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/views', viewRoutes);
+app.use('/api/media', mediaRoutes);
 
 // Route mặc định
 app.get("/", (req: Request, res: Response) => {

@@ -31,7 +31,43 @@ export class Episode extends Model {
     type: DataType.STRING,
     allowNull: true
   })
+  title!: string;
+
+  @Column({
+    type: DataType.TEXT,
+    allowNull: true
+  })
+  description!: string;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: true
+  })
   playlistUrl!: string;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: true
+  })
+  thumbnailUrl!: string;
+
+  @Column({
+    type: DataType.INTEGER,
+    defaultValue: 0
+  })
+  duration!: number;
+
+  @Column({
+    type: DataType.BOOLEAN,
+    defaultValue: false
+  })
+  isProcessed!: boolean;
+
+  @Column({
+    type: DataType.TEXT,
+    allowNull: true
+  })
+  processingError!: string;
 
   @Column({
     type: DataType.INTEGER,
