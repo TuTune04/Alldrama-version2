@@ -21,7 +21,7 @@ export const addFavorite = async (req: Request, res: Response) => {
     // Kiểm tra xem đã thêm vào danh sách yêu thích chưa
     const existingFavorite = await UserFavorite.findOne({
       where: {
-        userId: req.user.userId,
+        userId: req.user.id,
         movieId
       }
     });
@@ -32,7 +32,7 @@ export const addFavorite = async (req: Request, res: Response) => {
     
     // Thêm vào danh sách yêu thích
     const favorite = await UserFavorite.create({
-      userId: req.user.userId,
+      userId: req.user.id,
       movieId,
       favoritedAt: new Date()
     });
@@ -69,7 +69,7 @@ export const removeFavorite = async (req: Request, res: Response) => {
     // Tìm mục yêu thích
     const favorite = await UserFavorite.findOne({
       where: {
-        userId: req.user.userId,
+        userId: req.user.id,
         movieId
       }
     });
@@ -96,7 +96,7 @@ export const getCurrentUserFavorites = async (req: Request, res: Response) => {
     }
     
     const favorites = await UserFavorite.findAll({
-      where: { userId: req.user.userId },
+      where: { userId: req.user.id },
       include: [
         {
           model: Movie,

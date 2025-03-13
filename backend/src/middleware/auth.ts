@@ -1,6 +1,15 @@
 import { Request, Response, NextFunction } from 'express';
-import { verifyToken, JwtPayload } from '../utils/jwt';
+import jwt from 'jsonwebtoken';
 import { UserRole } from '../models/User';
+
+// Định nghĩa kiểu cho payload JWT
+export interface JwtPayload {
+  id: number;
+  email: string;
+  role: string;
+  iat?: number;
+  exp?: number;
+}
 
 // Mở rộng kiểu Request để thêm thông tin người dùng
 declare global {
@@ -28,7 +37,7 @@ export const authenticate = (req: Request, res: Response, next: NextFunction): v
       return;
     }
     
-    const decoded = verifyToken(token);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default_secret') as JwtPayload;
     req.user = decoded;
     
     next();
@@ -58,7 +67,7 @@ export const optionalAuth = (req: Request, res: Response, next: NextFunction): v
     }
     
     try {
-      const decoded = verifyToken(token);
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default_secret') as JwtPayload;
       req.user = decoded;
     } catch (error) {
       // Token không hợp lệ nhưng vẫn cho phép truy cập

@@ -40,7 +40,7 @@ export const addWatchHistory = async (req: Request, res: Response) => {
     // Kiểm tra xem đã có trong lịch sử xem chưa
     const existingHistory = await UserWatchHistory.findOne({
       where: {
-        userId: req.user.userId,
+        userId: req.user.id,
         movieId,
         ...(episodeId ? { episodeId } : {})
       }
@@ -82,7 +82,7 @@ export const addWatchHistory = async (req: Request, res: Response) => {
     } else {
       // Thêm mới vào lịch sử xem
       historyRecord = await UserWatchHistory.create({
-        userId: req.user.userId,
+        userId: req.user.id,
         movieId,
         episodeId,
         watchedAt: new Date(),
@@ -140,7 +140,7 @@ export const removeWatchHistory = async (req: Request, res: Response) => {
     const watchHistory = await UserWatchHistory.findOne({
       where: {
         id,
-        userId: req.user.userId
+        userId: req.user.id
       }
     });
     
@@ -166,7 +166,7 @@ export const getCurrentUserWatchHistory = async (req: Request, res: Response) =>
     }
     
     const watchHistory = await UserWatchHistory.findAll({
-      where: { userId: req.user.userId },
+      where: { userId: req.user.id },
       include: [
         {
           model: Movie,

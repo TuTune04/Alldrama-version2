@@ -60,7 +60,7 @@ export const updateUser = async (req: Request, res: Response) => {
       }
       
       // Người dùng chỉ có thể cập nhật thông tin của chính mình
-      if (req.user.userId !== parseInt(id)) {
+      if (req.user.id !== parseInt(id)) {
         return res.status(403).json({ message: 'Bạn không có quyền cập nhật thông tin của người dùng khác' });
       }
     }
@@ -122,7 +122,7 @@ export const getUserFavorites = async (req: Request, res: Response) => {
     const { id } = req.params;
     
     // Kiểm tra quyền: người dùng chỉ có thể xem danh sách yêu thích của chính mình
-    if (req.user && req.user.role !== UserRole.ADMIN && req.user.userId !== parseInt(id)) {
+    if (req.user && req.user.role !== UserRole.ADMIN && req.user.id !== parseInt(id)) {
       return res.status(403).json({ message: 'Bạn không có quyền xem danh sách yêu thích của người dùng khác' });
     }
     
@@ -150,7 +150,7 @@ export const getUserWatchHistory = async (req: Request, res: Response) => {
     const { id } = req.params;
     
     // Kiểm tra quyền: người dùng chỉ có thể xem lịch sử xem của chính mình
-    if (req.user && req.user.role !== UserRole.ADMIN && req.user.userId !== parseInt(id)) {
+    if (req.user && req.user.role !== UserRole.ADMIN && req.user.id !== parseInt(id)) {
       return res.status(403).json({ message: 'Bạn không có quyền xem lịch sử xem của người dùng khác' });
     }
     

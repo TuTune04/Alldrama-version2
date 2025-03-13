@@ -221,6 +221,137 @@ app.get("/list-r2/*", async (c) => {
   }
 });
 
+// Thêm endpoint để xóa file từ R2 (chỉ cho admin)
+app.delete("/admin/delete-r2-object/*", async (c) => {
+  try {
+    // Xác thực quyền admin
+    const authHeader = c.req.header("Authorization");
+    if (!authHeader || !validateToken(authHeader)) {
+      return c.json({ error: "Unauthorized" }, 401);
+    }
+    
+    // Lấy đường dẫn file cần xóa
+    const path = c.req.path.substring(20); // Bỏ '/admin/delete-r2-object/'
+    
+    if (!path || path.length < 5) {
+      return c.json({ 
+        success: false, 
+        error: "Đường dẫn file không hợp lệ" 
+      }, 400);
+    }
+    
+    console.log(`Xóa file: ${path}`);
+    
+    // Đảm bảo path bắt đầu đúng cách
+    let objectPath = path;
+    if (objectPath.startsWith('/')) {
+      objectPath = objectPath.substring(1);
+    }
+    
+    // Xóa file từ R2
+    await c.env.MEDIA_BUCKET.delete(objectPath);
+    
+    return c.json({
+      success: true,
+      message: `Đã xóa file ${objectPath} thành công`,
+      path: objectPath
+    });
+  } catch (error) {
+    console.error(`Error deleting file: ${error}`);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error"
+    }, 500);
+  }
+});
+
+// Thêm endpoint để xóa nhiều file từ R2 theo prefix
+app.delete("/admin/delete-r2-prefix/*", async (c) => {
+  try {
+    // Xác thực quyền admin
+    const authHeader = c.req.header("Authorization");
+    if (!authHeader || !validateToken(authHeader)) {
+      return c.json({ error: "Unauthorized" }, 401);
+    }
+    
+    // Lấy prefix cần xóa
+    const prefix = c.req.path.substring(21); // Bỏ '/admin/delete-r2-prefix/'
+    
+    if (!prefix || prefix.length < 3) {
+      return c.json({ 
+        success: false, 
+        error: "Prefix quá ngắn, không an toàn để xóa" 
+      }, 400);
+    }
+    
+    console.log(`Xóa files theo prefix: ${prefix}`);
+    
+    // Đảm bảo prefix bắt đầu đúng cách
+    let objectPrefix = prefix;
+    if (objectPrefix.startsWith('/')) {
+      objectPrefix = objectPrefix.substring(1);
+    }
+    
+    // Liệt kê các objects theo prefix
+    const listed = await c.env.MEDIA_BUCKET.list({
+      prefix: objectPrefix,
+      limit: 1000,
+    });
+    
+    if (!listed.objects || listed.objects.length === 0) {
+      return c.json({
+        success: true,
+        message: `Không tìm thấy file nào với prefix ${objectPrefix}`,
+        count: 0
+      });
+    }
+    
+    // Xóa từng file một
+    let deletedCount = 0;
+    for (const obj of listed.objects) {
+      await c.env.MEDIA_BUCKET.delete(obj.key);
+      deletedCount++;
+    }
+    
+    return c.json({
+      success: true,
+      message: `Đã xóa ${deletedCount} file với prefix ${objectPrefix}`,
+      count: deletedCount
+    });
+  } catch (error) {
+    console.error(`Error deleting files by prefix: ${error}`);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error"
+    }, 500);
+  }
+});
+
+// Thêm route OPTIONS cho preflight CORS requests
+app.options("*", (c) => {
+  return new Response(null, {
+    status: 204,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      "Access-Control-Max-Age": "86400"
+    }
+  });
+});
+
+// Thêm CORS headers trực tiếp không sử dụng middleware
+app.use("/admin/*", async (c, next) => {
+  const response = await next();
+  
+  // Thêm CORS headers cho tất cả các responses từ admin endpoints
+  c.header("Access-Control-Allow-Origin", "*");
+  c.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  c.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  
+  return response;
+});
+
 // Hàm kiểm tra token
 function validateToken(authHeader: string): boolean {
   // Trong môi trường phát triển, chấp nhận token đơn giản

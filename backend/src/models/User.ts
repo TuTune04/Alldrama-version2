@@ -55,6 +55,13 @@ export class User extends Model {
   role!: string;
 
   @Column({
+    type: DataType.INTEGER,
+    allowNull: false,
+    defaultValue: 0,
+  })
+  tokenVersion!: number;
+
+  @Column({
     type: DataType.DATE,
     allowNull: true
   })

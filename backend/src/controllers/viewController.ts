@@ -1,9 +1,9 @@
 import { Request, Response } from 'express';
 import { incrementMovieViews, incrementEpisodeViews } from '../services/redisService';
 import { UserWatchHistory } from '../models/UserWatchHistory';
-import { JwtPayload } from '../utils/jwt';
+import { JwtPayload } from '../middleware/auth';
 
-// Định nghĩa lại interface cho Request để có thể truy cập user.userId
+// Định nghĩa lại interface cho Request để có thể truy cập user
 interface AuthRequest extends Request {
   user?: JwtPayload;
 }
@@ -12,7 +12,7 @@ interface AuthRequest extends Request {
 export const incrementMovieView = async (req: Request, res: Response): Promise<void> => {
   try {
     const { movieId } = req.params;
-    const userId = req.user?.userId;
+    const userId = req.user?.id;
     
     // Tăng lượt xem trong Redis
     await incrementMovieViews(Number(movieId));
@@ -66,7 +66,7 @@ export const incrementEpisodeView = async (req: Request, res: Response): Promise
   try {
     const { episodeId } = req.params;
     const { movieId } = req.body;
-    const userId = req.user?.userId;
+    const userId = req.user?.id;
     
     if (!movieId) {
       res.status(400).json({ success: false, message: 'Thiếu movieId' });

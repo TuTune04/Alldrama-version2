@@ -4,7 +4,8 @@ import fs from 'fs';
 import { 
   uploadFileToR2, 
   generatePresignedUrl, 
-  deleteFileFromR2 
+  deleteFileFromR2,
+  deleteHlsFiles
 } from '../services/media/r2Service';
 import { 
   convertToHls, 
@@ -13,6 +14,8 @@ import {
 } from '../services/media/hlsService';
 import { Episode } from '../models/Episode';
 import { Movie } from '../models/Movie';
+import { UserWatchHistory } from '../models/UserWatchHistory';
+import sequelize from '../config/database';
 
 // Upload poster phim
 export const uploadMoviePoster = async (req: Request, res: Response): Promise<void> => {
@@ -294,26 +297,196 @@ export const getPresignedUploadUrl = async (req: Request, res: Response): Promis
   }
 };
 
-// Xóa media
+/**
+ * Xóa media (poster, backdrop, trailer) của phim
+ */
 export const deleteMedia = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { key } = req.params;
+    const { movieId, mediaType } = req.params;
     
-    // Kiểm tra quyền hạn (chỉ admin mới được xóa)
-    if (req.user?.role !== 'ADMIN') {
-      res.status(403).json({ message: 'Không có quyền xóa media' });
-      return;
+    // Xác định key trong R2
+    let key: string;
+    let updateField: string;
+    
+    switch (mediaType) {
+      case 'poster':
+        key = `movies/${movieId}/poster.jpg`;
+        updateField = 'posterUrl';
+        break;
+      case 'backdrop':
+        key = `movies/${movieId}/backdrop.jpg`;
+        updateField = 'backdropUrl';
+        break;
+      case 'trailer':
+        key = `movies/${movieId}/trailer.mp4`;
+        updateField = 'trailerUrl';
+        break;
+      default:
+        res.status(400).json({ success: false, error: 'Loại media không hợp lệ' });
+        return;
     }
     
     // Xóa file từ R2
     await deleteFileFromR2(key);
     
-    res.status(200).json({
-      message: 'Xóa media thành công'
+    // Cập nhật database
+    await Movie.update({ [updateField]: null }, { where: { id: movieId } });
+    
+    res.json({
+      success: true,
+      message: `Đã xóa ${mediaType} thành công`
     });
   } catch (error) {
-    console.error('Lỗi khi xóa media:', error);
-    res.status(500).json({ message: 'Lỗi khi xóa media' });
+    console.error('Error deleting media:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Lỗi không xác định'
+    });
+  }
+};
+
+/**
+ * Xóa tập phim và tất cả file liên quan
+ */
+export const deleteEpisode = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { movieId, episodeId } = req.params;
+    
+    // Tìm thông tin episode trước khi xóa
+    const episode = await Episode.findByPk(episodeId);
+    
+    if (!episode) {
+      res.status(404).json({ success: false, error: 'Không tìm thấy tập phim' });
+      return;
+    }
+    
+    // 1. Xóa file video gốc
+    try {
+      await deleteFileFromR2(`episodes/${movieId}/${episodeId}/original.mp4`);
+    } catch (err) {
+      console.warn(`Cảnh báo: Không thể xóa video gốc của tập ${episodeId}:`, err);
+    }
+    
+    // 2. Xóa thumbnail
+    try {
+      await deleteFileFromR2(`episodes/${movieId}/${episodeId}/thumbnail.jpg`);
+    } catch (err) {
+      console.warn(`Cảnh báo: Không thể xóa thumbnail của tập ${episodeId}:`, err);
+    }
+    
+    // 3. Xóa tất cả file HLS
+    try {
+      await deleteHlsFiles(movieId, episodeId);
+    } catch (err) {
+      console.warn(`Cảnh báo: Không thể xóa một số file HLS của tập ${episodeId}:`, err);
+    }
+    
+    // 4. Xóa thông tin episode từ database
+    await Episode.destroy({ where: { id: episodeId } });
+    
+    // 5. Xóa lịch sử xem liên quan
+    await UserWatchHistory.destroy({ 
+      where: { 
+        movieId: Number(movieId),
+        episodeId: Number(episodeId)
+      } 
+    });
+    
+    res.json({
+      success: true,
+      message: 'Đã xóa tập phim thành công'
+    });
+  } catch (error) {
+    console.error('Error deleting episode:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Lỗi không xác định'
+    });
+  }
+};
+
+/**
+ * Xóa toàn bộ phim và tất cả tập phim, media liên quan
+ */
+export const deleteMovie = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { movieId } = req.params;
+    
+    // Tìm thông tin phim trước khi xóa
+    const movie = await Movie.findByPk(movieId, {
+      include: [Episode]
+    });
+    
+    if (!movie) {
+      res.status(404).json({ success: false, error: 'Không tìm thấy phim' });
+      return;
+    }
+    
+    // Bắt đầu transaction để đảm bảo tính nhất quán
+    const transaction = await sequelize.transaction();
+    
+    try {
+      // 1. Xóa tất cả media của phim (poster, backdrop, trailer)
+      try {
+        await deleteFileFromR2(`movies/${movieId}/poster.jpg`);
+        await deleteFileFromR2(`movies/${movieId}/backdrop.jpg`);
+        await deleteFileFromR2(`movies/${movieId}/trailer.mp4`);
+      } catch (mediaError) {
+        console.warn('Cảnh báo: Không thể xóa một số file media:', mediaError);
+        // Tiếp tục xử lý, không throw error
+      }
+      
+      // 2. Xóa tất cả tập phim và file liên quan
+      if (movie.episodes && movie.episodes.length > 0) {
+        for (const episode of movie.episodes) {
+          // Xóa file video gốc
+          try {
+            await deleteFileFromR2(`episodes/${movieId}/${episode.id}/original.mp4`);
+            await deleteFileFromR2(`episodes/${movieId}/${episode.id}/thumbnail.jpg`);
+            await deleteHlsFiles(movieId, episode.id);
+          } catch (episodeError) {
+            console.warn(`Cảnh báo: Không thể xóa file của tập ${episode.id}:`, episodeError);
+            // Tiếp tục xử lý
+          }
+        }
+      }
+      
+      // 3. Xóa tất cả lịch sử xem liên quan
+      await UserWatchHistory.destroy({ 
+        where: { movieId: Number(movieId) },
+        transaction
+      });
+      
+      // 4. Xóa tất cả tập phim từ database
+      await Episode.destroy({ 
+        where: { movieId: Number(movieId) },
+        transaction
+      });
+      
+      // 5. Xóa phim từ database
+      await Movie.destroy({ 
+        where: { id: Number(movieId) },
+        transaction
+      });
+      
+      // Commit transaction nếu tất cả thành công
+      await transaction.commit();
+      
+      res.json({
+        success: true,
+        message: 'Đã xóa phim và tất cả tập phim thành công'
+      });
+    } catch (txError) {
+      // Rollback nếu có lỗi
+      await transaction.rollback();
+      throw txError;
+    }
+  } catch (error) {
+    console.error('Error deleting movie:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Lỗi không xác định'
+    });
   }
 };
 

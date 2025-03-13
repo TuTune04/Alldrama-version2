@@ -1,57 +1,23 @@
-import express, { Request, Response, NextFunction } from "express";
 import dotenv from "dotenv";
-import cors from "cors";
-import initDatabase from "./utils/initDatabase";
+import app from "./app";
 import createDatabase from "./utils/createDatabase";
-import movieRoutes from "./routes/movieRoutes";
-import authRoutes from "./routes/authRoutes";
-import userRoutes from "./routes/userRoutes";
-import favoriteRoutes from "./routes/favoriteRoutes";
-import watchHistoryRoutes from "./routes/watchHistoryRoutes";
-import episodeRoutes from "./routes/episodeRoutes";
-import genreRoutes from "./routes/genreRoutes";
-import statsRoutes from "./routes/statsRoutes";
-import viewRoutes from "./routes/viewRoutes";
-import mediaRoutes from "./routes/mediaRoutes";
+import initDatabase from "./utils/initDatabase";
 import { startViewsSyncJob } from "./jobs/syncViewsJob";
 
 // Tải biến môi trường
 dotenv.config();
 
-// Khởi tạo Express app
-const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5000;
 
-// Middleware
-app.use(express.json());
-
-// CORS middleware
-app.use(cors({
-  origin: '*',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization', 'X-Worker-Secret']
-}));
-
-// Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/movies', movieRoutes);
-app.use('/api/favorites', favoriteRoutes);
-app.use('/api/watch-history', watchHistoryRoutes);
-app.use('/api/episodes', episodeRoutes);
-app.use('/api/genres', genreRoutes);
-app.use('/api/stats', statsRoutes);
-app.use('/api/views', viewRoutes);
-app.use('/api/media', mediaRoutes);
-
-// Route mặc định
-app.get("/", (req: Request, res: Response) => {
-  res.send("Alldrama API - Phiên bản 1.0");
+// Xử lý sự kiện không bắt được
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  process.exit(1);
 });
 
-// Xử lý lỗi 404
-app.use((req: Request, res: Response) => {
-  res.status(404).json({ message: 'Không tìm thấy tài nguyên' });
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  process.exit(1);
 });
 
 // Khởi động server
@@ -67,13 +33,33 @@ const startServer = async () => {
     startViewsSyncJob();
 
     // Lắng nghe kết nối
-    app.listen(PORT, () => {
+    const server = app.listen(PORT, () => {
       console.log(`Server đang chạy trên port ${PORT}`);
     });
+
+    // Xử lý graceful shutdown
+    const gracefulShutdown = () => {
+      console.log('Đang đóng server...');
+      server.close(() => {
+        console.log('Server đã đóng.');
+        process.exit(0);
+      });
+      
+      // Nếu server không đóng trong 10 giây, tắt cưỡng bức
+      setTimeout(() => {
+        console.error('Không thể đóng server một cách bình thường, tắt cưỡng bức.');
+        process.exit(1);
+      }, 10000);
+    };
+
+    // Lắng nghe các tín hiệu tắt server
+    process.on('SIGTERM', gracefulShutdown);
+    process.on('SIGINT', gracefulShutdown);
+    
   } catch (error) {
     console.error("Không thể khởi động server:", error);
     process.exit(1);
   }
 };
 
-startServer();
+startServer(); 

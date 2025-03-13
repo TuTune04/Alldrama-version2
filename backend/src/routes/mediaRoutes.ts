@@ -7,7 +7,9 @@ import {
   getPresignedUploadUrl,
   deleteMedia,
   getVideoProcessingStatus,
-  processVideo
+  processVideo,
+  deleteEpisode,
+  deleteMovie
 } from '../controllers/mediaController';
 import { imageUpload, videoUpload, validateFileType } from '../middlewares/uploadMiddleware';
 import { authenticate, requireAdmin } from '../middleware/auth';
@@ -55,11 +57,32 @@ router.post('/presigned-url',
   getPresignedUploadUrl
 );
 
-// Route để xóa media
+// Route để xóa media (cũ, giữ lại để tương thích ngược)
 router.delete('/:key',
   authenticate,
   requireAdmin,
   deleteMedia
+);
+
+// Routes mới để xóa media cụ thể
+router.delete('/movies/:movieId/:mediaType',
+  authenticate,
+  requireAdmin,
+  deleteMedia
+);
+
+// Route để xóa tập phim
+router.delete('/episodes/:movieId/:episodeId',
+  authenticate,
+  requireAdmin,
+  deleteEpisode
+);
+
+// Route để xóa toàn bộ phim
+router.delete('/movies/:movieId',
+  authenticate,
+  requireAdmin,
+  deleteMovie
 );
 
 // Route lấy trạng thái xử lý video

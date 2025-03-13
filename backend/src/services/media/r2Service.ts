@@ -165,4 +165,33 @@ export const uploadDirectoryToR2 = async (
   }
   
   return uploadedUrls;
+};
+
+/**
+ * Xóa tất cả các file HLS của một tập phim
+ * @param movieId ID của phim
+ * @param episodeId ID của tập phim
+ */
+export const deleteHlsFiles = async (movieId: string | number, episodeId: string | number): Promise<void> => {
+  try {
+    // Liệt kê tất cả các file trong thư mục HLS
+    const hlsPrefix = `episodes/${movieId}/${episodeId}/hls/`;
+    const files = await listFiles(hlsPrefix);
+    
+    // Nếu không có file nào, return luôn
+    if (files.length === 0) {
+      console.log(`Không tìm thấy file HLS nào trong ${hlsPrefix}`);
+      return;
+    }
+    
+    // Xóa từng file một
+    for (const file of files) {
+      await deleteFileFromR2(file);
+    }
+    
+    console.log(`Đã xóa ${files.length} file HLS cho tập phim ${episodeId} của phim ${movieId}`);
+  } catch (error) {
+    console.error(`Lỗi khi xóa file HLS: ${error}`);
+    throw error;
+  }
 }; 
