@@ -3,61 +3,21 @@ import { Movie } from '../models/Movie';
 import { Genre } from '../models/Genre';
 import { Op } from 'sequelize';
 import { cacheMovieData, getCachedMovieData, cacheSearchResults, getCachedSearchResults } from '../services/redisService';
+import { getMovieService } from '../services';
 
 // Lấy danh sách phim
 export const getMovies = async (req: Request, res: Response) => {
   try {
-    const { 
-      page = 1,
-      limit = 10,
-      sort = 'createdAt',
-      order = 'DESC'
-    } = req.query;
-
-    // Tạo cache key dựa trên tham số truy vấn
-    const cacheKey = `movies:${page}:${limit}:${sort}:${order}`;
+    const movieService = getMovieService();
     
-    // Kiểm tra cache
-    const cachedData = await getCachedSearchResults(cacheKey);
-    if (cachedData) {
-      console.log(`Đã lấy dữ liệu phim từ cache với key: ${cacheKey}`);
-      return res.status(200).json(cachedData);
-    }
-    
-    // Tính offset cho phân trang
-    const offset = (Number(page) - 1) * Number(limit);
-    
-    // Đảm bảo sort là một trường hợp lệ
-    const validSortFields = ['title', 'rating', 'views', 'releaseYear', 'createdAt'];
-    const sortField = validSortFields.includes(String(sort)) ? sort : 'createdAt';
-    
-    // Đảm bảo order là ASC hoặc DESC
-    const sortOrder = order === 'ASC' ? 'ASC' : 'DESC';
-
-    // Thực hiện truy vấn với phân trang
-    const { count, rows: movies } = await Movie.findAndCountAll({
-      include: [Genre],
-      order: [[String(sortField), sortOrder]],
-      limit: Number(limit),
-      offset: offset
-    });
-
-    // Tính tổng số trang
-    const totalPages = Math.ceil(count / Number(limit));
-    
-    // Kết quả trả về
-    const result = {
-      movies,
-      pagination: {
-        total: count,
-        totalPages,
-        currentPage: Number(page),
-        limit: Number(limit)
-      }
+    const params = {
+      page: req.query.page ? Number(req.query.page) : 1,
+      limit: req.query.limit ? Number(req.query.limit) : 10,
+      sort: req.query.sort as string,
+      order: (req.query.order as 'ASC' | 'DESC') || 'DESC'
     };
     
-    // Lưu vào cache
-    await cacheSearchResults(cacheKey, result, 300); // cache 5 phút
+    const result = await movieService.getMovies(params);
     
     res.status(200).json(result);
   } catch (error) {
@@ -69,26 +29,14 @@ export const getMovies = async (req: Request, res: Response) => {
 // Lấy chi tiết phim theo ID
 export const getMovieById = async (req: Request, res: Response) => {
   try {
+    const movieService = getMovieService();
     const { id } = req.params;
     
-    // Kiểm tra cache
-    const cachedMovie = await getCachedMovieData(Number(id));
-    if (cachedMovie) {
-      console.log(`Đã lấy thông tin phim ID ${id} từ cache`);
-      return res.status(200).json(cachedMovie);
-    }
-    
-    // Không có trong cache, truy vấn database
-    const movie = await Movie.findByPk(id, {
-      include: [Genre]
-    });
+    const movie = await movieService.getMovieById(Number(id));
     
     if (!movie) {
       return res.status(404).json({ message: 'Không tìm thấy phim' });
     }
-    
-    // Lưu vào cache
-    await cacheMovieData(Number(id), movie, 3600); // cache 1 giờ
     
     res.status(200).json(movie);
   } catch (error) {
@@ -98,111 +46,57 @@ export const getMovieById = async (req: Request, res: Response) => {
 };
 
 // Tạo phim mới
-export const createMovie = (req: Request, res: Response) => {
-  const movieData = req.body;
-  let createdMovie: any;
-  
-  Movie.create(movieData)
-    .then(newMovie => {
-      createdMovie = newMovie;
-      // Nếu có genres, thêm vào bảng liên kết
-      if (movieData.genreIds && movieData.genreIds.length > 0) {
-        return Genre.findAll({
-          where: {
-            id: movieData.genreIds
-          }
-        })
-          .then(genres => {
-            return createdMovie.$set('genres', genres);
-          });
-      }
-      
-      return Promise.resolve();
-    })
-    .then(() => {
-      return Movie.findByPk(createdMovie.id, {
-        include: [Genre]
-      });
-    })
-    .then(movie => {
-      res.status(201).json(movie);
-    })
-    .catch(error => {
-      console.error('Error creating movie:', error);
-      res.status(500).json({ message: 'Lỗi khi tạo phim mới' });
-    });
+export const createMovie = async (req: Request, res: Response) => {
+  try {
+    const movieService = getMovieService();
+    const movieData = req.body;
+    
+    const movie = await movieService.createMovie(movieData);
+    
+    res.status(201).json(movie);
+  } catch (error) {
+    console.error('Error creating movie:', error);
+    res.status(500).json({ message: 'Lỗi khi tạo phim mới' });
+  }
 };
 
 // Cập nhật phim
-export const updateMovie = (req: Request, res: Response) => {
-  const { id } = req.params;
-  const movieData = req.body;
-  let movieToUpdate: any;
-  
-  Movie.findByPk(id)
-    .then(movie => {
-      if (!movie) {
-        res.status(404).json({ message: 'Không tìm thấy phim' });
-        return Promise.reject('Movie not found');
-      }
-      
-      movieToUpdate = movie;
-      // Cập nhật thông tin phim
-      return movie.update(movieData);
-    })
-    .then(() => {
-      // Nếu có genres, cập nhật bảng liên kết
-      if (movieData.genreIds && movieData.genreIds.length > 0) {
-        return Genre.findAll({
-          where: {
-            id: movieData.genreIds
-          }
-        })
-          .then(genres => {
-            return movieToUpdate.$set('genres', genres);
-          });
-      }
-      
-      return Promise.resolve();
-    })
-    .then(() => {
-      return Movie.findByPk(id, {
-        include: [Genre]
-      });
-    })
-    .then(updatedMovie => {
-      res.status(200).json(updatedMovie);
-    })
-    .catch(error => {
-      if (error !== 'Movie not found') {
-        console.error('Error updating movie:', error);
-        res.status(500).json({ message: 'Lỗi khi cập nhật phim' });
-      }
-    });
+export const updateMovie = async (req: Request, res: Response) => {
+  try {
+    const movieService = getMovieService();
+    const { id } = req.params;
+    const movieData = req.body;
+    
+    const updatedMovie = await movieService.updateMovie(Number(id), movieData);
+    
+    if (!updatedMovie) {
+      return res.status(404).json({ message: 'Không tìm thấy phim' });
+    }
+    
+    res.status(200).json(updatedMovie);
+  } catch (error) {
+    console.error('Error updating movie:', error);
+    res.status(500).json({ message: 'Lỗi khi cập nhật phim' });
+  }
 };
 
 // Xóa phim
-export const deleteMovie = (req: Request, res: Response) => {
-  const { id } = req.params;
-  
-  Movie.findByPk(id)
-    .then(movie => {
-      if (!movie) {
-        res.status(404).json({ message: 'Không tìm thấy phim' });
-        return Promise.reject('Movie not found');
-      }
-      
-      return movie.destroy();
-    })
-    .then(() => {
-      res.status(200).json({ message: 'Xóa phim thành công' });
-    })
-    .catch(error => {
-      if (error !== 'Movie not found') {
-        console.error('Error deleting movie:', error);
-        res.status(500).json({ message: 'Lỗi khi xóa phim' });
-      }
-    });
+export const deleteMovie = async (req: Request, res: Response) => {
+  try {
+    const movieService = getMovieService();
+    const { id } = req.params;
+    
+    const success = await movieService.deleteMovie(Number(id));
+    
+    if (!success) {
+      return res.status(404).json({ message: 'Không tìm thấy phim' });
+    }
+    
+    res.status(200).json({ message: 'Xóa phim thành công' });
+  } catch (error) {
+    console.error('Error deleting movie:', error);
+    res.status(500).json({ message: 'Lỗi khi xóa phim' });
+  }
 };
 
 // Tìm kiếm phim

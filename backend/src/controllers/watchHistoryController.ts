@@ -1,8 +1,5 @@
 import { Request, Response } from 'express';
-import { UserWatchHistory } from '../models/UserWatchHistory';
-import { Movie } from '../models/Movie';
-import { Episode } from '../models/Episode';
-import { Genre } from '../models/Genre';
+import { getWatchHistoryService } from '../services';
 
 // Thêm vào lịch sử xem
 export const addWatchHistory = async (req: Request, res: Response) => {
@@ -12,115 +9,32 @@ export const addWatchHistory = async (req: Request, res: Response) => {
     }
 
     const { movieId, episodeId, progress = 0, duration = 0 } = req.body;
+    const watchHistoryService = getWatchHistoryService();
     
-    // Kiểm tra phim có tồn tại không
-    const movie = await Movie.findByPk(movieId);
-    if (!movie) {
-      return res.status(404).json({ message: 'Không tìm thấy phim' });
-    }
-    
-    // Thiết lập biến để xác định có tăng lượt xem hay không
-    let shouldIncreaseViews = false;
-    
-    // Kiểm tra tập phim nếu có
-    let episode = null;
-    if (episodeId) {
-      episode = await Episode.findOne({
-        where: {
-          id: episodeId,
-          movieId
-        }
-      });
-      
-      if (!episode) {
-        return res.status(404).json({ message: 'Không tìm thấy tập phim' });
-      }
-    }
-    
-    // Kiểm tra xem đã có trong lịch sử xem chưa
-    const existingHistory = await UserWatchHistory.findOne({
-      where: {
-        userId: req.user.id,
-        movieId,
-        ...(episodeId ? { episodeId } : {})
-      }
-    });
-    
-    // Xác định có tăng lượt xem hay không
-    // Nếu là nội dung mới hoặc đã xem quá 1 giờ kể từ lần trước
-    if (!existingHistory) {
-      shouldIncreaseViews = true;
-    } else {
-      const lastWatchedTime = new Date(existingHistory.watchedAt).getTime();
-      const currentTime = new Date().getTime();
-      const oneHourInMs = 60 * 60 * 1000;
-      
-      // Nếu đã qua 1 giờ kể từ lần xem trước
-      if (currentTime - lastWatchedTime > oneHourInMs) {
-        shouldIncreaseViews = true;
-      }
-      
-      // Hoặc nếu tiến độ xem đã vượt qua 70% thời lượng (chỉ tính cho lần đầu tiên)
-      if (duration > 0 && progress / duration >= 0.7 && !existingHistory.isCompleted) {
-        shouldIncreaseViews = true;
-      }
-    }
-    
-    // Nếu đã có, cập nhật thời gian xem và tiến độ
-    let historyRecord;
-    
-    if (existingHistory) {
-      // Cập nhật thông tin
-      await existingHistory.update({
-        watchedAt: new Date(),
-        progress: progress || existingHistory.progress,
-        duration: duration || existingHistory.duration,
-        isCompleted: progress / duration >= 0.9 // Đánh dấu là đã xem hoàn thành nếu > 90%
-      });
-      
-      historyRecord = existingHistory;
-    } else {
-      // Thêm mới vào lịch sử xem
-      historyRecord = await UserWatchHistory.create({
-        userId: req.user.id,
-        movieId,
-        episodeId,
-        watchedAt: new Date(),
+    try {
+      const result = await watchHistoryService.addToWatchHistory(req.user.id, {
+        movieId: Number(movieId),
+        episodeId: episodeId ? Number(episodeId) : undefined,
         progress,
-        duration,
-        isCompleted: progress / duration >= 0.9
+        duration
       });
-    }
-    
-    // Tăng lượt xem nếu cần
-    if (shouldIncreaseViews) {
-      // Tăng lượt xem cho phim
-      await movie.increment('views', { by: 1 });
       
-      // Tăng lượt xem cho tập phim nếu có
-      if (episode) {
-        await episode.increment('views', { by: 1 });
-      }
-    }
-    
-    // Lấy thông tin chi tiết
-    const historyWithDetails = await UserWatchHistory.findByPk(historyRecord.id, {
-      include: [
-        {
-          model: Movie,
-          include: [Genre]
-        },
-        {
-          model: Episode
+      return res.status(200).json({
+        message: 'Đã thêm/cập nhật lịch sử xem',
+        watchHistory: result.watchHistory,
+        viewIncreased: result.viewIncreased
+      });
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.message === 'Không tìm thấy phim') {
+          return res.status(404).json({ message: error.message });
         }
-      ]
-    });
-    
-    return res.status(existingHistory ? 200 : 201).json({
-      message: existingHistory ? 'Đã cập nhật lịch sử xem' : 'Đã thêm vào lịch sử xem',
-      watchHistory: historyWithDetails,
-      viewIncreased: shouldIncreaseViews
-    });
+        if (error.message === 'Không tìm thấy tập phim') {
+          return res.status(404).json({ message: error.message });
+        }
+      }
+      throw error;
+    }
   } catch (error) {
     console.error('Error adding watch history:', error);
     return res.status(500).json({ message: 'Lỗi khi thêm vào lịch sử xem' });
@@ -135,23 +49,17 @@ export const removeWatchHistory = async (req: Request, res: Response) => {
     }
 
     const { id } = req.params;
+    const watchHistoryService = getWatchHistoryService();
     
-    // Tìm mục lịch sử xem
-    const watchHistory = await UserWatchHistory.findOne({
-      where: {
-        id,
-        userId: req.user.id
+    try {
+      await watchHistoryService.removeFromWatchHistory(Number(id), req.user.id);
+      return res.status(200).json({ message: 'Đã xóa khỏi lịch sử xem' });
+    } catch (error) {
+      if (error instanceof Error && error.message === 'Không tìm thấy mục trong lịch sử xem') {
+        return res.status(404).json({ message: error.message });
       }
-    });
-    
-    if (!watchHistory) {
-      return res.status(404).json({ message: 'Không tìm thấy mục trong lịch sử xem' });
+      throw error;
     }
-    
-    // Xóa khỏi lịch sử xem
-    await watchHistory.destroy();
-    
-    return res.status(200).json({ message: 'Đã xóa khỏi lịch sử xem' });
   } catch (error) {
     console.error('Error removing watch history:', error);
     return res.status(500).json({ message: 'Lỗi khi xóa khỏi lịch sử xem' });
@@ -165,19 +73,8 @@ export const getCurrentUserWatchHistory = async (req: Request, res: Response) =>
       return res.status(401).json({ message: 'Bạn cần đăng nhập để xem lịch sử xem' });
     }
     
-    const watchHistory = await UserWatchHistory.findAll({
-      where: { userId: req.user.id },
-      include: [
-        {
-          model: Movie,
-          include: [Genre]
-        },
-        {
-          model: Episode
-        }
-      ],
-      order: [['watchedAt', 'DESC']]
-    });
+    const watchHistoryService = getWatchHistoryService();
+    const watchHistory = await watchHistoryService.getUserWatchHistory(req.user.id);
     
     return res.status(200).json(watchHistory);
   } catch (error) {

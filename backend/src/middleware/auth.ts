@@ -9,6 +9,7 @@ export interface JwtPayload {
   role: string;
   iat?: number;
   exp?: number;
+  tokenId?: string;
 }
 
 // Mở rộng kiểu Request để thêm thông tin người dùng
@@ -16,6 +17,7 @@ declare global {
   namespace Express {
     interface Request {
       user?: JwtPayload;
+      tokenId?: string;
     }
   }
 }
@@ -39,6 +41,7 @@ export const authenticate = (req: Request, res: Response, next: NextFunction): v
     
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default_secret') as JwtPayload;
     req.user = decoded;
+    req.tokenId = decoded.tokenId;
     
     next();
   } catch (error) {

@@ -1,7 +1,5 @@
 import { Request, Response } from 'express';
-import { UserFavorite } from '../models/UserFavorite';
-import { Movie } from '../models/Movie';
-import { Genre } from '../models/Genre';
+import { getFavoriteService } from '../services';
 
 // Thêm phim vào danh sách yêu thích
 export const addFavorite = async (req: Request, res: Response) => {
@@ -11,46 +9,29 @@ export const addFavorite = async (req: Request, res: Response) => {
     }
 
     const { movieId } = req.body;
+    const favoriteService = getFavoriteService();
     
-    // Kiểm tra phim có tồn tại không
-    const movie = await Movie.findByPk(movieId);
-    if (!movie) {
-      return res.status(404).json({ message: 'Không tìm thấy phim' });
-    }
-    
-    // Kiểm tra xem đã thêm vào danh sách yêu thích chưa
-    const existingFavorite = await UserFavorite.findOne({
-      where: {
-        userId: req.user.id,
-        movieId
-      }
-    });
-    
-    if (existingFavorite) {
-      return res.status(400).json({ message: 'Phim đã có trong danh sách yêu thích' });
-    }
-    
-    // Thêm vào danh sách yêu thích
-    const favorite = await UserFavorite.create({
-      userId: req.user.id,
-      movieId,
-      favoritedAt: new Date()
-    });
-    
-    // Lấy thông tin chi tiết
-    const favoriteWithDetails = await UserFavorite.findByPk(favorite.id, {
-      include: [
-        {
-          model: Movie,
-          include: [Genre]
+    try {
+      const favorite = await favoriteService.addToFavorites(req.user.id, Number(movieId));
+      
+      return res.status(201).json({
+        message: 'Đã thêm phim vào danh sách yêu thích',
+        favorite
+      });
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.message === 'Không tìm thấy phim') {
+          return res.status(404).json({ message: error.message });
         }
-      ]
-    });
-    
-    return res.status(201).json({
-      message: 'Đã thêm phim vào danh sách yêu thích',
-      favorite: favoriteWithDetails
-    });
+        if (error.message === 'Phim đã tồn tại trong danh sách yêu thích') {
+          return res.status(400).json({ message: error.message });
+        }
+        if (error.message === 'Không tìm thấy người dùng') {
+          return res.status(404).json({ message: error.message });
+        }
+      }
+      throw error;
+    }
   } catch (error) {
     console.error('Error adding favorite:', error);
     return res.status(500).json({ message: 'Lỗi khi thêm phim vào danh sách yêu thích' });
@@ -65,23 +46,18 @@ export const removeFavorite = async (req: Request, res: Response) => {
     }
 
     const { movieId } = req.params;
+    const favoriteService = getFavoriteService();
     
-    // Tìm mục yêu thích
-    const favorite = await UserFavorite.findOne({
-      where: {
-        userId: req.user.id,
-        movieId
+    try {
+      await favoriteService.removeFromFavorites(req.user.id, Number(movieId));
+      
+      return res.status(200).json({ message: 'Đã xóa phim khỏi danh sách yêu thích' });
+    } catch (error) {
+      if (error instanceof Error && error.message === 'Phim không tồn tại trong danh sách yêu thích') {
+        return res.status(404).json({ message: 'Không tìm thấy phim trong danh sách yêu thích' });
       }
-    });
-    
-    if (!favorite) {
-      return res.status(404).json({ message: 'Không tìm thấy phim trong danh sách yêu thích' });
+      throw error;
     }
-    
-    // Xóa khỏi danh sách yêu thích
-    await favorite.destroy();
-    
-    return res.status(200).json({ message: 'Đã xóa phim khỏi danh sách yêu thích' });
   } catch (error) {
     console.error('Error removing favorite:', error);
     return res.status(500).json({ message: 'Lỗi khi xóa phim khỏi danh sách yêu thích' });
@@ -95,16 +71,8 @@ export const getCurrentUserFavorites = async (req: Request, res: Response) => {
       return res.status(401).json({ message: 'Bạn cần đăng nhập để xem danh sách yêu thích' });
     }
     
-    const favorites = await UserFavorite.findAll({
-      where: { userId: req.user.id },
-      include: [
-        {
-          model: Movie,
-          include: [Genre]
-        }
-      ],
-      order: [['favoritedAt', 'DESC']]
-    });
+    const favoriteService = getFavoriteService();
+    const favorites = await favoriteService.getUserFavorites(req.user.id);
     
     return res.status(200).json(favorites);
   } catch (error) {

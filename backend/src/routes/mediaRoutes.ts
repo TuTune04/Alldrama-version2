@@ -11,8 +11,7 @@ import {
   deleteEpisode,
   deleteMovie
 } from '../controllers/mediaController';
-import { imageUpload, videoUpload, validateFileType } from '../middlewares/uploadMiddleware';
-import { authenticate, requireAdmin } from '../middleware/auth';
+import { imageUpload, videoUpload, validateFileType, authenticate, requireAdmin } from '../middleware';
 
 const router = express.Router();
 
