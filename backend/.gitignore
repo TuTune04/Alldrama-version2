@@ -26,3 +26,7 @@ tslint.json
 # npm or yarn lock files (optional: if you prefer not to commit them)
 package-lock.json  # Uncomment if you prefer not to commit package-lock.json
 yarn.lock  # Uncomment if you are using yarn and don't want to commit yarn.lock
+
+# Jest coverage
+coverage/
+.nyc_output/

@@ -20,4 +20,8 @@ module.exports = {
     '!src/index.ts',
     '!src/__tests__/**/*'
   ],
+  moduleNameMapper: {
+    '^ioredis$': '<rootDir>/src/__mocks__/ioredis.js'
+  },
+  setupFilesAfterEnv: ['<rootDir>/src/__tests__/setup.ts'],
 }; 

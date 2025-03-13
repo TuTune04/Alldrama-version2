@@ -9,30 +9,43 @@ dotenv.config();
 // Biến để theo dõi trạng thái Redis
 let redisAvailable = false;
 
-// Tạo kết nối Redis
-const redisClient = new Redis({
-  host: process.env.REDIS_HOST || '172.17.0.2',
-  port: parseInt(process.env.REDIS_PORT || '6379'),
-  password: process.env.REDIS_PASSWORD,
-  db: parseInt(process.env.REDIS_DB || '0'),
-  retryStrategy: (times) => {
-    // Giới hạn số lần thử kết nối lại
-    const delay = Math.min(times * 100, 3000);
-    return delay;
-  },
-  maxRetriesPerRequest: 3
-});
+// Tạo kết nối Redis với cách xử lý khác nhau cho môi trường test
+const createRedisClient = () => {
+  // Không tạo kết nối thực trong môi trường test
+  if (process.env.NODE_ENV === 'test') {
+    logger.info('Using mock Redis client for testing environment');
+    redisAvailable = true;
+    return new Redis(); // Sẽ được thay thế bởi mock
+  }
 
-// Kiểm tra kết nối Redis
-redisClient.on('connect', () => {
-  logger.info('Kết nối Redis thành công');
-  redisAvailable = true;
-});
+  logger.info('Creating Redis connection');
+  const client = new Redis({
+    host: process.env.REDIS_HOST || '172.17.0.2',
+    port: parseInt(process.env.REDIS_PORT || '6379'),
+    password: process.env.REDIS_PASSWORD,
+    db: parseInt(process.env.REDIS_DB || '0'),
+    retryStrategy: (times) => {
+      // Giới hạn số lần thử kết nối lại
+      const delay = Math.min(times * 100, 3000);
+      logger.info(`Redis connection retry in ${delay}ms`);
+      return delay;
+    },
+  });
 
-redisClient.on('error', (error) => {
-  logger.error('Lỗi kết nối Redis:', error);
-  redisAvailable = false;
-});
+  client.on('connect', () => {
+    logger.info('Redis connected successfully');
+    redisAvailable = true;
+  });
+
+  client.on('error', (err) => {
+    logger.error(`Redis connection error: ${err.message}`);
+    redisAvailable = false;
+  });
+
+  return client;
+};
+
+const redisClient = createRedisClient();
 
 // Wrapper function để xử lý khi Redis không khả dụng
 const safeRedisOperation = async <T>(operation: (...args: unknown[]) => Promise<T>, ...args: unknown[]): Promise<T | null> => {
