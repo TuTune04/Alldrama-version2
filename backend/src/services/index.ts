@@ -12,7 +12,7 @@ import { WatchHistoryService } from './watchHistory/watchHistoryService';
  * Cung cấp dependency injection pattern
  */
 class ServiceContainer {
-  private services: Map<string, any> = new Map();
+  private services: Map<string, unknown> = new Map();
 
   /**
    * Đăng ký một service vào container

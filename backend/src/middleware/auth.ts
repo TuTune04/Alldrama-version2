@@ -1,6 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { UserRole } from '../models/User';
+import { Logger } from '../utils/logger';
+
+const logger = Logger.getLogger('AuthMiddleware');
 
 // Định nghĩa kiểu cho payload JWT
 export interface JwtPayload {
@@ -13,12 +16,10 @@ export interface JwtPayload {
 }
 
 // Mở rộng kiểu Request để thêm thông tin người dùng
-declare global {
-  namespace Express {
-    interface Request {
-      user?: JwtPayload;
-      tokenId?: string;
-    }
+declare module 'express' {
+  interface Request {
+    user?: JwtPayload;
+    tokenId?: string;
   }
 }
 
@@ -74,7 +75,7 @@ export const optionalAuth = (req: Request, res: Response, next: NextFunction): v
       req.user = decoded;
     } catch (error) {
       // Token không hợp lệ nhưng vẫn cho phép truy cập
-      console.log('Token không hợp lệ nhưng vẫn cho phép truy cập:', error);
+      logger.debug('Token không hợp lệ nhưng vẫn cho phép truy cập:', error);
     }
     
     next();

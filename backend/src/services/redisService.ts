@@ -1,5 +1,8 @@
 import Redis from 'ioredis';
 import dotenv from 'dotenv';
+import { Logger } from '../utils/logger';
+
+const logger = Logger.getLogger('RedisService');
 
 dotenv.config();
 
@@ -22,26 +25,26 @@ const redisClient = new Redis({
 
 // Kiểm tra kết nối Redis
 redisClient.on('connect', () => {
-  console.log('Kết nối Redis thành công');
+  logger.info('Kết nối Redis thành công');
   redisAvailable = true;
 });
 
 redisClient.on('error', (error) => {
-  console.error('Lỗi kết nối Redis:', error);
+  logger.error('Lỗi kết nối Redis:', error);
   redisAvailable = false;
 });
 
 // Wrapper function để xử lý khi Redis không khả dụng
-const safeRedisOperation = async (operation: Function, ...args: any[]): Promise<any> => {
+const safeRedisOperation = async <T>(operation: (...args: unknown[]) => Promise<T>, ...args: unknown[]): Promise<T | null> => {
   if (!redisAvailable) {
-    console.log('Redis không khả dụng, bỏ qua thao tác');
+    logger.debug('Redis không khả dụng, bỏ qua thao tác');
     return null;
   }
   
   try {
     return await operation(...args);
   } catch (error) {
-    console.error('Lỗi khi thực hiện thao tác Redis:', error);
+    logger.error('Lỗi khi thực hiện thao tác Redis:', error);
     return null;
   }
 };
@@ -95,15 +98,37 @@ export const resetEpisodeViews = async (episodeId: number): Promise<void> => {
   });
 };
 
+// Type definitions for cached data
+export interface CachedMovie {
+  id: number;
+  title: string;
+  description?: string;
+  posterUrl?: string;
+  backdropUrl?: string;
+  genres?: unknown[];
+  [key: string]: unknown;
+}
+
+export interface CachedSearchResult {
+  movies: unknown[];
+  pagination: {
+    total: number;
+    totalPages: number;
+    currentPage: number;
+    limit: number;
+  };
+  [key: string]: unknown;
+}
+
 // Cache cho dữ liệu phim
-export const cacheMovieData = async (movieId: number, data: any, expirySeconds: number = 3600): Promise<void> => {
+export const cacheMovieData = async (movieId: number, data: CachedMovie, expirySeconds = 3600): Promise<void> => {
   await safeRedisOperation(async () => {
     await redisClient.setex(`movie:data:${movieId}`, expirySeconds, JSON.stringify(data));
   });
 };
 
 // Lấy dữ liệu phim từ cache
-export const getCachedMovieData = async (movieId: number): Promise<any | null> => {
+export const getCachedMovieData = async (movieId: number): Promise<CachedMovie | null> => {
   return await safeRedisOperation(async () => {
     const data = await redisClient.get(`movie:data:${movieId}`);
     return data ? JSON.parse(data) : null;
@@ -111,7 +136,7 @@ export const getCachedMovieData = async (movieId: number): Promise<any | null> =
 };
 
 // Cache cho kết quả tìm kiếm
-export const cacheSearchResults = async (query: string, results: any, expirySeconds: number = 600): Promise<void> => {
+export const cacheSearchResults = async (query: string, results: CachedSearchResult, expirySeconds = 600): Promise<void> => {
   await safeRedisOperation(async () => {
     const cacheKey = `search:${Buffer.from(query).toString('base64')}`;
     await redisClient.setex(cacheKey, expirySeconds, JSON.stringify(results));
@@ -119,7 +144,7 @@ export const cacheSearchResults = async (query: string, results: any, expirySeco
 };
 
 // Lấy kết quả tìm kiếm từ cache
-export const getCachedSearchResults = async (query: string): Promise<any | null> => {
+export const getCachedSearchResults = async (query: string): Promise<CachedSearchResult | null> => {
   return await safeRedisOperation(async () => {
     const cacheKey = `search:${Buffer.from(query).toString('base64')}`;
     const data = await redisClient.get(cacheKey);

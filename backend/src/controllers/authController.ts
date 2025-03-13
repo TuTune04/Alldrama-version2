@@ -1,71 +1,99 @@
 import { Request, Response } from 'express';
-import bcrypt from 'bcrypt';
-import { User, UserRole } from '../models/User';
-import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../utils/jwt';
-import jwt from 'jsonwebtoken';
-import { JwtPayload } from 'jsonwebtoken';
+// import bcrypt from 'bcrypt';
+// import { User, UserRole } from '../models/User';
+// import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../utils/jwt';
+// import jwt from 'jsonwebtoken';
+// import { JwtPayload } from 'jsonwebtoken';
 import { getAuthService } from '../services';
+import { Logger } from '../utils/logger';
+
+const logger = Logger.getLogger('AuthController');
 
 // Đăng ký tài khoản
 export const register = async (req: Request, res: Response) => {
   try {
-    const authService = getAuthService();
     const { full_name, email, password } = req.body;
-
-    const result = await authService.register(full_name, email, password);
-
-    // Trả về thông tin người dùng và token
+    
+    // Kiểm tra dữ liệu
+    if (!full_name || !email || !password) {
+      return res.status(400).json({ message: 'Vui lòng cung cấp đầy đủ thông tin' });
+    }
+    
+    const authService = getAuthService();
+    const { user, tokens } = await authService.register(full_name, email, password);
+    
+    // Thiết lập refresh token cookie
+    res.cookie('refreshToken', tokens.refreshToken, {
+      httpOnly: true,
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 ngày
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    });
+    
+    // Trả về thông tin người dùng và access token
     return res.status(201).json({
       message: 'Đăng ký thành công',
-      user: result.user,
-      accessToken: result.tokens.accessToken,
-      refreshToken: result.tokens.refreshToken
+      user: {
+        id: user.id,
+        full_name: user.full_name,
+        email: user.email,
+        role: user.role,
+      },
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
     });
   } catch (error) {
-    console.error('Error registering user:', error);
+    logger.error('Error registering user:', error);
+    
     if (error instanceof Error && error.message === 'Email đã được sử dụng') {
       return res.status(400).json({ message: error.message });
     }
-    return res.status(500).json({ message: 'Lỗi khi đăng ký tài khoản' });
+    
+    return res.status(500).json({ message: 'Lỗi máy chủ, vui lòng thử lại sau' });
   }
 };
 
 // Đăng nhập
-export const login = async (req: Request, res: Response): Promise<void> => {
+export const login = async (req: Request, res: Response) => {
   try {
-    const authService = getAuthService();
     const { email, password } = req.body;
-
-    const result = await authService.login(email, password);
-
-    // Lưu refresh token vào cookie HttpOnly
-    res.cookie('refreshToken', result.tokens.refreshToken, {
+    
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Vui lòng cung cấp email và mật khẩu' });
+    }
+    
+    const authService = getAuthService();
+    const { user, tokens } = await authService.login(email, password);
+    
+    // Thiết lập refresh token cookie
+    res.cookie('refreshToken', tokens.refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production', // Chỉ dùng HTTPS trong production
-      sameSite: 'lax', // Thay đổi từ 'strict' sang 'lax' để tương thích với NextAuth
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 ngày
-      path: '/api/auth/refresh' // Chỉ gửi đến endpoint refresh
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
     });
-
-    // Trả về thông tin
-    res.json({
+    
+    return res.status(200).json({
       message: 'Đăng nhập thành công',
-      accessToken: result.tokens.accessToken,
-      user: result.user
+      user: {
+        id: user.id,
+        full_name: user.full_name,
+        email: user.email,
+        role: user.role,
+      },
+      accessToken: tokens.accessToken
     });
   } catch (error) {
-    console.error('Lỗi đăng nhập:', error);
+    logger.error('Lỗi đăng nhập:', error);
+    
     if (error instanceof Error) {
       if (error.message === 'Email hoặc mật khẩu không chính xác') {
-        res.status(401).json({ message: error.message });
-        return;
+        return res.status(401).json({ message: error.message });
       }
-      if (error.message === 'Email và mật khẩu là bắt buộc') {
-        res.status(400).json({ message: error.message });
-        return;
-      }
+      return res.status(400).json({ message: error.message });
     }
-    res.status(500).json({ message: 'Lỗi máy chủ' });
+    
+    return res.status(500).json({ message: 'Lỗi máy chủ, vui lòng thử lại sau' });
   }
 };
 
@@ -93,8 +121,8 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
       accessToken: tokens.accessToken
     });
   } catch (error) {
-    console.error('Lỗi refresh token:', error);
-    res.status(401).json({ message: 'Refresh token không hợp lệ hoặc đã hết hạn' });
+    logger.error('Lỗi refresh token:', error);
+    res.status(401).json({ message: 'Lỗi xác thực, vui lòng đăng nhập lại' });
     return;
   }
 };
@@ -118,8 +146,8 @@ export const logout = async (req: Request, res: Response) => {
     
     res.status(200).json({ message: 'Đăng xuất thành công' });
   } catch (error) {
-    console.error('Lỗi đăng xuất:', error);
-    res.status(500).json({ message: 'Lỗi máy chủ' });
+    logger.error('Lỗi đăng xuất:', error);
+    res.status(500).json({ message: 'Lỗi máy chủ, vui lòng thử lại sau' });
   }
 };
 
@@ -142,8 +170,8 @@ export const logoutAll = async (req: Request, res: Response) => {
     
     res.status(200).json({ message: 'Đã đăng xuất khỏi tất cả các thiết bị' });
   } catch (error) {
-    console.error('Lỗi đăng xuất khỏi tất cả thiết bị:', error);
-    res.status(500).json({ message: 'Lỗi máy chủ' });
+    logger.error('Lỗi đăng xuất khỏi tất cả thiết bị:', error);
+    res.status(500).json({ message: 'Lỗi máy chủ, vui lòng thử lại sau' });
   }
 };
 
@@ -159,8 +187,8 @@ export const getCurrentUser = async (req: Request, res: Response) => {
     const user = await authService.getCurrentUser(req.user.id);
     return res.status(200).json(user);
   } catch (error) {
-    console.error('Error getting current user:', error);
-    return res.status(500).json({ message: 'Lỗi khi lấy thông tin người dùng' });
+    logger.error('Error getting current user:', error);
+    return res.status(500).json({ message: 'Lỗi máy chủ, vui lòng thử lại sau' });
   }
 };
 
@@ -168,7 +196,7 @@ export const getCurrentUser = async (req: Request, res: Response) => {
 export const emailAuth = async (req: Request, res: Response): Promise<void> => {
   try {
     const authService = getAuthService();
-    const { email, token, isSignUp } = req.body;
+    const { email, isSignUp } = req.body;
 
     const result = await authService.emailAuth(email, isSignUp);
 
@@ -187,7 +215,7 @@ export const emailAuth = async (req: Request, res: Response): Promise<void> => {
       user: result.user
     });
   } catch (error) {
-    console.error('Lỗi xác thực email:', error);
+    logger.error('Lỗi xác thực email:', error);
     if (error instanceof Error) {
       if (error.message === 'Email đã được sử dụng') {
         res.status(400).json({ message: error.message });
@@ -198,6 +226,6 @@ export const emailAuth = async (req: Request, res: Response): Promise<void> => {
         return;
       }
     }
-    res.status(500).json({ message: 'Lỗi máy chủ' });
+    res.status(500).json({ message: 'Lỗi máy chủ, vui lòng thử lại sau' });
   }
 }; 

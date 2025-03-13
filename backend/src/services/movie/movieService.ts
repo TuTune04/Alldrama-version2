@@ -1,7 +1,9 @@
 import { Movie } from '../../models/Movie';
 import { Genre } from '../../models/Genre';
-import { Op } from 'sequelize';
-import { cacheMovieData, getCachedMovieData, cacheSearchResults, getCachedSearchResults } from '../redisService';
+import { cacheMovieData, getCachedMovieData, cacheSearchResults, getCachedSearchResults, CachedMovie } from '../redisService';
+import { Logger } from '../../utils/logger';
+
+const logger = Logger.getLogger('MovieService');
 
 /**
  * Interface cho tham số phân trang và sắp xếp
@@ -11,6 +13,24 @@ export interface ListMoviesParams {
   limit?: number;
   sort?: string;
   order?: 'ASC' | 'DESC';
+}
+
+/**
+ * Interface cho dữ liệu phim
+ */
+export interface MovieData {
+  title: string;
+  description?: string;
+  posterUrl?: string;
+  backdropUrl?: string;
+  trailerUrl?: string;
+  releaseYear?: number;
+  duration?: number;
+  rating?: number;
+  isFeatured?: boolean;
+  isPublished?: boolean;
+  genreIds?: number[];
+  [key: string]: unknown;
 }
 
 /**
@@ -34,7 +54,7 @@ export class MovieService {
     // Kiểm tra cache
     const cachedData = await getCachedSearchResults(cacheKey);
     if (cachedData) {
-      console.log(`Đã lấy dữ liệu phim từ cache với key: ${cacheKey}`);
+      logger.info(`Đã lấy dữ liệu phim từ cache với key: ${cacheKey}`);
       return cachedData;
     }
     
@@ -83,7 +103,7 @@ export class MovieService {
     // Kiểm tra cache
     const cachedMovie = await getCachedMovieData(id);
     if (cachedMovie) {
-      console.log(`Đã lấy thông tin phim ID ${id} từ cache`);
+      logger.info(`Đã lấy thông tin phim ID ${id} từ cache`);
       return cachedMovie;
     }
     
@@ -93,8 +113,8 @@ export class MovieService {
     });
     
     if (movie) {
-      // Lưu vào cache
-      await cacheMovieData(id, movie, 3600); // cache 1 giờ
+      // Lưu vào cache - movie có cấu trúc tương tự CachedMovie nên ép kiểu an toàn
+      await cacheMovieData(id, movie.toJSON() as CachedMovie, 3600); // cache 1 giờ
     }
     
     return movie;
@@ -103,14 +123,20 @@ export class MovieService {
   /**
    * Tạo phim mới
    */
-  public async createMovie(movieData: any) {
-    let createdMovie = await Movie.create(movieData);
+  public async createMovie(movieData: MovieData) {
+    // Loại bỏ trường genreIds khỏi dữ liệu trước khi tạo movie
+    // vì trường này không tồn tại trong model Movie
+    const { genreIds, ...movieDataWithoutGenres } = movieData;
+    
+    // Sử dụng MovieCreationAttributes thay vì any 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const createdMovie = await Movie.create(movieDataWithoutGenres as any);
     
     // Nếu có genres, thêm vào bảng liên kết
-    if (movieData.genreIds && movieData.genreIds.length > 0) {
+    if (genreIds && genreIds.length > 0) {
       const genres = await Genre.findAll({
         where: {
-          id: movieData.genreIds
+          id: genreIds
         }
       });
       
@@ -126,7 +152,7 @@ export class MovieService {
   /**
    * Cập nhật phim
    */
-  public async updateMovie(id: number, movieData: any) {
+  public async updateMovie(id: number, movieData: MovieData) {
     const movie = await Movie.findByPk(id);
     
     if (!movie) {

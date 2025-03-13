@@ -181,7 +181,7 @@ export const uploadEpisodeVideo = async (req: Request, res: Response): Promise<v
     
     // Lấy metadata video để biết thời lượng
     const metadata = await getVideoMetadata(file.path);
-    const duration = Math.floor(parseFloat(metadata.format.duration || 0));
+    const duration = Math.floor(parseFloat(metadata.format?.duration || '0'));
     
     // Bắt đầu xử lý HLS
     res.status(202).json({

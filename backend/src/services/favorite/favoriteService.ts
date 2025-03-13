@@ -68,14 +68,18 @@ export class FavoriteService {
     }
 
     // Thêm vào danh sách yêu thích
-    const favorite = await UserFavorite.create({
+    await UserFavorite.create({
       userId,
       movieId,
       favoritedAt: new Date()
     });
 
     // Lấy thông tin đầy đủ của favorite
-    const favoriteWithMovie = await UserFavorite.findByPk(favorite.id, {
+    const favoriteWithMovie = await UserFavorite.findOne({
+      where: {
+        userId,
+        movieId
+      },
       include: [
         {
           model: Movie,
@@ -84,7 +88,11 @@ export class FavoriteService {
       ]
     });
 
-    return favoriteWithMovie!;
+    if (!favoriteWithMovie) {
+      throw new Error('Phim yêu thích không tồn tại');
+    }
+
+    return favoriteWithMovie;
   }
 
   /**
