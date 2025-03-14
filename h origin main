@@ -1,5 +1,0 @@
-[33mcommit 7b435fbc55646ef6e061863f069a6035edd01d2d[m
-Author: Nguyễn Duy Hưng <124774263+yudgunH@users.noreply.github.com>
-Date:   Fri Mar 14 00:01:02 2025 +0700
-
-    Thiết lập hệ thống testing, logging, lỗi eslint
