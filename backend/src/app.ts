@@ -1,6 +1,8 @@
 import express, { Request, Response } from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import swaggerUi from 'swagger-ui-express';
+import { swaggerSpec } from './config/swagger';
 import movieRoutes from "./routes/movieRoutes";
 import authRoutes from "./routes/authRoutes";
 import userRoutes from "./routes/userRoutes";
@@ -27,6 +29,13 @@ app.use(cors({
   credentials: true, // Quan trọng: cho phép gửi cookie qua CORS
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization', 'X-Worker-Secret']
+}));
+
+// Swagger Documentation
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  explorer: true,
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: "Alldrama API Documentation"
 }));
 
 // Routes
