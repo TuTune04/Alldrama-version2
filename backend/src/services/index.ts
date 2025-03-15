@@ -6,6 +6,7 @@ import { GenreService } from './genre/genreService';
 import { UserService } from './user/userService';
 import { FavoriteService } from './favorite/favoriteService';
 import { WatchHistoryService } from './watchHistory/watchHistoryService';
+import { CommentService } from './comment/commentService';
 
 /**
  * Lớp quản lý dịch vụ (Service Container)
@@ -52,6 +53,7 @@ serviceContainer.register('genreService', new GenreService());
 serviceContainer.register('userService', new UserService());
 serviceContainer.register('favoriteService', new FavoriteService());
 serviceContainer.register('watchHistoryService', new WatchHistoryService());
+serviceContainer.register('commentService', new CommentService());
 
 // Export các service factory
 export const getMovieService = (): MovieService => {
@@ -86,6 +88,10 @@ export const getWatchHistoryService = (): WatchHistoryService => {
   return serviceContainer.get<WatchHistoryService>('watchHistoryService');
 };
 
+export const getCommentService = (): CommentService => {
+  return serviceContainer.get<CommentService>('commentService');
+};
+
 // Export các loại service để có thể import trực tiếp
 export { 
   MovieService, 
@@ -95,5 +101,6 @@ export {
   GenreService, 
   UserService, 
   FavoriteService,
-  WatchHistoryService 
+  WatchHistoryService,
+  CommentService 
 }; 

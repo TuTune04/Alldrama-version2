@@ -13,6 +13,7 @@ import genreRoutes from "./routes/genreRoutes";
 import statsRoutes from "./routes/statsRoutes";
 import viewRoutes from "./routes/viewRoutes";
 import mediaRoutes from "./routes/mediaRoutes";
+import commentRoutes from "./routes/commentRoutes";
 
 // Khởi tạo Express app
 const app = express();
@@ -49,6 +50,7 @@ app.use('/api/genres', genreRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/views', viewRoutes);
 app.use('/api/media', mediaRoutes);
+app.use('/api/comments', commentRoutes);
 
 // Route mặc định
 app.get("/", (req: Request, res: Response) => {
