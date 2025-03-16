@@ -1,5 +1,8 @@
+import { Logger } from '../utils/logger';
 import { Request, Response } from 'express';
 import { getEpisodeService } from '../services';
+
+const logger = Logger.getLogger('episodeController');
 
 // Lấy danh sách tập phim của một phim
 export const getEpisodesByMovieId = async (req: Request, res: Response) => {
@@ -11,7 +14,7 @@ export const getEpisodesByMovieId = async (req: Request, res: Response) => {
     
     return res.status(200).json(episodes);
   } catch (error) {
-    console.error('Error fetching episodes:', error);
+    logger.error('Error fetching episodes:', error);
     if (error instanceof Error && error.message === 'Không tìm thấy phim') {
       return res.status(404).json({ message: error.message });
     }
@@ -29,7 +32,7 @@ export const getEpisodeById = async (req: Request, res: Response) => {
     
     return res.status(200).json(episode);
   } catch (error) {
-    console.error('Error fetching episode:', error);
+    logger.error('Error fetching episode:', error);
     if (error instanceof Error && error.message === 'Không tìm thấy tập phim') {
       return res.status(404).json({ message: error.message });
     }
@@ -58,7 +61,7 @@ export const createEpisode = async (req: Request, res: Response) => {
       episode: newEpisode
     });
   } catch (error) {
-    console.error('Error creating episode:', error);
+    logger.error('Error creating episode:', error);
     if (error instanceof Error) {
       if (error.message === 'Không tìm thấy phim') {
         return res.status(404).json({ message: error.message });
@@ -92,7 +95,7 @@ export const updateEpisode = async (req: Request, res: Response) => {
       episode: updatedEpisode
     });
   } catch (error) {
-    console.error('Error updating episode:', error);
+    logger.error('Error updating episode:', error);
     if (error instanceof Error) {
       if (error.message === 'Không tìm thấy tập phim') {
         return res.status(404).json({ message: error.message });
@@ -115,7 +118,7 @@ export const deleteEpisode = async (req: Request, res: Response) => {
     
     return res.status(200).json({ message: 'Xóa tập phim thành công' });
   } catch (error) {
-    console.error('Error deleting episode:', error);
+    logger.error('Error deleting episode:', error);
     if (error instanceof Error && error.message === 'Không tìm thấy tập phim') {
       return res.status(404).json({ message: error.message });
     }

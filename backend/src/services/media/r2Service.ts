@@ -1,8 +1,11 @@
+import { Logger } from '../../utils/logger';
 import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, ListObjectsCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import fs from 'fs';
 import path from 'path';
 import dotenv from 'dotenv';
+
+const logger = Logger.getLogger('r2Service');
 
 dotenv.config();
 
@@ -43,7 +46,7 @@ export const uploadFileToR2 = async (
     // Trả về URL công khai
     return `https://${process.env.CLOUDFLARE_DOMAIN}/${key}`;
   } catch (error) {
-    console.error('Lỗi khi upload file lên R2:', error);
+    logger.error('Lỗi khi upload file lên R2:', error);
     throw error;
   }
 };
@@ -82,7 +85,7 @@ export const downloadFromR2 = async (
     const buffer = Buffer.concat(chunks);
     fs.writeFileSync(outputPath, buffer);
   } catch (error) {
-    console.error('Lỗi khi download file từ R2:', error);
+    logger.error('Lỗi khi download file từ R2:', error);
     throw error;
   }
 };
@@ -112,7 +115,7 @@ export const deleteFileFromR2 = async (key: string): Promise<void> => {
   try {
     await r2Client.send(new DeleteObjectCommand(params));
   } catch (error) {
-    console.error('Lỗi khi xóa file từ R2:', error);
+    logger.error('Lỗi khi xóa file từ R2:', error);
     throw error;
   }
 };
@@ -128,7 +131,7 @@ export const listFiles = async (prefix: string): Promise<string[]> => {
     const data = await r2Client.send(new ListObjectsCommand(params));
     return (data.Contents || []).map(item => item.Key || '');
   } catch (error) {
-    console.error('Lỗi khi liệt kê files từ R2:', error);
+    logger.error('Lỗi khi liệt kê files từ R2:', error);
     throw error;
   }
 };
@@ -180,7 +183,7 @@ export const deleteHlsFiles = async (movieId: string | number, episodeId: string
     
     // Nếu không có file nào, return luôn
     if (files.length === 0) {
-      console.log(`Không tìm thấy file HLS nào trong ${hlsPrefix}`);
+      logger.debug(`Không tìm thấy file HLS nào trong ${hlsPrefix}`);
       return;
     }
     
@@ -189,9 +192,9 @@ export const deleteHlsFiles = async (movieId: string | number, episodeId: string
       await deleteFileFromR2(file);
     }
     
-    console.log(`Đã xóa ${files.length} file HLS cho tập phim ${episodeId} của phim ${movieId}`);
+    logger.debug(`Đã xóa ${files.length} file HLS cho tập phim ${episodeId} của phim ${movieId}`);
   } catch (error) {
-    console.error(`Lỗi khi xóa file HLS: ${error}`);
+    logger.error(`Lỗi khi xóa file HLS: ${error}`);
     throw error;
   }
 }; 

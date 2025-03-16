@@ -1,8 +1,11 @@
+import { Logger } from '../utils/logger';
 import { Request, Response } from 'express';
 import { Movie } from '../models/Movie';
 import { Episode } from '../models/Episode';
 import { UserWatchHistory } from '../models/UserWatchHistory';
 import { Op, fn, col, literal } from 'sequelize';
+
+const logger = Logger.getLogger('statsController');
 
 // Lấy thống kê lượt xem theo phim
 export const getMovieViewStats = async (req: Request, res: Response) => {
@@ -56,7 +59,7 @@ export const getMovieViewStats = async (req: Request, res: Response) => {
       dailyViews
     });
   } catch (error) {
-    console.error('Error fetching movie view stats:', error);
+    logger.error('Error fetching movie view stats:', error);
     return res.status(500).json({ message: 'Lỗi khi lấy thống kê lượt xem phim' });
   }
 };
@@ -125,7 +128,7 @@ export const getEpisodeViewStats = async (req: Request, res: Response) => {
         : 0
     });
   } catch (error) {
-    console.error('Error fetching episode view stats:', error);
+    logger.error('Error fetching episode view stats:', error);
     return res.status(500).json({ message: 'Lỗi khi lấy thống kê lượt xem tập phim' });
   }
 };
@@ -143,7 +146,7 @@ export const getTopViewedMovies = async (req: Request, res: Response) => {
     
     return res.status(200).json(topMovies);
   } catch (error) {
-    console.error('Error fetching top viewed movies:', error);
+    logger.error('Error fetching top viewed movies:', error);
     return res.status(500).json({ message: 'Lỗi khi lấy danh sách phim xem nhiều nhất' });
   }
 };
@@ -167,7 +170,7 @@ export const getTopViewedEpisodes = async (req: Request, res: Response) => {
     
     return res.status(200).json(topEpisodes);
   } catch (error) {
-    console.error('Error fetching top viewed episodes:', error);
+    logger.error('Error fetching top viewed episodes:', error);
     return res.status(500).json({ message: 'Lỗi khi lấy danh sách tập phim xem nhiều nhất' });
   }
 }; 

@@ -1,5 +1,8 @@
+import { Logger } from '../utils/logger';
 import { Request, Response } from 'express';
 import { getFavoriteService } from '../services';
+
+const logger = Logger.getLogger('favoriteController');
 
 // Thêm phim vào danh sách yêu thích
 export const addFavorite = async (req: Request, res: Response) => {
@@ -33,7 +36,7 @@ export const addFavorite = async (req: Request, res: Response) => {
       throw error;
     }
   } catch (error) {
-    console.error('Error adding favorite:', error);
+    logger.error('Error adding favorite:', error);
     return res.status(500).json({ message: 'Lỗi khi thêm phim vào danh sách yêu thích' });
   }
 };
@@ -59,7 +62,7 @@ export const removeFavorite = async (req: Request, res: Response) => {
       throw error;
     }
   } catch (error) {
-    console.error('Error removing favorite:', error);
+    logger.error('Error removing favorite:', error);
     return res.status(500).json({ message: 'Lỗi khi xóa phim khỏi danh sách yêu thích' });
   }
 };
@@ -76,7 +79,7 @@ export const getCurrentUserFavorites = async (req: Request, res: Response) => {
     
     return res.status(200).json(favorites);
   } catch (error) {
-    console.error('Error fetching favorites:', error);
+    logger.error('Error fetching favorites:', error);
     return res.status(500).json({ message: 'Lỗi khi lấy danh sách phim yêu thích' });
   }
 }; 

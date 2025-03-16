@@ -1,9 +1,12 @@
+import { Logger } from '../utils/logger';
 import { Request, Response } from 'express';
 import { Movie } from '../models/Movie';
 import { Genre } from '../models/Genre';
 import { Op } from 'sequelize';
 import { cacheMovieData, getCachedMovieData, cacheSearchResults, getCachedSearchResults } from '../services/redisService';
 import { getMovieService } from '../services';
+
+const logger = Logger.getLogger('movieController');
 
 // Lấy danh sách phim
 export const getMovies = async (req: Request, res: Response) => {
@@ -21,7 +24,7 @@ export const getMovies = async (req: Request, res: Response) => {
     
     res.status(200).json(result);
   } catch (error) {
-    console.error('Error fetching movies:', error);
+    logger.error('Error fetching movies:', error);
     res.status(500).json({ message: 'Lỗi khi lấy danh sách phim' });
   }
 };
@@ -40,7 +43,7 @@ export const getMovieById = async (req: Request, res: Response) => {
     
     res.status(200).json(movie);
   } catch (error) {
-    console.error('Error fetching movie:', error);
+    logger.error('Error fetching movie:', error);
     res.status(500).json({ message: 'Lỗi khi lấy thông tin phim' });
   }
 };
@@ -55,7 +58,7 @@ export const createMovie = async (req: Request, res: Response) => {
     
     res.status(201).json(movie);
   } catch (error) {
-    console.error('Error creating movie:', error);
+    logger.error('Error creating movie:', error);
     res.status(500).json({ message: 'Lỗi khi tạo phim mới' });
   }
 };
@@ -75,7 +78,7 @@ export const updateMovie = async (req: Request, res: Response) => {
     
     res.status(200).json(updatedMovie);
   } catch (error) {
-    console.error('Error updating movie:', error);
+    logger.error('Error updating movie:', error);
     res.status(500).json({ message: 'Lỗi khi cập nhật phim' });
   }
 };
@@ -94,7 +97,7 @@ export const deleteMovie = async (req: Request, res: Response) => {
     
     res.status(200).json({ message: 'Xóa phim thành công' });
   } catch (error) {
-    console.error('Error deleting movie:', error);
+    logger.error('Error deleting movie:', error);
     res.status(500).json({ message: 'Lỗi khi xóa phim' });
   }
 };
@@ -118,7 +121,7 @@ export const searchMovies = async (req: Request, res: Response) => {
     // Kiểm tra cache
     const cachedResults = await getCachedSearchResults(cacheKey);
     if (cachedResults) {
-      console.log(`Đã lấy kết quả tìm kiếm từ cache với key: ${cacheKey}`);
+      logger.debug(`Đã lấy kết quả tìm kiếm từ cache với key: ${cacheKey}`);
       return res.status(200).json(cachedResults);
     }
 
@@ -190,7 +193,7 @@ export const searchMovies = async (req: Request, res: Response) => {
     
     return res.status(200).json(result);
   } catch (error) {
-    console.error('Error searching movies:', error);
+    logger.error('Error searching movies:', error);
     return res.status(500).json({ message: 'Lỗi khi tìm kiếm phim' });
   }
 }; 

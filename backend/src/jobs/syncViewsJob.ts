@@ -1,3 +1,4 @@
+import { Logger } from '../utils/logger';
 import cron from 'node-cron';
 import sequelize from '../config/database';
 import { QueryTypes } from 'sequelize';
@@ -10,12 +11,14 @@ import {
   resetEpisodeViews
 } from '../services/redisService';
 
+const logger = Logger.getLogger('syncViewsJob');
+
 /**
  * Cập nhật lượt xem cho phim từ Redis vào database
  */
 const syncMovieViews = async (): Promise<void> => {
   try {
-    console.log('Bắt đầu đồng bộ lượt xem phim từ Redis sang database...');
+    logger.debug('Bắt đầu đồng bộ lượt xem phim từ Redis sang database...');
     
     // Lấy danh sách tất cả phim
     const movies = await Movie.findAll();
@@ -36,13 +39,13 @@ const syncMovieViews = async (): Promise<void> => {
         
         // Đặt lại bộ đếm trong Redis
         await resetMovieViews(movie.id);
-        console.log(`Đã cập nhật ${redisViews} lượt xem cho phim ID ${movie.id}`);
+        logger.debug(`Đã cập nhật ${redisViews} lượt xem cho phim ID ${movie.id}`);
       }
     }
     
-    console.log('Hoàn thành đồng bộ lượt xem phim.');
+    logger.debug('Hoàn thành đồng bộ lượt xem phim.');
   } catch (error) {
-    console.error('Lỗi khi đồng bộ lượt xem phim:', error);
+    logger.error('Lỗi khi đồng bộ lượt xem phim:', error);
   }
 };
 
@@ -51,7 +54,7 @@ const syncMovieViews = async (): Promise<void> => {
  */
 const syncEpisodeViews = async (): Promise<void> => {
   try {
-    console.log('Bắt đầu đồng bộ lượt xem tập phim từ Redis sang database...');
+    logger.debug('Bắt đầu đồng bộ lượt xem tập phim từ Redis sang database...');
     
     // Lấy danh sách tất cả tập phim
     const episodes = await Episode.findAll();
@@ -72,13 +75,13 @@ const syncEpisodeViews = async (): Promise<void> => {
         
         // Đặt lại bộ đếm trong Redis
         await resetEpisodeViews(episode.id);
-        console.log(`Đã cập nhật ${redisViews} lượt xem cho tập phim ID ${episode.id}`);
+        logger.debug(`Đã cập nhật ${redisViews} lượt xem cho tập phim ID ${episode.id}`);
       }
     }
     
-    console.log('Hoàn thành đồng bộ lượt xem tập phim.');
+    logger.debug('Hoàn thành đồng bộ lượt xem tập phim.');
   } catch (error) {
-    console.error('Lỗi khi đồng bộ lượt xem tập phim:', error);
+    logger.error('Lỗi khi đồng bộ lượt xem tập phim:', error);
   }
 };
 
@@ -87,16 +90,16 @@ const syncEpisodeViews = async (): Promise<void> => {
  * Mặc định: Chạy mỗi 5 phút
  */
 export const startViewsSyncJob = (cronExpression = '*/5 * * * *'): void => {
-  console.log(`Khởi động cron job đồng bộ lượt xem với lịch: ${cronExpression}`);
+  logger.debug(`Khởi động cron job đồng bộ lượt xem với lịch: ${cronExpression}`);
   
   cron.schedule(cronExpression, async () => {
-    console.log(`Chạy job đồng bộ lượt xem lúc ${new Date().toISOString()}`);
+    logger.debug(`Chạy job đồng bộ lượt xem lúc ${new Date().toISOString()}`);
     
     try {
       await syncMovieViews();
       await syncEpisodeViews();
     } catch (error) {
-      console.error('Lỗi khi chạy job đồng bộ lượt xem:', error);
+      logger.error('Lỗi khi chạy job đồng bộ lượt xem:', error);
     }
   });
 };

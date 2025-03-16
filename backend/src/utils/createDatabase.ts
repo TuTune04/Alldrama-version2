@@ -1,5 +1,8 @@
+import { Logger } from '../utils/logger';
 import { Client } from 'pg';
 import dotenv from 'dotenv';
+
+const logger = Logger.getLogger('createDatabase');
 
 dotenv.config();
 
@@ -26,14 +29,14 @@ const createDatabase = async () => {
 
     // Nếu database chưa tồn tại, tạo mới
     if (checkDbResult.rowCount === 0) {
-      console.log(`Creating database: ${DB_NAME}`);
+      logger.debug(`Creating database: ${DB_NAME}`);
       await client.query(`CREATE DATABASE ${DB_NAME}`);
-      console.log(`Database ${DB_NAME} created successfully`);
+      logger.debug(`Database ${DB_NAME} created successfully`);
     } else {
-      console.log(`Database ${DB_NAME} already exists`);
+      logger.debug(`Database ${DB_NAME} already exists`);
     }
   } catch (error) {
-    console.error('Error creating database:', error);
+    logger.error('Error creating database:', error);
     throw error;
   } finally {
     await client.end();
@@ -44,11 +47,11 @@ const createDatabase = async () => {
 if (require.main === module) {
   createDatabase()
     .then(() => {
-      console.log('Database creation script completed');
+      logger.debug('Database creation script completed');
       process.exit(0);
     })
     .catch((error) => {
-      console.error('Database creation script failed:', error);
+      logger.error('Database creation script failed:', error);
       process.exit(1);
     });
 }

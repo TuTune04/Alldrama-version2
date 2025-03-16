@@ -1,3 +1,4 @@
+import { Logger } from '../../utils/logger';
 import path from 'path';
 import fs from 'fs';
 import { 
@@ -15,6 +16,8 @@ import { Episode } from '../../models/Episode';
 import { Movie } from '../../models/Movie';
 import { UserWatchHistory } from '../../models/UserWatchHistory';
 import sequelize from '../../config/database';
+
+const logger = Logger.getLogger('mediaService');
 
 /**
  * Service xử lý media (ảnh, video)
@@ -154,7 +157,7 @@ export class MediaService {
       
       return true;
     } catch (error) {
-      console.error('Lỗi khi xóa media:', error);
+      logger.error('Lỗi khi xóa media:', error);
       return false;
     }
   }

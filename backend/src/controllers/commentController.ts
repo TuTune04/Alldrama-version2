@@ -1,6 +1,9 @@
+import { Logger } from '../utils/logger';
 import { Request, Response } from 'express';
 import { getCommentService } from '../services';
 import { JwtPayload } from '../middleware/auth';
+
+const logger = Logger.getLogger('commentController');
 
 // Định nghĩa lại interface cho Request để có thể truy cập user
 interface AuthRequest extends Request {
@@ -27,7 +30,7 @@ export const getMovieComments = async (req: Request, res: Response) => {
     
     return res.status(200).json(comments);
   } catch (error) {
-    console.error('Error fetching movie comments:', error);
+    logger.error('Error fetching movie comments:', error);
     return res.status(500).json({ message: 'Lỗi khi lấy danh sách bình luận' });
   }
 };
@@ -48,7 +51,7 @@ export const getCommentById = async (req: Request, res: Response) => {
       throw error;
     }
   } catch (error) {
-    console.error('Error fetching comment:', error);
+    logger.error('Error fetching comment:', error);
     return res.status(500).json({ message: 'Lỗi khi lấy thông tin bình luận' });
   }
 };
@@ -89,7 +92,7 @@ export const createComment = async (req: AuthRequest, res: Response) => {
       throw error;
     }
   } catch (error) {
-    console.error('Error creating comment:', error);
+    logger.error('Error creating comment:', error);
     return res.status(500).json({ message: 'Lỗi khi tạo bình luận' });
   }
 };
@@ -133,7 +136,7 @@ export const updateComment = async (req: AuthRequest, res: Response) => {
       throw error;
     }
   } catch (error) {
-    console.error('Error updating comment:', error);
+    logger.error('Error updating comment:', error);
     return res.status(500).json({ message: 'Lỗi khi cập nhật bình luận' });
   }
 };
@@ -170,7 +173,7 @@ export const deleteComment = async (req: AuthRequest, res: Response) => {
       throw error;
     }
   } catch (error) {
-    console.error('Error deleting comment:', error);
+    logger.error('Error deleting comment:', error);
     return res.status(500).json({ message: 'Lỗi khi xóa bình luận' });
   }
 }; 

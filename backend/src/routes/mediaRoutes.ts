@@ -12,6 +12,7 @@ import {
   deleteMovie
 } from '../controllers/mediaController';
 import { imageUpload, videoUpload, validateFileType, authenticate, requireAdmin } from '../middleware';
+import { uploadLimiter } from '../middleware/rateLimit';
 
 const router = express.Router();
 
@@ -21,6 +22,7 @@ router.post('/movies/:movieId/poster',
   requireAdmin, 
   imageUpload.single('poster'),
   validateFileType(['image/']),
+  uploadLimiter,
   uploadMoviePoster
 );
 
@@ -29,6 +31,7 @@ router.post('/movies/:movieId/backdrop',
   requireAdmin,
   imageUpload.single('backdrop'),
   validateFileType(['image/']),
+  uploadLimiter,
   uploadMovieBackdrop
 );
 
@@ -37,6 +40,7 @@ router.post('/movies/:movieId/trailer',
   requireAdmin,
   videoUpload.single('trailer'),
   validateFileType(['video/']),
+  uploadLimiter,
   uploadMovieTrailer
 );
 
@@ -46,6 +50,7 @@ router.post('/episodes/:movieId/:episodeId/video',
   requireAdmin,
   videoUpload.single('video'),
   validateFileType(['video/']),
+  uploadLimiter,
   uploadEpisodeVideo
 );
 

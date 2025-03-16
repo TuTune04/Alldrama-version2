@@ -1,5 +1,8 @@
+import { Logger } from '../utils/logger';
 import { Request, Response } from 'express';
 import { getWatchHistoryService } from '../services';
+
+const logger = Logger.getLogger('watchHistoryController');
 
 // Thêm vào lịch sử xem
 export const addWatchHistory = async (req: Request, res: Response) => {
@@ -36,7 +39,7 @@ export const addWatchHistory = async (req: Request, res: Response) => {
       throw error;
     }
   } catch (error) {
-    console.error('Error adding watch history:', error);
+    logger.error('Error adding watch history:', error);
     return res.status(500).json({ message: 'Lỗi khi thêm vào lịch sử xem' });
   }
 };
@@ -61,7 +64,7 @@ export const removeWatchHistory = async (req: Request, res: Response) => {
       throw error;
     }
   } catch (error) {
-    console.error('Error removing watch history:', error);
+    logger.error('Error removing watch history:', error);
     return res.status(500).json({ message: 'Lỗi khi xóa khỏi lịch sử xem' });
   }
 };
@@ -78,7 +81,7 @@ export const getCurrentUserWatchHistory = async (req: Request, res: Response) =>
     
     return res.status(200).json(watchHistory);
   } catch (error) {
-    console.error('Error fetching watch history:', error);
+    logger.error('Error fetching watch history:', error);
     return res.status(500).json({ message: 'Lỗi khi lấy lịch sử xem' });
   }
 }; 

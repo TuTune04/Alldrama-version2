@@ -1,3 +1,4 @@
+import { Logger } from '../utils/logger';
 import sequelize from '../config/database';
 import { User, UserRole } from '../models/User';
 import { Movie } from '../models/Movie';
@@ -9,17 +10,19 @@ import { UserFavorite } from '../models/UserFavorite';
 import { UserWatchHistory } from '../models/UserWatchHistory';
 import bcrypt from 'bcrypt';
 
+const logger = Logger.getLogger('initDatabase');
+
 // Hàm tạo dữ liệu mẫu
 const seedData = async () => {
   try {
     // Kiểm tra xem đã có dữ liệu trong database chưa
     const userCount = await User.count();
     if (userCount > 0) {
-      console.log('Database đã có dữ liệu, bỏ qua việc tạo dữ liệu mẫu');
+      logger.debug('Database đã có dữ liệu, bỏ qua việc tạo dữ liệu mẫu');
       return;
     }
 
-    console.log('Bắt đầu tạo dữ liệu mẫu...');
+    logger.debug('Bắt đầu tạo dữ liệu mẫu...');
 
     // Tạo người dùng mẫu
     const adminUser = await User.create({
@@ -85,9 +88,9 @@ const seedData = async () => {
       comment: 'Phim rất hay và hấp dẫn!'
     });
 
-    console.log('Tạo dữ liệu mẫu thành công');
+    logger.debug('Tạo dữ liệu mẫu thành công');
   } catch (error) {
-    console.error('Lỗi khi tạo dữ liệu mẫu:', error);
+    logger.error('Lỗi khi tạo dữ liệu mẫu:', error);
     throw error;
   }
 };
@@ -109,12 +112,12 @@ const initDatabase = async () => {
     // Đồng bộ hóa cơ sở dữ liệu (tạo bảng nếu chưa tồn tại)
     // Sử dụng alter: true để cập nhật cấu trúc bảng nếu có thay đổi, nhưng không xóa dữ liệu
     await sequelize.sync({ alter: true });
-    console.log('Đồng bộ hóa database thành công');
+    logger.debug('Đồng bộ hóa database thành công');
 
     // Tạo dữ liệu mẫu (chỉ tạo nếu database trống)
     await seedData();
   } catch (error) {
-    console.error('Không thể khởi tạo database:', error);
+    logger.error('Không thể khởi tạo database:', error);
     throw error;
   }
 };

@@ -1,6 +1,8 @@
 import express, { Request, Response } from 'express';
 import * as authController from '../controllers/authController';
 import { authenticate } from '../middleware/auth';
+import { csrfProtection, sendCsrfToken } from '../middleware/security';
+import { loginLimiter, registerLimiter } from '../middleware/rateLimit';
 
 const router = express.Router();
 
@@ -83,7 +85,7 @@ const router = express.Router();
  *       409:
  *         description: Email đã tồn tại
  */
-router.post('/register', async (req: Request, res: Response) => {
+router.post('/register', registerLimiter, async (req: Request, res: Response) => {
   await authController.register(req, res);
 });
 
@@ -118,7 +120,7 @@ router.post('/register', async (req: Request, res: Response) => {
  *       401:
  *         description: Email hoặc mật khẩu không đúng
  */
-router.post('/login', async (req: Request, res: Response) => {
+router.post('/login', loginLimiter, async (req: Request, res: Response) => {
   await authController.login(req, res);
 });
 
@@ -168,5 +170,10 @@ router.post('/logout-all', authenticate, authController.logoutAll);
 
 // Route cho xác thực email (tích hợp NextAuth)
 router.post('/email-auth', authController.emailAuth);
+
+// Endpoint để lấy CSRF token
+router.get('/csrf-token', csrfProtection, sendCsrfToken, (req, res) => {
+  res.status(200).json({ message: 'CSRF token đã được đặt trong cookie' });
+});
 
 export default router; 

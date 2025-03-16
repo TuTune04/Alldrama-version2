@@ -52,7 +52,9 @@ jest.mock('../../models/User', () => {
 jest.mock('bcrypt', () => ({
   hash: jest.fn().mockResolvedValue('$2b$10$abcdefghijklmnopqrstuvwxyz'),
   compare: jest.fn().mockImplementation((password, hash) => {
-    return Promise.resolve(password === 'correctpassword');
+    // Sử dụng biến môi trường hoặc giá trị mặc định an toàn
+    const testPassword = process.env.TEST_PASSWORD || 'test_password_value';
+    return Promise.resolve(password === testPassword);
   }),
 }));
 

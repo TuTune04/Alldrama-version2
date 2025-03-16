@@ -1,8 +1,10 @@
-import express, { Request, Response } from "express";
+import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './config/swagger';
+import { securityMiddleware, errorHandler } from './middleware';
+import { globalLimiter } from './middleware/rateLimit';
 import movieRoutes from "./routes/movieRoutes";
 import authRoutes from "./routes/authRoutes";
 import userRoutes from "./routes/userRoutes";
@@ -22,6 +24,12 @@ const app = express();
 app.use(express.json());
 app.use(cookieParser());
 
+// Thêm middleware bảo mật
+app.use(securityMiddleware);
+
+// Áp dụng global rate limit cho tất cả các route
+app.use(globalLimiter);
+
 // CORS middleware
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
@@ -29,7 +37,7 @@ app.use(cors({
     : ['http://localhost:3000', 'http://localhost:3001', 'https://next-auth.js.org'],
   credentials: true, // Quan trọng: cho phép gửi cookie qua CORS
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization', 'X-Worker-Secret']
+  allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization', 'X-Worker-Secret', 'XSRF-TOKEN']
 }));
 
 // Swagger Documentation
@@ -61,6 +69,9 @@ app.get("/", (req: Request, res: Response) => {
 app.use((req: Request, res: Response) => {
   res.status(404).json({ message: 'Không tìm thấy tài nguyên' });
 });
+
+// Middleware xử lý lỗi toàn cục (bao gồm cả lỗi CSRF)
+app.use(errorHandler);
 
 // Export app để sử dụng trong index.ts và tests
 export default app; 

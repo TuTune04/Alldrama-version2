@@ -1,7 +1,10 @@
+import { Logger } from '../utils/logger';
 import { Request, Response } from 'express';
 import { incrementMovieViews, incrementEpisodeViews } from '../services/redisService';
 import { UserWatchHistory } from '../models/UserWatchHistory';
 import { JwtPayload } from '../middleware/auth';
+
+const logger = Logger.getLogger('viewController');
 
 // Định nghĩa lại interface cho Request để có thể truy cập user
 interface AuthRequest extends Request {
@@ -56,7 +59,7 @@ export const incrementMovieView = async (req: Request, res: Response): Promise<v
     
     res.status(200).json({ success: true, message: 'Đã tăng lượt xem cho phim' });
   } catch (error) {
-    console.error('Lỗi khi tăng lượt xem cho phim:', error);
+    logger.error('Lỗi khi tăng lượt xem cho phim:', error);
     res.status(500).json({ success: false, message: 'Lỗi khi tăng lượt xem cho phim' });
   }
 };
@@ -116,7 +119,7 @@ export const incrementEpisodeView = async (req: Request, res: Response): Promise
     
     res.status(200).json({ success: true, message: 'Đã tăng lượt xem cho tập phim' });
   } catch (error) {
-    console.error('Lỗi khi tăng lượt xem cho tập phim:', error);
+    logger.error('Lỗi khi tăng lượt xem cho tập phim:', error);
     res.status(500).json({ success: false, message: 'Lỗi khi tăng lượt xem cho tập phim' });
   }
 }; 

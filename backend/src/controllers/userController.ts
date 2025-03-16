@@ -1,6 +1,9 @@
+import { Logger } from '../utils/logger';
 import { Request, Response } from 'express';
 import { UserRole } from '../models/User';
 import { getUserService, getFavoriteService, getWatchHistoryService } from '../services';
+
+const logger = Logger.getLogger('userController');
 
 // Lấy danh sách người dùng (chỉ admin)
 export const getUsers = async (req: Request, res: Response) => {
@@ -10,7 +13,7 @@ export const getUsers = async (req: Request, res: Response) => {
     
     return res.status(200).json(users);
   } catch (error) {
-    console.error('Error fetching users:', error);
+    logger.error('Error fetching users:', error);
     return res.status(500).json({ message: 'Lỗi khi lấy danh sách người dùng' });
   }
 };
@@ -31,7 +34,7 @@ export const getUserById = async (req: Request, res: Response) => {
       throw error;
     }
   } catch (error) {
-    console.error('Error fetching user:', error);
+    logger.error('Error fetching user:', error);
     return res.status(500).json({ message: 'Lỗi khi lấy thông tin người dùng' });
   }
 };
@@ -68,7 +71,7 @@ export const updateUser = async (req: Request, res: Response) => {
       throw error;
     }
   } catch (error) {
-    console.error('Error updating user:', error);
+    logger.error('Error updating user:', error);
     return res.status(500).json({ message: 'Lỗi khi cập nhật thông tin người dùng' });
   }
 };
@@ -89,7 +92,7 @@ export const deleteUser = async (req: Request, res: Response) => {
       throw error;
     }
   } catch (error) {
-    console.error('Error deleting user:', error);
+    logger.error('Error deleting user:', error);
     return res.status(500).json({ message: 'Lỗi khi xóa người dùng' });
   }
 };
@@ -115,7 +118,7 @@ export const getUserFavorites = async (req: Request, res: Response) => {
       throw error;
     }
   } catch (error) {
-    console.error('Error fetching user favorites:', error);
+    logger.error('Error fetching user favorites:', error);
     return res.status(500).json({ message: 'Lỗi khi lấy danh sách phim yêu thích' });
   }
 };
@@ -141,7 +144,7 @@ export const getUserWatchHistory = async (req: Request, res: Response) => {
       throw error;
     }
   } catch (error) {
-    console.error('Error fetching user watch history:', error);
+    logger.error('Error fetching user watch history:', error);
     return res.status(500).json({ message: 'Lỗi khi lấy lịch sử xem phim' });
   }
 }; 

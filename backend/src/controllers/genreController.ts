@@ -1,5 +1,8 @@
+import { Logger } from '../utils/logger';
 import { Request, Response } from 'express';
 import { getGenreService } from '../services';
+
+const logger = Logger.getLogger('genreController');
 
 // Lấy danh sách thể loại
 export const getGenres = async (req: Request, res: Response) => {
@@ -9,7 +12,7 @@ export const getGenres = async (req: Request, res: Response) => {
     
     return res.status(200).json(genres);
   } catch (error) {
-    console.error('Error fetching genres:', error);
+    logger.error('Error fetching genres:', error);
     return res.status(500).json({ message: 'Lỗi khi lấy danh sách thể loại' });
   }
 };
@@ -24,7 +27,7 @@ export const getGenreById = async (req: Request, res: Response) => {
     
     return res.status(200).json(genre);
   } catch (error) {
-    console.error('Error fetching genre:', error);
+    logger.error('Error fetching genre:', error);
     if (error instanceof Error && error.message === 'Không tìm thấy thể loại') {
       return res.status(404).json({ message: error.message });
     }
@@ -45,7 +48,7 @@ export const createGenre = async (req: Request, res: Response) => {
       genre: newGenre
     });
   } catch (error) {
-    console.error('Error creating genre:', error);
+    logger.error('Error creating genre:', error);
     if (error instanceof Error && error.message === 'Thể loại này đã tồn tại') {
       return res.status(400).json({ message: error.message });
     }
@@ -67,7 +70,7 @@ export const updateGenre = async (req: Request, res: Response) => {
       genre: updatedGenre
     });
   } catch (error) {
-    console.error('Error updating genre:', error);
+    logger.error('Error updating genre:', error);
     if (error instanceof Error) {
       if (error.message === 'Không tìm thấy thể loại') {
         return res.status(404).json({ message: error.message });
@@ -90,7 +93,7 @@ export const deleteGenre = async (req: Request, res: Response) => {
     
     return res.status(200).json({ message: 'Xóa thể loại thành công' });
   } catch (error) {
-    console.error('Error deleting genre:', error);
+    logger.error('Error deleting genre:', error);
     if (error instanceof Error) {
       if (error.message === 'Không tìm thấy thể loại') {
         return res.status(404).json({ message: error.message });
@@ -115,7 +118,7 @@ export const getMoviesByGenre = async (req: Request, res: Response) => {
     
     return res.status(200).json(result);
   } catch (error) {
-    console.error('Error fetching movies by genre:', error);
+    logger.error('Error fetching movies by genre:', error);
     if (error instanceof Error && error.message === 'Không tìm thấy thể loại') {
       return res.status(404).json({ message: error.message });
     }

@@ -1,3 +1,4 @@
+import { Logger } from '../utils/logger';
 import { Request, Response } from 'express';
 import path from 'path';
 import fs from 'fs';
@@ -16,6 +17,8 @@ import { Episode } from '../models/Episode';
 import { Movie } from '../models/Movie';
 import { UserWatchHistory } from '../models/UserWatchHistory';
 import sequelize from '../config/database';
+
+const logger = Logger.getLogger('mediaController');
 
 // Upload poster phim
 export const uploadMoviePoster = async (req: Request, res: Response): Promise<void> => {
@@ -46,7 +49,7 @@ export const uploadMoviePoster = async (req: Request, res: Response): Promise<vo
       url: fileUrl
     });
   } catch (error) {
-    console.error('Lỗi khi upload poster:', error);
+    logger.error('Lỗi khi upload poster:', error);
     
     // Xóa file tạm nếu có lỗi
     if (req.file && fs.existsSync(req.file.path)) {
@@ -86,7 +89,7 @@ export const uploadMovieBackdrop = async (req: Request, res: Response): Promise<
       url: fileUrl
     });
   } catch (error) {
-    console.error('Lỗi khi upload backdrop:', error);
+    logger.error('Lỗi khi upload backdrop:', error);
     
     // Xóa file tạm nếu có lỗi
     if (req.file && fs.existsSync(req.file.path)) {
@@ -139,7 +142,7 @@ export const uploadMovieTrailer = async (req: Request, res: Response): Promise<v
       thumbnailUrl: thumbnailUrl
     });
   } catch (error) {
-    console.error('Lỗi khi upload trailer:', error);
+    logger.error('Lỗi khi upload trailer:', error);
     
     // Xóa file tạm nếu có lỗi
     if (req.file && fs.existsSync(req.file.path)) {
@@ -195,7 +198,7 @@ export const uploadEpisodeVideo = async (req: Request, res: Response): Promise<v
     // Xử lý HLS bất đồng bộ sau khi đã trả về response
     convertToHls(file.path, hlsOutputDir, movieId, episodeId)
       .then(async (hlsUrls) => {
-        console.log('HLS URLs:', hlsUrls);
+        logger.debug('HLS URLs:', hlsUrls);
         
         // Cập nhật URL trong database
         await Episode.update(
@@ -208,7 +211,7 @@ export const uploadEpisodeVideo = async (req: Request, res: Response): Promise<v
           { where: { id: episodeId } }
         );
         
-        console.log(`Xử lý HLS thành công cho episode ${episodeId}`);
+        logger.debug(`Xử lý HLS thành công cho episode ${episodeId}`);
         
         // Xóa file tạm
         fs.unlinkSync(file.path);
@@ -216,7 +219,7 @@ export const uploadEpisodeVideo = async (req: Request, res: Response): Promise<v
         fs.rmSync(hlsOutputDir, { recursive: true, force: true });
       })
       .catch(error => {
-        console.error(`Lỗi khi xử lý HLS cho episode ${episodeId}:`, error);
+        logger.error(`Lỗi khi xử lý HLS cho episode ${episodeId}:`, error);
         
         // Cập nhật trạng thái lỗi
         Episode.update(
@@ -233,11 +236,11 @@ export const uploadEpisodeVideo = async (req: Request, res: Response): Promise<v
           if (fs.existsSync(thumbnailPath)) fs.unlinkSync(thumbnailPath);
           if (fs.existsSync(hlsOutputDir)) fs.rmSync(hlsOutputDir, { recursive: true, force: true });
         } catch (e) {
-          console.error('Lỗi khi xóa file tạm:', e);
+          logger.error('Lỗi khi xóa file tạm:', e);
         }
       });
   } catch (error) {
-    console.error('Lỗi khi upload video:', error);
+    logger.error('Lỗi khi upload video:', error);
     
     // Xóa file tạm nếu có lỗi
     if (req.file && fs.existsSync(req.file.path)) {
@@ -292,7 +295,7 @@ export const getPresignedUploadUrl = async (req: Request, res: Response): Promis
       cdnUrl: `https://${process.env.CLOUDFLARE_DOMAIN}/${key}`
     });
   } catch (error) {
-    console.error('Lỗi khi tạo presigned URL:', error);
+    logger.error('Lỗi khi tạo presigned URL:', error);
     res.status(500).json({ message: 'Lỗi khi tạo presigned URL' });
   }
 };
@@ -337,7 +340,7 @@ export const deleteMedia = async (req: Request, res: Response): Promise<void> =>
       message: `Đã xóa ${mediaType} thành công`
     });
   } catch (error) {
-    console.error('Error deleting media:', error);
+    logger.error('Error deleting media:', error);
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Lỗi không xác định'
@@ -364,21 +367,21 @@ export const deleteEpisode = async (req: Request, res: Response): Promise<void> 
     try {
       await deleteFileFromR2(`episodes/${movieId}/${episodeId}/original.mp4`);
     } catch (err) {
-      console.warn(`Cảnh báo: Không thể xóa video gốc của tập ${episodeId}:`, err);
+      logger.warn(`Cảnh báo: Không thể xóa video gốc của tập ${episodeId}:`, err);
     }
     
     // 2. Xóa thumbnail
     try {
       await deleteFileFromR2(`episodes/${movieId}/${episodeId}/thumbnail.jpg`);
     } catch (err) {
-      console.warn(`Cảnh báo: Không thể xóa thumbnail của tập ${episodeId}:`, err);
+      logger.warn(`Cảnh báo: Không thể xóa thumbnail của tập ${episodeId}:`, err);
     }
     
     // 3. Xóa tất cả file HLS
     try {
       await deleteHlsFiles(movieId, episodeId);
     } catch (err) {
-      console.warn(`Cảnh báo: Không thể xóa một số file HLS của tập ${episodeId}:`, err);
+      logger.warn(`Cảnh báo: Không thể xóa một số file HLS của tập ${episodeId}:`, err);
     }
     
     // 4. Xóa thông tin episode từ database
@@ -397,7 +400,7 @@ export const deleteEpisode = async (req: Request, res: Response): Promise<void> 
       message: 'Đã xóa tập phim thành công'
     });
   } catch (error) {
-    console.error('Error deleting episode:', error);
+    logger.error('Error deleting episode:', error);
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Lỗi không xác định'
@@ -432,7 +435,7 @@ export const deleteMovie = async (req: Request, res: Response): Promise<void> =>
         await deleteFileFromR2(`movies/${movieId}/backdrop.jpg`);
         await deleteFileFromR2(`movies/${movieId}/trailer.mp4`);
       } catch (mediaError) {
-        console.warn('Cảnh báo: Không thể xóa một số file media:', mediaError);
+        logger.warn('Cảnh báo: Không thể xóa một số file media:', mediaError);
         // Tiếp tục xử lý, không throw error
       }
       
@@ -445,7 +448,7 @@ export const deleteMovie = async (req: Request, res: Response): Promise<void> =>
             await deleteFileFromR2(`episodes/${movieId}/${episode.id}/thumbnail.jpg`);
             await deleteHlsFiles(movieId, episode.id);
           } catch (episodeError) {
-            console.warn(`Cảnh báo: Không thể xóa file của tập ${episode.id}:`, episodeError);
+            logger.warn(`Cảnh báo: Không thể xóa file của tập ${episode.id}:`, episodeError);
             // Tiếp tục xử lý
           }
         }
@@ -482,7 +485,7 @@ export const deleteMovie = async (req: Request, res: Response): Promise<void> =>
       throw txError;
     }
   } catch (error) {
-    console.error('Error deleting movie:', error);
+    logger.error('Error deleting movie:', error);
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Lỗi không xác định'
@@ -511,7 +514,7 @@ export const getVideoProcessingStatus = async (req: Request, res: Response): Pro
       thumbnailUrl: episode.thumbnailUrl
     });
   } catch (error) {
-    console.error('Lỗi khi lấy trạng thái xử lý video:', error);
+    logger.error('Lỗi khi lấy trạng thái xử lý video:', error);
     res.status(500).json({ message: 'Lỗi khi lấy trạng thái xử lý video' });
   }
 };
@@ -519,14 +522,14 @@ export const getVideoProcessingStatus = async (req: Request, res: Response): Pro
 // Hàm xử lý yêu cầu từ Worker
 export const processVideo = async (req: Request, res: Response): Promise<void> => {
   try {
-    console.log("Received process-video request");
-    console.log("Headers:", req.headers);
-    console.log("Body:", req.body);
+    logger.debug("Received process-video request");
+    logger.debug("Headers:", req.headers);
+    logger.debug("Body:", req.body);
     
     // Xác thực Worker Secret
     const workerSecret = req.header('X-Worker-Secret');
     if (workerSecret !== 'alldrama-worker-secret') {
-      console.log("Unauthorized request - invalid worker secret");
+      logger.debug("Unauthorized request - invalid worker secret");
       res.status(401).json({ error: 'Unauthorized' });
       return;
     }
@@ -534,7 +537,7 @@ export const processVideo = async (req: Request, res: Response): Promise<void> =
     const { videoKey, movieId, episodeId } = req.body;
     
     if (!videoKey || !movieId || !episodeId) {
-      console.log("Missing required fields");
+      logger.debug("Missing required fields");
       res.status(400).json({ 
         success: false,
         error: "Missing required fields: videoKey, movieId, or episodeId" 
@@ -543,7 +546,7 @@ export const processVideo = async (req: Request, res: Response): Promise<void> =
     }
     
     // Ghi log yêu cầu xử lý
-    console.log(`Processing video: ${videoKey} for movie ${movieId}, episode ${episodeId}`);
+    logger.debug(`Processing video: ${videoKey} for movie ${movieId}, episode ${episodeId}`);
     
     // Trong môi trường phát triển, chỉ cần giả lập xử lý thành công
     const jobId = `job-${Date.now()}`;
@@ -553,7 +556,7 @@ export const processVideo = async (req: Request, res: Response): Promise<void> =
       jobId 
     });
   } catch (error: unknown) {
-    console.error('Error processing video:', error);
+    logger.error('Error processing video:', error);
     res.status(500).json({ 
       success: false, 
       error: error instanceof Error ? error.message : 'Unknown error'
