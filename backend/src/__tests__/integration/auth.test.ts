@@ -1,6 +1,7 @@
 import request from 'supertest';
 import app from '../../app';
 import { User, UserRole } from '../../models/User';
+import { getAuthService } from '../../services';
 
 // Mock các model và database
 jest.mock('../../models/User', () => {
@@ -67,6 +68,81 @@ jest.mock('jsonwebtoken', () => ({
     }
     throw new Error('Invalid token');
   }),
+}));
+
+// Mock middleware auth.ts
+jest.mock('../../middleware/auth', () => ({
+  authenticate: jest.fn().mockImplementation((req, res, next) => {
+    if (req.headers.authorization === 'Bearer valid-token') {
+      req.user = { id: 1, email: 'test@example.com', role: 'USER' };
+      next();
+    } else {
+      res.status(401).json({ message: 'Token không hợp lệ hoặc đã hết hạn' });
+    }
+  }),
+  optionalAuth: jest.fn().mockImplementation((req, res, next) => {
+    if (req.headers.authorization === 'Bearer valid-token') {
+      req.user = { id: 1, email: 'test@example.com', role: 'USER' };
+    }
+    next();
+  }),
+  requireAdmin: jest.fn(),
+  requireSubscriber: jest.fn()
+}));
+
+// Mock getAuthService
+jest.mock('../../services', () => ({
+  getAuthService: jest.fn().mockReturnValue({
+    login: jest.fn().mockImplementation((email, password) => {
+      if (email === 'test@example.com' && password === 'correctpassword') {
+        return Promise.resolve({
+          user: {
+            id: 1,
+            full_name: 'Test User',
+            email: 'test@example.com',
+            role: 'USER'
+          },
+          tokens: {
+            accessToken: 'mock-access-token',
+            refreshToken: 'mock-refresh-token'
+          }
+        });
+      } else if (email === 'test@example.com') {
+        throw new Error('Email hoặc mật khẩu không chính xác');
+      } else {
+        throw new Error('Email hoặc mật khẩu không chính xác');
+      }
+    }),
+    register: jest.fn().mockImplementation((full_name, email, password) => {
+      if (email === 'test@example.com') {
+        throw new Error('Email đã được sử dụng');
+      }
+      return Promise.resolve({
+        user: {
+          id: 2,
+          full_name,
+          email,
+          role: 'USER'
+        },
+        tokens: {
+          accessToken: 'mock-access-token',
+          refreshToken: 'mock-refresh-token'
+        }
+      });
+    }),
+    getCurrentUser: jest.fn().mockImplementation((userId) => {
+      if (userId === 1) {
+        return Promise.resolve({
+          id: 1,
+          full_name: 'Test User',
+          email: 'test@example.com',
+          role: 'USER'
+        });
+      } else {
+        throw new Error('Không tìm thấy người dùng');
+      }
+    })
+  })
 }));
 
 describe('Auth API', () => {
