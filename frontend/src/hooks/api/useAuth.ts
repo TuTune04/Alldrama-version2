@@ -22,7 +22,8 @@ export const useAuth = () => {
     
     try {
       const response = await authService.register(credentials);
-      authService.saveToken(response.token);
+      // Lưu access token vào localStorage
+      authService.saveToken(response.accessToken);
       setUser(response.user);
       setAuthenticated(true);
       toast.success('Đăng ký thành công!');
@@ -46,7 +47,9 @@ export const useAuth = () => {
     
     try {
       const response = await authService.login(credentials);
-      authService.saveToken(response.token);
+      // Lưu access token vào localStorage
+      // Refresh token được xử lý tự động bởi backend trong HTTP-Only cookies
+      authService.saveToken(response.accessToken);
       setUser(response.user);
       setAuthenticated(true);
       toast.success('Đăng nhập thành công!');
@@ -63,13 +66,14 @@ export const useAuth = () => {
 
   /**
    * Đăng xuất người dùng
+   * Gọi API logout để xóa refresh token cookie
    */
   const logout = useCallback(async () => {
     setLoading(true);
     
     try {
+      // Gọi API logout để xóa refresh token cookie
       await authService.logout();
-      authService.clearToken();
       logoutStore();
       toast.success('Đăng xuất thành công!');
       router.push('/login');
@@ -82,6 +86,59 @@ export const useAuth = () => {
       setLoading(false);
     }
   }, [logoutStore, router]);
+
+  /**
+   * Đăng xuất khỏi tất cả các thiết bị
+   */
+  const logoutAll = useCallback(async () => {
+    setLoading(true);
+    
+    try {
+      await authService.logoutAll();
+      logoutStore();
+      toast.success('Đã đăng xuất khỏi tất cả các thiết bị!');
+      router.push('/login');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Không thể đăng xuất khỏi tất cả thiết bị';
+      toast.error(message);
+    } finally {
+      setLoading(false);
+    }
+  }, [logoutStore, router]);
+
+  /**
+   * Gửi email xác thực
+   */
+  const emailAuth = useCallback(async (email: string) => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      await authService.emailAuth({ email });
+      toast.success('Email xác thực đã được gửi. Vui lòng kiểm tra hộp thư của bạn.');
+      return true;
+    } catch (err: any) {
+      const message = err.response?.data?.message || 'Không thể gửi email xác thực';
+      setError(message);
+      toast.error(message);
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  /**
+   * Lấy CSRF token
+   */
+  const getCsrfToken = useCallback(async () => {
+    try {
+      const response = await authService.getCsrfToken();
+      return response.csrfToken;
+    } catch (err) {
+      console.error('Không thể lấy CSRF token:', err);
+      return null;
+    }
+  }, []);
 
   /**
    * Lấy thông tin người dùng hiện tại
@@ -100,13 +157,33 @@ export const useAuth = () => {
       setAuthenticated(true);
       return currentUser;
     } catch (err) {
-      authService.clearToken();
-      logoutStore();
+      // Xử lý lỗi và đăng xuất nếu có vấn đề
+      // Token refresh được xử lý tự động bởi apiClient
       return null;
     } finally {
       setLoading(false);
     }
-  }, [logoutStore, setAuthenticated, setUser]);
+  }, [setAuthenticated, setUser]);
+
+  /**
+   * Refresh token thủ công (hiếm khi cần thiết vì đã có xử lý tự động)
+   */
+  const refreshToken = useCallback(async () => {
+    setLoading(true);
+    
+    try {
+      const newToken = await authService.refreshToken();
+      setAuthenticated(true);
+      return newToken;
+    } catch (err) {
+      authService.clearToken();
+      logoutStore();
+      router.push('/login');
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, [logoutStore, router, setAuthenticated]);
 
   return {
     user,
@@ -116,6 +193,10 @@ export const useAuth = () => {
     register,
     login,
     logout,
-    fetchCurrentUser
+    logoutAll,
+    emailAuth,
+    getCsrfToken,
+    fetchCurrentUser,
+    refreshToken
   };
 }; 

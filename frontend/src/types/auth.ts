@@ -1,15 +1,16 @@
 export interface User {
   id: string;
   email: string;
-  name: string;
-  role: 'user' | 'admin' | 'subscriber';
+  full_name: string;
+  role: 'user' | 'admin';
   createdAt: string;
   updatedAt: string;
 }
 
 export interface AuthResponse {
-  token: string;
+  message: string;
   user: User;
+  accessToken: string;
 }
 
 export interface LoginCredentials {
@@ -20,5 +21,5 @@ export interface LoginCredentials {
 export interface RegisterCredentials {
   email: string;
   password: string;
-  name: string;
+  full_name: string;
 } 

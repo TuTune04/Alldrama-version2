@@ -105,7 +105,7 @@ export class AuthService {
       const decoded = jwt.verify(
         token,
         process.env.REFRESH_TOKEN_SECRET || 'refresh_default_secret'
-      ) as { id: number; tokenVersion: number };
+      ) as { id: number; tokenVersion: number; tokenId: string };
       
       // Tìm user theo ID
       const user = await User.findByPk(decoded.id);
@@ -118,10 +118,16 @@ export class AuthService {
         throw new Error('Refresh token không hợp lệ');
       }
 
-      // Tạo tokens mới
-      return this.generateTokens(user);
+      // Tạo tokens mới, sử dụng lại tokenId để duy trì phiên đăng nhập
+      return this.generateTokens(user, decoded.tokenId);
     } catch (error) {
-      throw new Error('Refresh token không hợp lệ hoặc đã hết hạn');
+      if (error instanceof jwt.TokenExpiredError) {
+        throw new Error('Refresh token đã hết hạn');
+      } else if (error instanceof jwt.JsonWebTokenError) {
+        throw new Error('Refresh token không hợp lệ');
+      } else {
+        throw error;
+      }
     }
   }
 
@@ -205,9 +211,6 @@ export class AuthService {
   /**
    * Đăng xuất (vô hiệu hóa refresh token hiện tại)
    * 
-   * Chú ý: Phương thức này chỉ vô hiệu hóa token hiện tại nếu có tokenId,
-   * nếu không có tokenId, sẽ vô hiệu hóa tất cả token thông qua tokenVersion
-   * 
    * @param userId ID của người dùng
    * @param tokenId ID của token hiện tại (nếu có)
    * @returns true nếu đăng xuất thành công, false nếu không
@@ -218,11 +221,19 @@ export class AuthService {
       return false;
     }
     
-    // Nếu chỉ có một thiết bị đăng nhập hoặc không có tokenId cụ thể
-    // thì sẽ vô hiệu hóa tất cả refresh token
-    await user.update({
-      tokenVersion: user.tokenVersion + 1
-    });
+    // Nếu không có tokenId cụ thể thì sẽ vô hiệu hóa tất cả refresh token
+    if (!tokenId) {
+      await user.update({
+        tokenVersion: user.tokenVersion + 1
+      });
+      return true;
+    }
+    
+    // TODO: Ở đây cần bổ sung thêm cơ chế lưu trữ danh sách các tokenId đã bị vô hiệu hóa
+    // để có thể đăng xuất từ một thiết bị cụ thể mà không ảnh hưởng đến các thiết bị khác
+    // Có thể sử dụng database hoặc Redis để lưu trữ blacklist tokenId
+    
+    // Ví dụ: await TokenBlacklist.create({ userId, tokenId, expiredAt: ... });
     
     return true;
   }
@@ -253,9 +264,10 @@ export class AuthService {
   /**
    * Tạo access token và refresh token
    */
-  private generateTokens(user: User): AuthTokens {
-    // Tạo một tokenId duy nhất cho phiên đăng nhập này
-    const tokenId = Math.random().toString(36).substring(2, 15) + 
+  private generateTokens(user: User, existingTokenId?: string): AuthTokens {
+    // Sử dụng tokenId hiện có hoặc tạo mới nếu không có
+    const tokenId = existingTokenId || 
+                   Math.random().toString(36).substring(2, 15) + 
                    Math.random().toString(36).substring(2, 15);
 
     // Tạo access token
@@ -264,7 +276,7 @@ export class AuthService {
         id: user.id, 
         email: user.email, 
         role: user.role,
-        tokenId // Thêm tokenId vào payload
+        tokenId
       },
       process.env.JWT_SECRET || 'default_secret',
       { expiresIn: '1h' }
@@ -275,7 +287,7 @@ export class AuthService {
       { 
         id: user.id, 
         tokenVersion: user.tokenVersion,
-        tokenId // Thêm tokenId vào payload
+        tokenId
       },
       process.env.REFRESH_TOKEN_SECRET || 'refresh_default_secret',
       { expiresIn: '30d' }

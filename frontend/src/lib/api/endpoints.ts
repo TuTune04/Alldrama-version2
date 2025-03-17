@@ -6,7 +6,11 @@ export const API_ENDPOINTS = {
     LOGIN: '/api/auth/login',
     REGISTER: '/api/auth/register',
     LOGOUT: '/api/auth/logout',
+    LOGOUT_ALL: '/api/auth/logout-all',
     ME: '/api/auth/me',
+    REFRESH: '/api/auth/refresh',
+    EMAIL_AUTH: '/api/auth/email-auth',
+    CSRF_TOKEN: '/api/auth/csrf-token',
   },
   
   // Users
@@ -29,8 +33,11 @@ export const API_ENDPOINTS = {
   
   // Episodes
   EPISODES: {
-    LIST: '/api/episodes',
+    LIST_BY_MOVIE: (movieId: string) => `/api/episodes/movie/${movieId}`,
     DETAIL: (id: string) => `/api/episodes/${id}`,
+    CREATE: '/api/episodes',
+    UPDATE: (id: string) => `/api/episodes/${id}`,
+    DELETE: (id: string) => `/api/episodes/${id}`,
   },
   
   // Genres
@@ -61,16 +68,32 @@ export const API_ENDPOINTS = {
   
   // Media
   MEDIA: {
-    UPLOAD: '/api/media/upload',
+    UPLOAD_POSTER: (movieId: string) => `/api/media/movies/${movieId}/poster`,
+    UPLOAD_BACKDROP: (movieId: string) => `/api/media/movies/${movieId}/backdrop`,
+    UPLOAD_TRAILER: (movieId: string) => `/api/media/movies/${movieId}/trailer`,
+    UPLOAD_EPISODE_VIDEO: (movieId: string, episodeId: string) => 
+      `/api/media/episodes/${movieId}/${episodeId}/video`,
+    PROCESSING_STATUS: (episodeId: string) => `/api/media/episodes/${episodeId}/processing-status`,
+    PRESIGNED_URL: '/api/media/presigned-url',
+    DELETE_MEDIA: (movieId: string, mediaType: string) => `/api/media/movies/${movieId}/${mediaType}`,
+    DELETE_EPISODE: (movieId: string, episodeId: string) => `/api/media/episodes/${movieId}/${episodeId}`,
+    DELETE_MOVIE: (movieId: string) => `/api/media/movies/${movieId}`,
   },
   
   // Views
   VIEWS: {
-    INCREMENT_EPISODE: (episodeId: string) => `/api/views/episode/${episodeId}`,
+    INCREMENT_MOVIE: (movieId: string) => `/api/views/movie/${movieId}/increment`,
+    INCREMENT_EPISODE: (episodeId: string) => `/api/views/episode/${episodeId}/increment`,
+    GET_MOVIE_VIEWS: (movieId: string) => `/api/views/movie/${movieId}`,
+    GET_EPISODE_VIEWS: (episodeId: string) => `/api/views/episode/${episodeId}`,
   },
   
   // Stats (Admin)
   STATS: {
+    DASHBOARD: '/api/stats/dashboard',
+    POPULAR_MOVIES: '/api/stats/popular-movies',
+    NEW_USERS: '/api/stats/new-users',
+    GENRES: '/api/stats/genres',
     OVERVIEW: '/api/stats/overview',
     TIME_SERIES: '/api/stats/time-series',
   },

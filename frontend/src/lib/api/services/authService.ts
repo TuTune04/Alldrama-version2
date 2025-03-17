@@ -1,6 +1,7 @@
 import { AuthResponse, LoginCredentials, RegisterCredentials, User } from '@/types';
 import { apiClient } from '../apiClient';
 import { API_ENDPOINTS } from '../endpoints';
+import { refreshTokenEndpoint, refreshAccessToken } from '../authHelper';
 
 export const authService = {
   /**
@@ -21,9 +22,21 @@ export const authService = {
 
   /**
    * Đăng xuất
+   * Gọi API đăng xuất để xóa refresh token cookie trên server
    */
   async logout(): Promise<{ message: string }> {
-    return apiClient.post<{ message: string }>(API_ENDPOINTS.AUTH.LOGOUT);
+    const result = await apiClient.post<{ message: string }>(API_ENDPOINTS.AUTH.LOGOUT);
+    this.clearToken();
+    return result;
+  },
+
+  /**
+   * Đăng xuất khỏi tất cả thiết bị
+   */
+  async logoutAll(): Promise<{ message: string }> {
+    const result = await apiClient.post<{ message: string }>(API_ENDPOINTS.AUTH.LOGOUT_ALL);
+    this.clearToken();
+    return result;
   },
 
   /**
@@ -54,4 +67,37 @@ export const authService = {
   isAuthenticated(): boolean {
     return !!localStorage.getItem('token');
   },
+  
+  /**
+   * Thực hiện refresh token
+   * Backend sẽ đọc refresh token từ HTTP-Only cookie và cấp access token mới
+   */
+  async refreshToken(): Promise<string> {
+    try {
+      const newToken = await refreshAccessToken();
+      this.saveToken(newToken);
+      return newToken;
+    } catch (error) {
+      this.clearToken();
+      throw error;
+    }
+  },
+
+  /**
+   * Gửi email xác thực đăng nhập
+   * @param data Dữ liệu chứa email cần xác thực
+   */
+  async emailAuth(data: { email: string }): Promise<{ message: string }> {
+    return apiClient.post<{ message: string }>(
+      API_ENDPOINTS.AUTH.EMAIL_AUTH, 
+      data
+    );
+  },
+  
+  /**
+   * Lấy CSRF token
+   */
+  async getCsrfToken(): Promise<{ csrfToken: string }> {
+    return apiClient.get<{ csrfToken: string }>(API_ENDPOINTS.AUTH.CSRF_TOKEN);
+  }
 }; 

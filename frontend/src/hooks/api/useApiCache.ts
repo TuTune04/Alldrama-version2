@@ -72,6 +72,20 @@ export const useApiCache = () => {
     mutate((key) => typeof key === 'string' && key.startsWith('watch-history'), undefined, { revalidate: false });
   }, [mutate]);
 
+  /**
+   * Xóa cache liên quan đến thống kê
+   */
+  const clearStatsCache = useCallback(() => {
+    mutate((key) => typeof key === 'string' && key.startsWith('stats'), undefined, { revalidate: false });
+  }, [mutate]);
+
+  /**
+   * Xóa cache liên quan đến lượt xem
+   */
+  const clearViewsCache = useCallback(() => {
+    mutate((key) => typeof key === 'string' && key.startsWith('views'), undefined, { revalidate: false });
+  }, [mutate]);
+
   return {
     clearAllCache,
     clearCache,
@@ -80,5 +94,7 @@ export const useApiCache = () => {
     clearEpisodesCache,
     clearFavoritesCache,
     clearWatchHistoryCache,
+    clearStatsCache,
+    clearViewsCache,
   };
 }; 

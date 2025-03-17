@@ -37,9 +37,9 @@ Hầu hết các API yêu cầu authentication. API sử dụng JWT (JSON Web To
 
 ```json
 {
+  "full_name": "Tên Người Dùng",
   "email": "example@example.com",
-  "password": "password123",
-  "name": "Tên Người Dùng"
+  "password": "password123"
 }
 ```
 
@@ -47,17 +47,23 @@ Hầu hết các API yêu cầu authentication. API sử dụng JWT (JSON Web To
 
 ```json
 {
-  "token": "JWT_TOKEN",
+  "message": "Đăng ký thành công",
   "user": {
     "id": "user_id",
+    "full_name": "Tên Người Dùng",
     "email": "example@example.com",
-    "name": "Tên Người Dùng",
-    "role": "user",
-    "createdAt": "2023-01-01T00:00:00Z",
-    "updatedAt": "2023-01-01T00:00:00Z"
-  }
+    "role": "user"
+  },
+  "accessToken": "JWT_TOKEN",
+  "refreshToken": "REFRESH_TOKEN"
 }
 ```
+
+**Cookies:**
+
+- API này sẽ tự động thiết lập cookie `refreshToken` HttpOnly với thời hạn 30 ngày
+- Cookie này sẽ được sử dụng tự động cho API refresh token
+- Mặc dù refreshToken được trả về trong response, nên sử dụng cơ chế cookie để bảo mật hơn
 
 ### 1.2. Đăng nhập
 
@@ -76,17 +82,22 @@ Hầu hết các API yêu cầu authentication. API sử dụng JWT (JSON Web To
 
 ```json
 {
-  "token": "JWT_TOKEN",
+  "message": "Đăng nhập thành công",
   "user": {
     "id": "user_id",
+    "full_name": "Tên Người Dùng",
     "email": "example@example.com",
-    "name": "Tên Người Dùng",
-    "role": "user",
-    "createdAt": "2023-01-01T00:00:00Z",
-    "updatedAt": "2023-01-01T00:00:00Z"
-  }
+    "role": "user"
+  },
+  "accessToken": "JWT_TOKEN"
 }
 ```
+
+**Cookies:**
+
+- API này sẽ tự động thiết lập cookie `refreshToken` HttpOnly với thời hạn 30 ngày
+- Cookie này sẽ được sử dụng tự động cho API refresh token
+- Không lưu trữ refreshToken ở phía client, hệ thống sử dụng cookie HttpOnly để bảo mật
 
 ### 1.3. Đăng xuất
 
@@ -102,7 +113,26 @@ Hầu hết các API yêu cầu authentication. API sử dụng JWT (JSON Web To
 }
 ```
 
-### 1.4. Lấy thông tin người dùng hiện tại
+**Cookies:**
+
+- API này sẽ xóa cookie `refreshToken`
+- Cần đảm bảo xóa accessToken đã lưu trữ ở phía client
+
+### 1.4. Đăng xuất khỏi tất cả thiết bị
+
+**Endpoint:** `POST /api/auth/logout-all`
+
+**Headers:** Yêu cầu Authentication
+
+**Response (200):**
+
+```json
+{
+  "message": "Đã đăng xuất khỏi tất cả thiết bị"
+}
+```
+
+### 1.5. Lấy thông tin người dùng hiện tại
 
 **Endpoint:** `GET /api/auth/me`
 
@@ -118,6 +148,62 @@ Hầu hết các API yêu cầu authentication. API sử dụng JWT (JSON Web To
   "role": "user",
   "createdAt": "2023-01-01T00:00:00Z",
   "updatedAt": "2023-01-01T00:00:00Z"
+}
+```
+
+### 1.6. Làm mới token
+
+**Endpoint:** `POST /api/auth/refresh`
+
+**Cookies Required:**
+
+- `refreshToken`: Token làm mới (được thiết lập tự động khi đăng nhập)
+
+**Response (200):**
+
+```json
+{
+  "message": "Refresh token thành công",
+  "accessToken": "NEW_JWT_TOKEN"
+}
+```
+
+**Lưu ý:**
+
+- API này sử dụng cookie HttpOnly để bảo mật Refresh Token
+- Khi gọi API này, cookie Refresh Token mới sẽ được tự động cập nhật
+- Không cần cung cấp Refresh Token trong request body
+- Path cookie được thiết lập là `/api/auth/refresh` để đảm bảo an toàn
+
+### 1.7. Xác thực email (NextAuth)
+
+**Endpoint:** `POST /api/auth/email-auth`
+
+**Request Body:**
+
+```json
+{
+  "email": "example@example.com"
+}
+```
+
+**Response (200):**
+
+```json
+{
+  "message": "Đã gửi email xác thực"
+}
+```
+
+### 1.8. Lấy CSRF Token
+
+**Endpoint:** `GET /api/auth/csrf-token`
+
+**Response (200):**
+
+```json
+{
+  "message": "CSRF token đã được đặt trong cookie"
 }
 ```
 
@@ -437,11 +523,10 @@ Hầu hết các API yêu cầu authentication. API sử dụng JWT (JSON Web To
 
 ### 4.1. Lấy danh sách tập phim theo Movie ID
 
-**Endpoint:** `GET /api/episodes?movieId=:movieId`
+**Endpoint:** `GET /api/episodes/movie/:movieId`
 
 **Query Parameters:**
 
-- `movieId`: ID của phim (bắt buộc)
 - `page`: Số trang (mặc định: 1)
 - `limit`: Số lượng mỗi trang (mặc định: 20)
 
@@ -484,6 +569,82 @@ Hầu hết các API yêu cầu authentication. API sử dụng JWT (JSON Web To
   "views": 500,
   "createdAt": "2023-01-01T00:00:00Z",
   "updatedAt": "2023-01-01T00:00:00Z"
+}
+```
+
+### 4.3. Tạo tập phim mới (Admin)
+
+**Endpoint:** `POST /api/episodes`
+
+**Headers:** Yêu cầu Authentication (Admin)
+
+**Request Body:**
+
+```json
+{
+  "title": "Tập 1",
+  "episodeNumber": 1,
+  "movieId": "movie_id",
+  "videoUrl": "url_to_video",
+  "duration": 3600
+}
+```
+
+**Response (201):**
+
+```json
+{
+  "id": "episode_id",
+  "title": "Tập 1",
+  "episodeNumber": 1,
+  "movieId": "movie_id",
+  "videoUrl": "url_to_video",
+  "duration": 3600,
+  "createdAt": "2023-01-01T00:00:00Z",
+  "updatedAt": "2023-01-01T00:00:00Z"
+}
+```
+
+### 4.4. Cập nhật tập phim (Admin)
+
+**Endpoint:** `PUT /api/episodes/:id`
+
+**Headers:** Yêu cầu Authentication (Admin)
+
+**Request Body:**
+
+```json
+{
+  "title": "Tập 1 (Đã sửa)",
+  "videoUrl": "new_url_to_video"
+}
+```
+
+**Response (200):**
+
+```json
+{
+  "id": "episode_id",
+  "title": "Tập 1 (Đã sửa)",
+  "episodeNumber": 1,
+  "movieId": "movie_id",
+  "videoUrl": "new_url_to_video",
+  "duration": 3600,
+  "updatedAt": "2023-01-01T00:00:00Z"
+}
+```
+
+### 4.5. Xóa tập phim (Admin)
+
+**Endpoint:** `DELETE /api/episodes/:id`
+
+**Headers:** Yêu cầu Authentication (Admin)
+
+**Response (200):**
+
+```json
+{
+  "message": "Tập phim đã được xóa thành công"
 }
 ```
 
@@ -785,24 +946,180 @@ Hầu hết các API yêu cầu authentication. API sử dụng JWT (JSON Web To
 
 ## 9. Media API
 
-### 9.1. Tải lên ảnh
+### 9.1. Tải lên ảnh poster cho phim
 
-**Endpoint:** `POST /api/media/upload`
+**Endpoint:** `POST /api/media/movies/:movieId/poster`
 
 **Headers:**
 
-- Yêu cầu Authentication
+- Yêu cầu Authentication (Admin)
 - Content-Type: multipart/form-data
 
 **Form Data:**
 
-- `file`: File ảnh (jpeg, jpg, png, webp)
+- `poster`: File ảnh (jpeg, jpg, png, webp)
 
 **Response (200):**
 
 ```json
 {
-  "url": "https://cdn.alldrama.tech/images/filename.jpg"
+  "posterUrl": "https://cdn.alldrama.tech/images/movies/movie_id/poster.jpg"
+}
+```
+
+### 9.2. Tải lên ảnh backdrop cho phim
+
+**Endpoint:** `POST /api/media/movies/:movieId/backdrop`
+
+**Headers:**
+
+- Yêu cầu Authentication (Admin)
+- Content-Type: multipart/form-data
+
+**Form Data:**
+
+- `backdrop`: File ảnh (jpeg, jpg, png, webp)
+
+**Response (200):**
+
+```json
+{
+  "backdropUrl": "https://cdn.alldrama.tech/images/movies/movie_id/backdrop.jpg"
+}
+```
+
+### 9.3. Tải lên trailer cho phim
+
+**Endpoint:** `POST /api/media/movies/:movieId/trailer`
+
+**Headers:**
+
+- Yêu cầu Authentication (Admin)
+- Content-Type: multipart/form-data
+
+**Form Data:**
+
+- `trailer`: File video (mp4, webm)
+
+**Response (200):**
+
+```json
+{
+  "trailerUrl": "https://cdn.alldrama.tech/videos/movies/movie_id/trailer.mp4"
+}
+```
+
+### 9.4. Tải lên video cho tập phim
+
+**Endpoint:** `POST /api/media/episodes/:movieId/:episodeId/video`
+
+**Headers:**
+
+- Yêu cầu Authentication (Admin)
+- Content-Type: multipart/form-data
+
+**Form Data:**
+
+- `video`: File video (mp4, webm)
+
+**Response (200):**
+
+```json
+{
+  "videoUrl": "https://cdn.alldrama.tech/videos/movies/movie_id/episodes/episode_id/video.mp4"
+}
+```
+
+### 9.5. Lấy trạng thái xử lý video
+
+**Endpoint:** `GET /api/media/episodes/:episodeId/processing-status`
+
+**Headers:** Yêu cầu Authentication
+
+**Response (200):**
+
+```json
+{
+  "episodeId": "episode_id",
+  "status": "completed", // hoặc "processing", "failed"
+  "progress": 100,
+  "message": "Xử lý video hoàn tất"
+}
+```
+
+### 9.6. Tạo Presigned URL để upload trực tiếp
+
+**Endpoint:** `POST /api/media/presigned-url`
+
+**Headers:** Yêu cầu Authentication (Admin)
+
+**Request Body:**
+
+```json
+{
+  "fileName": "video.mp4",
+  "contentType": "video/mp4",
+  "folder": "movies/movie_id/episodes"
+}
+```
+
+**Response (200):**
+
+```json
+{
+  "url": "https://presigned-upload-url...",
+  "fields": {
+    "key": "movies/movie_id/episodes/video.mp4",
+    "acl": "public-read",
+    "Content-Type": "video/mp4"
+  }
+}
+```
+
+### 9.7. Xóa media
+
+**Endpoint:** `DELETE /api/media/movies/:movieId/:mediaType`
+
+**Headers:** Yêu cầu Authentication (Admin)
+
+**Request Parameters:**
+
+- `movieId`: ID của phim
+- `mediaType`: Loại media ("poster", "backdrop", "trailer")
+
+**Response (200):**
+
+```json
+{
+  "message": "Media đã được xóa thành công"
+}
+```
+
+### 9.8. Xóa tập phim (bao gồm media)
+
+**Endpoint:** `DELETE /api/media/episodes/:movieId/:episodeId`
+
+**Headers:** Yêu cầu Authentication (Admin)
+
+**Response (200):**
+
+```json
+{
+  "message": "Tập phim và các media liên quan đã được xóa thành công"
+}
+```
+
+### 9.9. Xóa phim (bao gồm media)
+
+**Endpoint:** `DELETE /api/media/movies/:movieId`
+
+**Headers:** Yêu cầu Authentication (Admin)
+
+**Response (200):**
+
+```json
+{
+  "message": "Phim và tất cả media liên quan đã được xóa thành công"
 }
 ```
 
