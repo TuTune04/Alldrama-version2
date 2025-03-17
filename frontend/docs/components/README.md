@@ -8,7 +8,7 @@ Dự án này sử dụng mô hình phân cấp components theo chức năng:
 
 ```
 src/components/
-├── ui/               # Components dùng chung toàn ứng dụng
+├── ui/               # Components shadcn dùng chung toàn ứng dụng
 │   ├── Button/
 │   ├── Card/
 │   ├── Input/

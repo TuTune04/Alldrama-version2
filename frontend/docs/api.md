@@ -1,545 +1,877 @@
-# Tài Liệu API AllDrama
+# Tài Liệu API Alldrama
 
-Tài liệu này mô tả các API endpoints được sử dụng trong dự án AllDrama, bao gồm cấu trúc request/response và ví dụ sử dụng.
+## Giới thiệu
 
-## Base URL
+Tài liệu này mô tả các API endpoint có sẵn trong hệ thống backend Alldrama. Frontend developers có thể sử dụng tài liệu này để hiểu cách tương tác với backend.
 
-```
-Development: http://localhost:3001/api
-Staging: https://staging-api.alldrama.com/api
-Production: https://api.alldrama.com/api
-```
+## URL Cơ Sở
+
+- **Development:** `http://localhost:8000`
+- **Production:** `https://api.alldrama.tech`
 
 ## Authentication
 
-### Đăng Nhập
+Hầu hết các API yêu cầu authentication. API sử dụng JWT (JSON Web Token) để xác thực người dùng.
 
-**Endpoint**: `POST /auth/login`
+- Token được gửi qua header `Authorization` với prefix `Bearer`
+- Ví dụ: `Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...`
 
-**Request Body**:
+## HTTP Status Codes
+
+- `200 OK`: Yêu cầu thành công
+- `201 Created`: Tạo mới thành công
+- `400 Bad Request`: Yêu cầu không hợp lệ
+- `401 Unauthorized`: Không xác thực được
+- `403 Forbidden`: Không có quyền
+- `404 Not Found`: Không tìm thấy tài nguyên
+- `409 Conflict`: Xung đột (ví dụ: email đã tồn tại)
+- `500 Internal Server Error`: Lỗi server
+
+## 1. Authentication API
+
+### 1.1. Đăng ký tài khoản
+
+**Endpoint:** `POST /api/auth/register`
+
+**Request Body:**
 
 ```json
 {
-  "email": "user@example.com",
-  "password": "your_password"
+  "email": "example@example.com",
+  "password": "password123",
+  "name": "Tên Người Dùng"
 }
 ```
 
-**Response**:
+**Response (201):**
 
 ```json
 {
-  "success": true,
-  "data": {
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "user": {
-      "id": "12345",
-      "name": "Nguyen Van A",
-      "email": "user@example.com",
-      "avatar": "https://api.alldrama.com/avatars/12345.jpg"
+  "token": "JWT_TOKEN",
+  "user": {
+    "id": "user_id",
+    "email": "example@example.com",
+    "name": "Tên Người Dùng",
+    "role": "user",
+    "createdAt": "2023-01-01T00:00:00Z",
+    "updatedAt": "2023-01-01T00:00:00Z"
+  }
+}
+```
+
+### 1.2. Đăng nhập
+
+**Endpoint:** `POST /api/auth/login`
+
+**Request Body:**
+
+```json
+{
+  "email": "example@example.com",
+  "password": "password123"
+}
+```
+
+**Response (200):**
+
+```json
+{
+  "token": "JWT_TOKEN",
+  "user": {
+    "id": "user_id",
+    "email": "example@example.com",
+    "name": "Tên Người Dùng",
+    "role": "user",
+    "createdAt": "2023-01-01T00:00:00Z",
+    "updatedAt": "2023-01-01T00:00:00Z"
+  }
+}
+```
+
+### 1.3. Đăng xuất
+
+**Endpoint:** `POST /api/auth/logout`
+
+**Headers:** Yêu cầu Authentication
+
+**Response (200):**
+
+```json
+{
+  "message": "Đăng xuất thành công"
+}
+```
+
+### 1.4. Lấy thông tin người dùng hiện tại
+
+**Endpoint:** `GET /api/auth/me`
+
+**Headers:** Yêu cầu Authentication
+
+**Response (200):**
+
+```json
+{
+  "id": "user_id",
+  "email": "example@example.com",
+  "name": "Tên Người Dùng",
+  "role": "user",
+  "createdAt": "2023-01-01T00:00:00Z",
+  "updatedAt": "2023-01-01T00:00:00Z"
+}
+```
+
+## 2. User API
+
+### 2.1. Lấy danh sách người dùng (Admin)
+
+**Endpoint:** `GET /api/users`
+
+**Headers:** Yêu cầu Authentication (Admin)
+
+**Query Parameters:**
+
+- `page`: Số trang (mặc định: 1)
+- `limit`: Số lượng mỗi trang (mặc định: 10)
+
+**Response (200):**
+
+```json
+{
+  "users": [
+    {
+      "id": "user_id",
+      "email": "example@example.com",
+      "name": "Tên Người Dùng",
+      "role": "user",
+      "createdAt": "2023-01-01T00:00:00Z",
+      "updatedAt": "2023-01-01T00:00:00Z"
     }
-  }
+  ],
+  "totalPages": 5,
+  "currentPage": 1,
+  "totalUsers": 50
 }
 ```
 
-**Status Codes**:
+### 2.2. Lấy thông tin người dùng theo ID
 
-- `200 OK`: Đăng nhập thành công
-- `400 Bad Request`: Thiếu thông tin đăng nhập
-- `401 Unauthorized`: Email hoặc mật khẩu không đúng
+**Endpoint:** `GET /api/users/:id`
 
-### Đăng Ký
+**Headers:** Yêu cầu Authentication
 
-**Endpoint**: `POST /auth/register`
-
-**Request Body**:
+**Response (200):**
 
 ```json
 {
-  "name": "Nguyen Van A",
-  "email": "user@example.com",
-  "password": "your_password",
-  "confirmPassword": "your_password"
+  "id": "user_id",
+  "email": "example@example.com",
+  "name": "Tên Người Dùng",
+  "role": "user",
+  "createdAt": "2023-01-01T00:00:00Z",
+  "updatedAt": "2023-01-01T00:00:00Z"
 }
 ```
 
-**Response**:
+### 2.3. Cập nhật thông tin người dùng
+
+**Endpoint:** `PUT /api/users/:id`
+
+**Headers:** Yêu cầu Authentication
+
+**Request Body:**
 
 ```json
 {
-  "success": true,
-  "data": {
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "user": {
-      "id": "12345",
-      "name": "Nguyen Van A",
-      "email": "user@example.com",
-      "avatar": null
+  "name": "Tên Mới",
+  "email": "newemail@example.com"
+}
+```
+
+**Response (200):**
+
+```json
+{
+  "id": "user_id",
+  "email": "newemail@example.com",
+  "name": "Tên Mới",
+  "role": "user",
+  "createdAt": "2023-01-01T00:00:00Z",
+  "updatedAt": "2023-01-01T00:00:00Z"
+}
+```
+
+### 2.4. Xóa người dùng (Admin)
+
+**Endpoint:** `DELETE /api/users/:id`
+
+**Headers:** Yêu cầu Authentication (Admin)
+
+**Response (200):**
+
+```json
+{
+  "message": "Người dùng đã được xóa thành công"
+}
+```
+
+## 3. Movie API
+
+### 3.1. Tìm kiếm phim
+
+**Endpoint:** `GET /api/movies/search`
+
+**Query Parameters:**
+
+- `query`: Từ khóa tìm kiếm
+- `page`: Số trang (mặc định: 1)
+- `limit`: Số lượng mỗi trang (mặc định: 10)
+- `genre`: ID thể loại (tùy chọn)
+- `year`: Năm phát hành (tùy chọn)
+
+**Response (200):**
+
+```json
+{
+  "movies": [
+    {
+      "id": "movie_id",
+      "title": "Tên Phim",
+      "description": "Mô tả phim",
+      "releaseYear": 2023,
+      "posterUrl": "url_to_poster",
+      "trailerUrl": "url_to_trailer",
+      "genres": ["Action", "Drama"],
+      "episodes": 16,
+      "rating": 8.5,
+      "createdAt": "2023-01-01T00:00:00Z",
+      "updatedAt": "2023-01-01T00:00:00Z"
     }
-  }
+  ],
+  "totalPages": 5,
+  "currentPage": 1,
+  "totalMovies": 50
 }
 ```
 
-**Status Codes**:
+### 3.2. Lấy danh sách phim
 
-- `201 Created`: Đăng ký thành công
-- `400 Bad Request`: Dữ liệu không hợp lệ hoặc thiếu thông tin
-- `409 Conflict`: Email đã tồn tại
+**Endpoint:** `GET /api/movies`
 
-### Refresh Token
+**Query Parameters:**
 
-**Endpoint**: `POST /auth/refresh`
+- `page`: Số trang (mặc định: 1)
+- `limit`: Số lượng mỗi trang (mặc định: 10)
+- `sortBy`: Sắp xếp theo (mặc định: "createdAt")
+- `sortOrder`: Thứ tự sắp xếp (mặc định: "desc")
+- `genre`: ID thể loại (tùy chọn)
+- `year`: Năm phát hành (tùy chọn)
 
-**Request Headers**:
-
-```
-Authorization: Bearer <refresh_token>
-```
-
-**Response**:
+**Response (200):**
 
 ```json
 {
-  "success": true,
-  "data": {
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-  }
-}
-```
-
-**Status Codes**:
-
-- `200 OK`: Token refresh thành công
-- `401 Unauthorized`: Refresh token không hợp lệ hoặc hết hạn
-
-## Movies API
-
-### Lấy Danh Sách Phim
-
-**Endpoint**: `GET /movies`
-
-**Query Parameters**:
-
-- `page` (optional): Số trang (default: 1)
-- `limit` (optional): Số lượng phim mỗi trang (default: 20)
-- `category` (optional): Lọc theo thể loại
-- `year` (optional): Lọc theo năm phát hành
-- `country` (optional): Lọc theo quốc gia
-- `sort` (optional): Sắp xếp (popular, newest, rating)
-
-**Response**:
-
-```json
-{
-  "success": true,
-  "data": {
-    "movies": [
-      {
-        "id": "movie-1",
-        "title": "Tiệm Ăn Dì Ghẻ",
-        "originalTitle": "Tiệm Ăn Dì Ghẻ",
-        "slug": "tiem-an-di-ghe",
-        "poster": "https://api.alldrama.com/posters/tiem-an-di-ghe.jpg",
-        "backdrop": "https://api.alldrama.com/backdrops/tiem-an-di-ghe.jpg",
-        "year": 2022,
-        "categories": ["Tình Cảm", "Gia Đình"],
-        "country": "Việt Nam",
-        "rating": 4.5,
-        "description": "Một bộ phim về...",
-        "episodes": 32,
-        "status": "completed"
-      }
-      // ...
-    ],
-    "pagination": {
-      "page": 1,
-      "limit": 20,
-      "totalPages": 15,
-      "totalItems": 300
+  "movies": [
+    {
+      "id": "movie_id",
+      "title": "Tên Phim",
+      "description": "Mô tả phim",
+      "releaseYear": 2023,
+      "posterUrl": "url_to_poster",
+      "trailerUrl": "url_to_trailer",
+      "genres": ["Action", "Drama"],
+      "episodes": 16,
+      "rating": 8.5,
+      "createdAt": "2023-01-01T00:00:00Z",
+      "updatedAt": "2023-01-01T00:00:00Z"
     }
-  }
+  ],
+  "totalPages": 5,
+  "currentPage": 1,
+  "totalMovies": 50
 }
 ```
 
-**Status Codes**:
+### 3.3. Lấy chi tiết phim theo ID
 
-- `200 OK`: Lấy danh sách thành công
-- `400 Bad Request`: Query parameters không hợp lệ
+**Endpoint:** `GET /api/movies/:id`
 
-### Lấy Chi Tiết Phim
-
-**Endpoint**: `GET /movies/:slug`
-
-**Response**:
+**Response (200):**
 
 ```json
 {
-  "success": true,
-  "data": {
-    "id": "movie-1",
-    "title": "Tiệm Ăn Dì Ghẻ",
-    "originalTitle": "Tiệm Ăn Dì Ghẻ",
-    "slug": "tiem-an-di-ghe",
-    "poster": "https://api.alldrama.com/posters/tiem-an-di-ghe.jpg",
-    "backdrop": "https://api.alldrama.com/backdrops/tiem-an-di-ghe.jpg",
-    "year": 2022,
-    "categories": ["Tình Cảm", "Gia Đình"],
-    "country": "Việt Nam",
-    "rating": 4.5,
-    "description": "Một bộ phim về...",
-    "director": "Nguyễn Văn A",
-    "cast": ["Nghệ sĩ 1", "Nghệ sĩ 2"],
-    "episodes": [
-      {
-        "id": "episode-1",
-        "number": 1,
-        "title": "Tập 1",
-        "duration": 45,
-        "thumbnail": "https://api.alldrama.com/thumbnails/tiem-an-di-ghe-1.jpg"
-      }
-      // ...
-    ],
-    "relatedMovies": [
-      // Danh sách phim liên quan
-    ]
-  }
-}
-```
-
-**Status Codes**:
-
-- `200 OK`: Lấy chi tiết thành công
-- `404 Not Found`: Không tìm thấy phim
-
-### Lấy Chi Tiết Tập Phim
-
-**Endpoint**: `GET /episodes/:id`
-
-**Response**:
-
-```json
-{
-  "success": true,
-  "data": {
-    "id": "episode-1",
-    "number": 1,
-    "title": "Tập 1",
-    "movieId": "movie-1",
-    "movieTitle": "Tiệm Ăn Dì Ghẻ",
-    "movieSlug": "tiem-an-di-ghe",
-    "duration": 45,
-    "sources": [
-      {
-        "quality": "720p",
-        "url": "https://cdn.alldrama.com/videos/tiem-an-di-ghe-1-720p.mp4"
-      },
-      {
-        "quality": "1080p",
-        "url": "https://cdn.alldrama.com/videos/tiem-an-di-ghe-1-1080p.mp4"
-      }
-    ],
-    "subtitles": [
-      {
-        "language": "Vietnamese",
-        "url": "https://cdn.alldrama.com/subtitles/tiem-an-di-ghe-1-vi.vtt"
-      }
-    ],
-    "nextEpisode": {
-      "id": "episode-2",
-      "number": 2
+  "id": "movie_id",
+  "title": "Tên Phim",
+  "description": "Mô tả phim",
+  "releaseYear": 2023,
+  "posterUrl": "url_to_poster",
+  "trailerUrl": "url_to_trailer",
+  "genres": [
+    {
+      "id": "genre_id",
+      "name": "Action"
     },
-    "prevEpisode": null
-  }
-}
-```
-
-**Status Codes**:
-
-- `200 OK`: Lấy chi tiết thành công
-- `404 Not Found`: Không tìm thấy tập phim
-
-## User API
-
-### Lấy Thông Tin Người Dùng
-
-**Endpoint**: `GET /users/me`
-
-**Headers**:
-
-```
-Authorization: Bearer <token>
-```
-
-**Response**:
-
-```json
-{
-  "success": true,
-  "data": {
-    "id": "12345",
-    "name": "Nguyen Van A",
-    "email": "user@example.com",
-    "avatar": "https://api.alldrama.com/avatars/12345.jpg",
-    "createdAt": "2023-01-15T10:30:00Z"
-  }
-}
-```
-
-**Status Codes**:
-
-- `200 OK`: Lấy thông tin thành công
-- `401 Unauthorized`: Token không hợp lệ hoặc hết hạn
-
-### Cập Nhật Thông Tin Người Dùng
-
-**Endpoint**: `PUT /users/me`
-
-**Headers**:
-
-```
-Authorization: Bearer <token>
-```
-
-**Request Body**:
-
-```json
-{
-  "name": "Nguyen Van A Updated",
-  "avatar": "base64_encoded_image_data"
-}
-```
-
-**Response**:
-
-```json
-{
-  "success": true,
-  "data": {
-    "id": "12345",
-    "name": "Nguyen Van A Updated",
-    "email": "user@example.com",
-    "avatar": "https://api.alldrama.com/avatars/12345-updated.jpg",
-    "updatedAt": "2023-02-20T15:45:00Z"
-  }
-}
-```
-
-**Status Codes**:
-
-- `200 OK`: Cập nhật thành công
-- `400 Bad Request`: Dữ liệu không hợp lệ
-- `401 Unauthorized`: Token không hợp lệ hoặc hết hạn
-
-## Watchlist API
-
-### Lấy Danh Sách Xem Sau
-
-**Endpoint**: `GET /users/me/watchlist`
-
-**Headers**:
-
-```
-Authorization: Bearer <token>
-```
-
-**Response**:
-
-```json
-{
-  "success": true,
-  "data": {
-    "watchlist": [
-      {
-        "id": "movie-1",
-        "title": "Tiệm Ăn Dì Ghẻ",
-        "slug": "tiem-an-di-ghe",
-        "poster": "https://api.alldrama.com/posters/tiem-an-di-ghe.jpg",
-        "addedAt": "2023-03-10T09:15:00Z"
-      }
-      // ...
-    ]
-  }
-}
-```
-
-**Status Codes**:
-
-- `200 OK`: Lấy danh sách thành công
-- `401 Unauthorized`: Token không hợp lệ hoặc hết hạn
-
-### Thêm Phim Vào Danh Sách Xem Sau
-
-**Endpoint**: `POST /users/me/watchlist`
-
-**Headers**:
-
-```
-Authorization: Bearer <token>
-```
-
-**Request Body**:
-
-```json
-{
-  "movieId": "movie-1"
-}
-```
-
-**Response**:
-
-```json
-{
-  "success": true,
-  "message": "Movie added to watchlist"
-}
-```
-
-**Status Codes**:
-
-- `200 OK`: Thêm thành công
-- `400 Bad Request`: Movie ID không hợp lệ
-- `401 Unauthorized`: Token không hợp lệ hoặc hết hạn
-- `409 Conflict`: Phim đã có trong danh sách
-
-### Xóa Phim Khỏi Danh Sách Xem Sau
-
-**Endpoint**: `DELETE /users/me/watchlist/:movieId`
-
-**Headers**:
-
-```
-Authorization: Bearer <token>
-```
-
-**Response**:
-
-```json
-{
-  "success": true,
-  "message": "Movie removed from watchlist"
-}
-```
-
-**Status Codes**:
-
-- `200 OK`: Xóa thành công
-- `401 Unauthorized`: Token không hợp lệ hoặc hết hạn
-- `404 Not Found`: Phim không có trong danh sách
-
-## Error Responses
-
-Tất cả các lỗi API đều tuân theo format sau:
-
-```json
-{
-  "success": false,
-  "error": {
-    "code": "ERROR_CODE",
-    "message": "Error message description",
-    "details": {} // Optional additional details
-  }
-}
-```
-
-## Xử Lý Lỗi Trong Frontend
-
-```typescript
-try {
-  const response = await axios.get(`${API_URL}/movies`);
-  if (response.data.success) {
-    // Xử lý dữ liệu thành công
-    return response.data.data;
-  }
-} catch (error) {
-  if (axios.isAxiosError(error) && error.response) {
-    const { status, data } = error.response;
-
-    // Xử lý các loại lỗi
-    if (status === 401) {
-      // Unauthorized - chuyển hướng đến trang login
-    } else if (status === 404) {
-      // Not found - hiển thị trang 404
-    } else {
-      // Lỗi khác - hiển thị thông báo lỗi
-      console.error(`Error: ${data.error.message}`);
+    {
+      "id": "genre_id",
+      "name": "Drama"
     }
-  } else {
-    // Network error hoặc lỗi không xác định
-    console.error("Network error or unidentified error");
-  }
-
-  throw error;
+  ],
+  "episodes": [
+    {
+      "id": "episode_id",
+      "title": "Tập 1",
+      "episodeNumber": 1,
+      "videoUrl": "url_to_video",
+      "duration": 3600
+    }
+  ],
+  "rating": 8.5,
+  "views": 1000,
+  "createdAt": "2023-01-01T00:00:00Z",
+  "updatedAt": "2023-01-01T00:00:00Z"
 }
 ```
 
-## Thư Viện API Client
+### 3.4. Tạo phim mới (Admin)
 
-Project sử dụng Axios làm API client với cấu hình như sau:
+**Endpoint:** `POST /api/movies`
 
-```typescript
-// src/lib/api.ts
-import axios from "axios";
+**Headers:** Yêu cầu Authentication (Admin)
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+**Request Body:**
 
-const apiClient = axios.create({
-  baseURL: API_URL,
-  timeout: 10000,
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
+```json
+{
+  "title": "Tên Phim",
+  "description": "Mô tả phim",
+  "releaseYear": 2023,
+  "posterUrl": "url_to_poster",
+  "trailerUrl": "url_to_trailer",
+  "genres": ["genre_id1", "genre_id2"]
+}
+```
 
-// Interceptor for adding auth token
-apiClient.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem("token");
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+**Response (201):**
+
+```json
+{
+  "id": "movie_id",
+  "title": "Tên Phim",
+  "description": "Mô tả phim",
+  "releaseYear": 2023,
+  "posterUrl": "url_to_poster",
+  "trailerUrl": "url_to_trailer",
+  "genres": [
+    {
+      "id": "genre_id1",
+      "name": "Action"
+    },
+    {
+      "id": "genre_id2",
+      "name": "Drama"
     }
-    return config;
+  ],
+  "createdAt": "2023-01-01T00:00:00Z",
+  "updatedAt": "2023-01-01T00:00:00Z"
+}
+```
+
+### 3.5. Cập nhật phim (Admin)
+
+**Endpoint:** `PUT /api/movies/:id`
+
+**Headers:** Yêu cầu Authentication (Admin)
+
+**Request Body:**
+
+```json
+{
+  "title": "Tên Phim Mới",
+  "description": "Mô tả phim mới",
+  "releaseYear": 2023,
+  "posterUrl": "url_to_poster",
+  "trailerUrl": "url_to_trailer",
+  "genres": ["genre_id1", "genre_id2"]
+}
+```
+
+**Response (200):**
+
+```json
+{
+  "id": "movie_id",
+  "title": "Tên Phim Mới",
+  "description": "Mô tả phim mới",
+  "releaseYear": 2023,
+  "posterUrl": "url_to_poster",
+  "trailerUrl": "url_to_trailer",
+  "genres": [
+    {
+      "id": "genre_id1",
+      "name": "Action"
+    },
+    {
+      "id": "genre_id2",
+      "name": "Drama"
+    }
+  ],
+  "updatedAt": "2023-01-01T00:00:00Z"
+}
+```
+
+### 3.6. Xóa phim (Admin)
+
+**Endpoint:** `DELETE /api/movies/:id`
+
+**Headers:** Yêu cầu Authentication (Admin)
+
+**Response (200):**
+
+```json
+{
+  "message": "Phim đã được xóa thành công"
+}
+```
+
+## 4. Episode API
+
+### 4.1. Lấy danh sách tập phim theo Movie ID
+
+**Endpoint:** `GET /api/episodes?movieId=:movieId`
+
+**Query Parameters:**
+
+- `movieId`: ID của phim (bắt buộc)
+- `page`: Số trang (mặc định: 1)
+- `limit`: Số lượng mỗi trang (mặc định: 20)
+
+**Response (200):**
+
+```json
+{
+  "episodes": [
+    {
+      "id": "episode_id",
+      "title": "Tập 1",
+      "episodeNumber": 1,
+      "movieId": "movie_id",
+      "videoUrl": "url_to_video",
+      "duration": 3600,
+      "createdAt": "2023-01-01T00:00:00Z",
+      "updatedAt": "2023-01-01T00:00:00Z"
+    }
+  ],
+  "totalPages": 2,
+  "currentPage": 1,
+  "totalEpisodes": 16
+}
+```
+
+### 4.2. Lấy chi tiết tập phim theo ID
+
+**Endpoint:** `GET /api/episodes/:id`
+
+**Response (200):**
+
+```json
+{
+  "id": "episode_id",
+  "title": "Tập 1",
+  "episodeNumber": 1,
+  "movieId": "movie_id",
+  "videoUrl": "url_to_video",
+  "duration": 3600,
+  "views": 500,
+  "createdAt": "2023-01-01T00:00:00Z",
+  "updatedAt": "2023-01-01T00:00:00Z"
+}
+```
+
+## 5. Genre API
+
+### 5.1. Lấy danh sách thể loại
+
+**Endpoint:** `GET /api/genres`
+
+**Response (200):**
+
+```json
+[
+  {
+    "id": "genre_id",
+    "name": "Action",
+    "createdAt": "2023-01-01T00:00:00Z",
+    "updatedAt": "2023-01-01T00:00:00Z"
   },
-  (error) => Promise.reject(error)
-);
+  {
+    "id": "genre_id",
+    "name": "Drama",
+    "createdAt": "2023-01-01T00:00:00Z",
+    "updatedAt": "2023-01-01T00:00:00Z"
+  }
+]
+```
 
-// Interceptor for handling token expiration
-apiClient.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
+## 6. Favorite API
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
+### 6.1. Lấy danh sách phim yêu thích của người dùng
 
-      try {
-        // Attempt to refresh token
-        const refreshToken = localStorage.getItem("refreshToken");
-        const response = await axios.post(
-          `${API_URL}/auth/refresh`,
-          {},
-          {
-            headers: {
-              Authorization: `Bearer ${refreshToken}`,
-            },
-          }
-        );
+**Endpoint:** `GET /api/favorites`
 
-        if (response.data.success) {
-          localStorage.setItem("token", response.data.data.token);
-          apiClient.defaults.headers.common.Authorization = `Bearer ${response.data.data.token}`;
-          return apiClient(originalRequest);
+**Headers:** Yêu cầu Authentication
+
+**Query Parameters:**
+
+- `page`: Số trang (mặc định: 1)
+- `limit`: Số lượng mỗi trang (mặc định: 10)
+
+**Response (200):**
+
+```json
+{
+  "favorites": [
+    {
+      "id": "favorite_id",
+      "userId": "user_id",
+      "movie": {
+        "id": "movie_id",
+        "title": "Tên Phim",
+        "description": "Mô tả phim",
+        "releaseYear": 2023,
+        "posterUrl": "url_to_poster",
+        "trailerUrl": "url_to_trailer",
+        "genres": ["Action", "Drama"],
+        "rating": 8.5
+      },
+      "createdAt": "2023-01-01T00:00:00Z"
+    }
+  ],
+  "totalPages": 2,
+  "currentPage": 1,
+  "totalFavorites": 15
+}
+```
+
+### 6.2. Thêm phim vào danh sách yêu thích
+
+**Endpoint:** `POST /api/favorites`
+
+**Headers:** Yêu cầu Authentication
+
+**Request Body:**
+
+```json
+{
+  "movieId": "movie_id"
+}
+```
+
+**Response (201):**
+
+```json
+{
+  "id": "favorite_id",
+  "userId": "user_id",
+  "movieId": "movie_id",
+  "createdAt": "2023-01-01T00:00:00Z"
+}
+```
+
+### 6.3. Xóa phim khỏi danh sách yêu thích
+
+**Endpoint:** `DELETE /api/favorites/:movieId`
+
+**Headers:** Yêu cầu Authentication
+
+**Response (200):**
+
+```json
+{
+  "message": "Đã xóa khỏi danh sách yêu thích"
+}
+```
+
+## 7. Watch History API
+
+### 7.1. Lấy lịch sử xem phim
+
+**Endpoint:** `GET /api/watch-history`
+
+**Headers:** Yêu cầu Authentication
+
+**Query Parameters:**
+
+- `page`: Số trang (mặc định: 1)
+- `limit`: Số lượng mỗi trang (mặc định: 10)
+
+**Response (200):**
+
+```json
+{
+  "history": [
+    {
+      "id": "history_id",
+      "userId": "user_id",
+      "episode": {
+        "id": "episode_id",
+        "title": "Tập 1",
+        "episodeNumber": 1,
+        "movieId": "movie_id"
+      },
+      "movie": {
+        "id": "movie_id",
+        "title": "Tên Phim",
+        "posterUrl": "url_to_poster"
+      },
+      "watchedAt": "2023-01-01T00:00:00Z",
+      "progress": 1800,
+      "completed": false
+    }
+  ],
+  "totalPages": 3,
+  "currentPage": 1,
+  "totalItems": 25
+}
+```
+
+### 7.2. Thêm vào lịch sử xem phim
+
+**Endpoint:** `POST /api/watch-history`
+
+**Headers:** Yêu cầu Authentication
+
+**Request Body:**
+
+```json
+{
+  "episodeId": "episode_id",
+  "progress": 1800,
+  "completed": false
+}
+```
+
+**Response (201):**
+
+```json
+{
+  "id": "history_id",
+  "userId": "user_id",
+  "episodeId": "episode_id",
+  "progress": 1800,
+  "completed": false,
+  "watchedAt": "2023-01-01T00:00:00Z"
+}
+```
+
+## 8. Comment API
+
+### 8.1. Lấy bình luận cho phim
+
+**Endpoint:** `GET /api/comments/movie/:movieId`
+
+**Query Parameters:**
+
+- `page`: Số trang (mặc định: 1)
+- `limit`: Số lượng mỗi trang (mặc định: 10)
+
+**Response (200):**
+
+```json
+{
+  "comments": [
+    {
+      "id": "comment_id",
+      "content": "Nội dung bình luận",
+      "user": {
+        "id": "user_id",
+        "name": "Tên Người Dùng"
+      },
+      "movieId": "movie_id",
+      "parentId": null,
+      "createdAt": "2023-01-01T00:00:00Z",
+      "updatedAt": "2023-01-01T00:00:00Z",
+      "replies": [
+        {
+          "id": "reply_id",
+          "content": "Nội dung trả lời",
+          "user": {
+            "id": "user_id",
+            "name": "Tên Người Dùng"
+          },
+          "parentId": "comment_id",
+          "createdAt": "2023-01-01T00:00:00Z",
+          "updatedAt": "2023-01-01T00:00:00Z"
         }
-      } catch (refreshError) {
-        // If refresh fails, redirect to login
-        localStorage.removeItem("token");
-        localStorage.removeItem("refreshToken");
-        window.location.href = "/login";
-      }
+      ]
     }
-
-    return Promise.reject(error);
-  }
-);
-
-export default apiClient;
+  ],
+  "totalPages": 2,
+  "currentPage": 1,
+  "totalComments": 15
+}
 ```
+
+### 8.2. Thêm bình luận mới
+
+**Endpoint:** `POST /api/comments`
+
+**Headers:** Yêu cầu Authentication
+
+**Request Body:**
+
+```json
+{
+  "content": "Nội dung bình luận",
+  "movieId": "movie_id",
+  "parentId": null
+}
+```
+
+**Response (201):**
+
+```json
+{
+  "id": "comment_id",
+  "content": "Nội dung bình luận",
+  "userId": "user_id",
+  "movieId": "movie_id",
+  "parentId": null,
+  "createdAt": "2023-01-01T00:00:00Z",
+  "updatedAt": "2023-01-01T00:00:00Z"
+}
+```
+
+### 8.3. Cập nhật bình luận
+
+**Endpoint:** `PUT /api/comments/:id`
+
+**Headers:** Yêu cầu Authentication
+
+**Request Body:**
+
+```json
+{
+  "content": "Nội dung bình luận đã sửa"
+}
+```
+
+**Response (200):**
+
+```json
+{
+  "id": "comment_id",
+  "content": "Nội dung bình luận đã sửa",
+  "userId": "user_id",
+  "movieId": "movie_id",
+  "parentId": null,
+  "createdAt": "2023-01-01T00:00:00Z",
+  "updatedAt": "2023-01-01T00:00:00Z"
+}
+```
+
+### 8.4. Xóa bình luận
+
+**Endpoint:** `DELETE /api/comments/:id`
+
+**Headers:** Yêu cầu Authentication
+
+**Response (200):**
+
+```json
+{
+  "message": "Đã xóa bình luận thành công"
+}
+```
+
+## 9. Media API
+
+### 9.1. Tải lên ảnh
+
+**Endpoint:** `POST /api/media/upload`
+
+**Headers:**
+
+- Yêu cầu Authentication
+- Content-Type: multipart/form-data
+
+**Form Data:**
+
+- `file`: File ảnh (jpeg, jpg, png, webp)
+
+**Response (200):**
+
+```json
+{
+  "url": "https://cdn.alldrama.tech/images/filename.jpg"
+}
+```
+
+## 10. View API
+
+### 10.1. Tăng lượt xem cho tập phim
+
+**Endpoint:** `POST /api/views/episode/:episodeId`
+
+**Response (200):**
+
+```json
+{
+  "message": "Đã tăng lượt xem thành công",
+  "views": 501
+}
+```
+
+## 11. Stats API (Admin)
+
+### 11.1. Lấy thống kê tổng quan
+
+**Endpoint:** `GET /api/stats/overview`
+
+**Headers:** Yêu cầu Authentication (Admin)
+
+**Response (200):**
+
+```json
+{
+  "totalUsers": 1000,
+  "totalMovies": 500,
+  "totalViews": 50000,
+  "newUsersToday": 10,
+  "viewsToday": 500
+}
+```
+
+### 11.2. Lấy thống kê theo thời gian
+
+**Endpoint:** `GET /api/stats/time-series`
+
+**Headers:** Yêu cầu Authentication (Admin)
+
+**Query Parameters:**
+
+- `metric`: Loại dữ liệu (users, views, movies)
+- `timeRange`: Khoảng thời gian (day, week, month, year)
+
+**Response (200):**
+
+```json
+{
+  "labels": ["2023-01-01", "2023-01-02", "2023-01-03"],
+  "data": [10, 15, 20],
+  "metric": "users",
+  "timeRange": "week"
+}
+```
+
+## Sử dụng Swagger UI
+
+Bạn có thể truy cập tài liệu API interactively thông qua Swagger UI:
+
+- **Development:** `http://localhost:8000/api-docs`
+- **Production:** `https://api.alldrama.tech/api-docs`
+
+Swagger UI cho phép bạn:
+
+- Xem tất cả các API endpoint có sẵn
+- Kiểm tra params và response schemas
+- Thử các API trực tiếp từ giao diện
