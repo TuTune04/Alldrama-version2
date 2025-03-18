@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
+import { useAuthStore } from '@/store/auth';
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -11,6 +12,9 @@ const Navbar = () => {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
+  
+  // Lấy trạng thái đăng nhập từ auth store
+  const { isAuthenticated, user, logout } = useAuthStore();
 
   // Xử lý sự kiện scroll
   useEffect(() => {
@@ -58,9 +62,20 @@ const Navbar = () => {
       setSearchQuery('');
     }
   };
-
-  // Mock đã đăng nhập
-  const isLoggedIn = true;
+  
+  const handleLogout = () => {
+    logout();
+    router.push('/');
+    setIsUserMenuOpen(false);
+  };
+  
+  // Lấy chữ cái đầu từ tên người dùng để hiển thị avatar
+  const getUserInitial = () => {
+    if (user?.full_name) {
+      return user.full_name.charAt(0).toUpperCase();
+    }
+    return 'U';
+  };
 
   return (
     <nav 
@@ -167,14 +182,14 @@ const Navbar = () => {
               </button>
             </form>
             <div className="flex items-center space-x-2">
-              {isLoggedIn ? (
+              {isAuthenticated ? (
                 <div className="relative" id="user-menu">
                   <button 
                     onClick={toggleUserMenu}
                     className="flex items-center text-gray-300 hover:text-white transition-colors"
                   >
                     <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center text-white text-sm font-medium">
-                      A
+                      {getUserInitial()}
                     </div>
                     <svg 
                       className={`ml-1 h-4 w-4 transition-transform ${isUserMenuOpen ? 'rotate-180' : ''}`} 
@@ -214,12 +229,12 @@ const Navbar = () => {
                           Cài đặt
                         </Link>
                         <div className="border-t border-gray-800 my-1"></div>
-                        <Link 
-                          href="/logout" 
-                          className="block px-4 py-2 text-sm text-red-500 hover:bg-gray-800"
+                        <button 
+                          onClick={handleLogout}
+                          className="block w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-gray-800"
                         >
                           Đăng xuất
-                        </Link>
+                        </button>
                       </div>
                     </div>
                   )}
@@ -260,10 +275,10 @@ const Navbar = () => {
                 </svg>
               </button>
             </form>
-            {isLoggedIn && (
+            {isAuthenticated && (
               <Link href="/profile" className="mr-2">
                 <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center text-white text-sm font-medium">
-                  A
+                  {getUserInitial()}
                 </div>
               </Link>
             )}
@@ -350,7 +365,7 @@ const Navbar = () => {
               </Link>
             </div>
             
-            {isLoggedIn ? (
+            {isAuthenticated ? (
               <div className="pt-2 border-t border-gray-700">
                 <Link 
                   href="/profile"
@@ -376,12 +391,12 @@ const Navbar = () => {
                 >
                   Cài đặt
                 </Link>
-                <Link 
-                  href="/logout"
-                  className="block px-3 py-2 rounded-md text-base font-medium text-red-500 hover:text-red-400"
+                <button 
+                  onClick={handleLogout}
+                  className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-red-500 hover:text-red-400"
                 >
                   Đăng xuất
-                </Link>
+                </button>
               </div>
             ) : (
               <div className="pt-2 border-t border-gray-700">

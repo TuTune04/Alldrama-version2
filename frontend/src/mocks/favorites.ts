@@ -3,6 +3,29 @@ import { mockMovies } from './movies';
 import { mockUsers } from './users';
 
 export const mockFavorites: Favorite[] = [
+  // Phim yêu thích của admin user
+  {
+    id: 'favorite-admin-1',
+    userId: mockUsers[0].id,
+    movieId: mockMovies[0].id,
+    movie: mockMovies[0],
+    createdAt: '2023-03-20T10:30:00Z'
+  },
+  {
+    id: 'favorite-admin-2',
+    userId: mockUsers[0].id,
+    movieId: mockMovies[1].id,
+    movie: mockMovies[1],
+    createdAt: '2023-03-22T14:45:00Z'
+  },
+  {
+    id: 'favorite-admin-3',
+    userId: mockUsers[0].id,
+    movieId: mockMovies[3].id,
+    movie: mockMovies[3],
+    createdAt: '2023-03-25T19:20:00Z'
+  },
+  // Phim yêu thích của người dùng thường
   {
     id: 'favorite-1',
     userId: mockUsers[1].id,
@@ -29,7 +52,7 @@ export const mockFavorites: Favorite[] = [
     userId: mockUsers[2].id,
     movieId: mockMovies[4].id,
     movie: mockMovies[4],
-    createdAt: '2023-03-16T18:10:00Z'
+    createdAt: '2023-03-16T16:10:00Z'
   },
   {
     id: 'favorite-5',
@@ -40,9 +63,13 @@ export const mockFavorites: Favorite[] = [
   }
 ];
 
+/**
+ * Lấy danh sách phim yêu thích của người dùng
+ * @param userId ID của người dùng
+ * @returns Danh sách phim yêu thích của người dùng
+ */
 export const getUserFavorites = (userId: string): FavoriteListResponse => {
-  const favorites = mockFavorites.filter(favorite => favorite.userId === userId);
-  
+  const favorites = mockFavorites.filter(item => item.userId === userId);
   return {
     favorites,
     totalPages: 1,

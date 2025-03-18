@@ -1,12 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react';
-import { mockCurrentUser } from '@/mocks/users';
 import { getUserWatchHistory } from '@/mocks/watchHistory';
 import { getUserFavorites } from '@/mocks/favorites';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useAuthStore } from '@/store/auth';
 
 // Tabs
 type TabType = 'account' | 'history' | 'favorites' | 'settings';
@@ -22,6 +22,17 @@ const ProfilePage = () => {
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState('');
   const searchParams = useSearchParams();
+  const router = useRouter();
+  
+  // Lấy thông tin người dùng từ auth store
+  const { user, isAuthenticated } = useAuthStore();
+
+  // Kiểm tra nếu chưa đăng nhập, chuyển hướng đến trang đăng nhập
+  useEffect(() => {
+    if (!isAuthenticated || !user) {
+      router.push('/login');
+    }
+  }, [isAuthenticated, user, router]);
 
   // Lấy tab từ URL nếu có
   useEffect(() => {
@@ -39,15 +50,29 @@ const ProfilePage = () => {
     }
   }, [searchParams]);
 
-  // Lấy dữ liệu khi component được mount
+  // Lấy dữ liệu khi component được mount và người dùng đã đăng nhập
   useEffect(() => {
-    // Giả lập gọi API để lấy dữ liệu
-    const history = getUserWatchHistory(mockCurrentUser.id);
-    const favs = getUserFavorites(mockCurrentUser.id);
-    
-    setWatchHistory(history.history);
-    setFavorites(favs.favorites);
-  }, []);
+    if (user) {
+      // Giả lập gọi API để lấy dữ liệu
+      const history = getUserWatchHistory(user.id);
+      const favs = getUserFavorites(user.id);
+      
+      setWatchHistory(history.history);
+      setFavorites(favs.favorites);
+    }
+  }, [user]);
+
+  // Nếu chưa đăng nhập hoặc đang chuyển hướng, hiển thị màn hình loading
+  if (!isAuthenticated || !user) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto"></div>
+          <p className="mt-4 text-white">Đang chuyển hướng đến trang đăng nhập...</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleTabClick = (tab: TabType) => {
     setActiveTab(tab);
@@ -118,16 +143,16 @@ const ProfilePage = () => {
     <div className="bg-gray-800 rounded-lg shadow-lg p-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center mb-8">
         <div className="w-24 h-24 bg-gray-700 rounded-full flex items-center justify-center text-white text-3xl font-bold mb-4 sm:mb-0 sm:mr-6">
-          {mockCurrentUser.full_name.charAt(0)}
+          {user.full_name.charAt(0)}
         </div>
         <div>
-          <h2 className="text-2xl font-bold text-white">{mockCurrentUser.full_name}</h2>
-          <p className="text-gray-400">{mockCurrentUser.email}</p>
+          <h2 className="text-2xl font-bold text-white">{user.full_name}</h2>
+          <p className="text-gray-400">{user.email}</p>
           <p className="text-gray-400 mt-1">
-            Loại tài khoản: <span className="capitalize">{mockCurrentUser.role}</span>
+            Loại tài khoản: <span className="capitalize">{user.role}</span>
           </p>
           <p className="text-gray-400 mt-1">
-            Ngày tham gia: {formatDate(mockCurrentUser.createdAt)}
+            Ngày tham gia: {formatDate(user.createdAt)}
           </p>
         </div>
       </div>
