@@ -1,0 +1,80 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Frontend Development Rules
+
+## Công nghệ và Framework
+- Dự án sử dụng **Next.js 15** với App Router
+- **TypeScript** là ngôn ngữ lập trình chính
+- **Shadcn UI** cho các thành phần giao diện
+- **TailwindCSS** cho styling
+- **Zustand** cho quản lý trạng thái toàn cục
+
+## Cấu trúc thư mục
+```
+src/
+│
+├── app/               # Các tuyến đường và layout của Next.js App Router
+├── components/        # Các thành phần UI
+│   ├── ui/            # Các thành phần Shadcn cơ bản
+│   ├── layout/        # Các thành phần bố cục (header, footer, sidebar)
+│   ├── features/      # Các thành phần chức năng cụ thể
+│   └── pages/         # Các thành phần đặc thù cho trang
+├── lib/               # Thư viện và tiện ích
+├── hooks/             # React hooks tái sử dụng
+├── utils/             # Các hàm tiện ích
+├── types/             # Định nghĩa TypeScript
+├── store/             # Zustand stores
+├── context/           # React Context Providers
+├── constants/         # Các hằng số và cấu hình
+└── styles/            # Các file CSS/scss toàn cục
+```
+
+## Quy tắc TypeScript
+- Luôn định nghĩa kiểu dữ liệu cho props và state
+- Sử dụng interface cho định nghĩa đối tượng, type cho union types
+- Đặt các định nghĩa interface trong thư mục `src/types`
+- Sử dụng các kiểu generic khi cần thiết
+
+## Quy tắc Shadcn UI
+- Các component UI cơ bản nên được tạo bằng Shadcn CLI: `npx shadcn-ui@latest add [component]`
+- Component được tạo sẽ được lưu trong thư mục `src/components/ui`
+- Tùy chỉnh các component để phù hợp với thiết kế, nhưng giữ API và tính năng cơ bản
+- Sử dụng tailwind-merge (`cn` từ `@/lib/utils`) để merge các lớp Tailwind
+
+## Quy tắc Next.js
+- Sử dụng App Router cho tất cả các tuyến mới
+- Sử dụng Server Components khi có thể, nhất là cho các trang fetch dữ liệu
+- Sử dụng Client Components (`'use client'`) chỉ khi cần tương tác người dùng hoặc sử dụng hooks
+- Ưu tiên sử dụng `next/image` và `next/link` cho tối ưu hóa
+
+## Quy tắc CSS/Styling
+- Sử dụng TailwindCSS trực tiếp trong JSX
+- Tránh CSS modules hoặc styled-components
+- Sử dụng CSS variables từ Shadcn cho theme
+- Dùng `clsx` hoặc `cn` helper function để điều kiện hóa classes
+
+## State Management
+- Sử dụng Zustand cho global state
+- Chia nhỏ store theo từng chức năng trong thư mục `src/store`
+- Sử dụng React hooks cho local state
+- Tránh lạm dụng global state khi chỉ cần local state
+
+## API và Data Fetching
+- Sử dụng SWR cho client-side data fetching
+- Đóng gói API calls trong các custom hooks
+- Cấu trúc các file API theo chức năng trong thư mục `src/hooks`
+
+## Quy tắc đặt tên
+- PascalCase cho tên components: `UserProfile.tsx`
+- camelCase cho tên file hooks, utils: `useAuth.ts`, `formatDate.ts`
+- kebab-case cho đường dẫn tài nguyên tĩnh: `/images/hero-banner.jpg`
+- Sử dụng prefix "use" cho custom hooks: `useUserData`
+
+## Command Hữu ích
+- Tạo component Shadcn UI: `npx shadcn-ui@latest add [component-name]`
+- Dev server: `yarn dev`
+- Build: `yarn build`
+- Lint: `yarn lint`

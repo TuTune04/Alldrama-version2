@@ -132,3 +132,214 @@
     display: none;  /* Chrome, Safari and Opera */
   }
 }
+
+
+/* Movie Card Animations */
+.movie-card-container {
+  transform: translateY(0) scale(1);
+  transition: transform 0.5s cubic-bezier(0.19, 1, 0.22, 1), border-color 0.5s ease, box-shadow 0.5s ease;
+}
+
+.group-hover\/card .movie-card-container {
+  transform: translateY(-5px) scale(1.01);
+  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5), 0 0 15px -3px rgba(239, 68, 68, 0.3);
+}
+
+.movie-card-glow {
+  background: radial-gradient(
+    circle at center,
+    rgba(239, 68, 68, 0.15) 0%,
+    rgba(147, 51, 234, 0.15) 25%,
+    rgba(59, 130, 246, 0.15) 50%,
+    rgba(0, 0, 0, 0) 70%
+  );
+  filter: blur(20px);
+  transform: scale(0.9);
+  transition: transform 0.5s cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+.group-hover\/card .movie-card-glow {
+  transform: scale(1.05);
+}
+
+.movie-card-border {
+  background: linear-gradient(
+    135deg,
+    rgba(239, 68, 68, 0.5) 0%,
+    rgba(147, 51, 234, 0.5) 50%,
+    rgba(59, 130, 246, 0.5) 100%
+  );
+  background-size: 200% 200%;
+  animation: gradient-shift 3s ease infinite;
+}
+
+.movie-card-badge-left {
+  transition: transform 0.5s cubic-bezier(0.19, 1, 0.22, 1), background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.group-hover\/card .movie-card-badge-left {
+  transform: translateY(-2px);
+  background-color: rgba(0, 0, 0, 0.8);
+  box-shadow: 0 0 10px rgba(234, 179, 8, 0.3);
+}
+
+.movie-card-badge-right {
+  transition: transform 0.5s cubic-bezier(0.19, 1, 0.22, 1), background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.group-hover\/card .movie-card-badge-right {
+  transform: translateY(-2px);
+  background-color: rgba(220, 38, 38, 0.9);
+  box-shadow: 0 0 10px rgba(220, 38, 38, 0.4);
+}
+
+.movie-card-star {
+  transition: transform 0.5s ease;
+}
+
+.group-hover\/card .movie-card-star {
+  animation: star-pulse 2s ease-in-out infinite;
+}
+
+.movie-card-eye {
+  transition: transform 0.3s ease;
+}
+
+.group-hover\/card .movie-card-eye {
+  animation: eye-blink 2.5s ease infinite;
+}
+
+.movie-card-title {
+  position: relative;
+  transition: color 0.3s ease, transform 0.3s ease;
+}
+
+.group-hover\/card .movie-card-title {
+  color: rgb(239, 68, 68);
+  transform: translateX(2px);
+}
+
+.movie-card-title::after {
+  content: "";
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 1px;
+  background: linear-gradient(90deg, rgb(239, 68, 68), transparent);
+  transition: width 0.5s ease;
+}
+
+.group-hover\/card .movie-card-title::after {
+  width: 100%;
+}
+
+.movie-card-genre {
+  transition: all 0.3s ease;
+}
+
+.group-hover\/card .movie-card-genre {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.movie-card-button {
+  transition: all 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+.movie-card-button:hover {
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 7px 14px rgba(239, 68, 68, 0.4);
+}
+
+.movie-card-shine {
+  position: absolute;
+  top: -100%;
+  left: -100%;
+  right: 0;
+  bottom: 0;
+  width: 200%;
+  height: 200%;
+  pointer-events: none;
+  background: linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.03) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: rotate(45deg) translate(0, 0);
+  animation: shine 3s ease forwards;
+  animation-play-state: paused;
+}
+
+.group-hover\/card .movie-card-shine {
+  animation-play-state: running;
+}
+
+.movie-card-reflection {
+  background: linear-gradient(to bottom, rgba(239, 68, 68, 0.15), transparent);
+  filter: blur(5px);
+}
+
+/* Movie Slider */
+.movie-slider {
+  --slider-transition: all 0.5s cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+/* Animations */
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes star-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+}
+
+@keyframes eye-blink {
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+  10% {
+    transform: scaleY(0.1);
+  }
+  20% {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes shine {
+  0% {
+    transform: rotate(45deg) translate(-30%, -30%);
+  }
+  100% {
+    transform: rotate(45deg) translate(130%, 130%);
+  }
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.scrollbar-hide {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+

@@ -5,6 +5,7 @@ export interface User {
   role: 'user' | 'admin' | 'subscriber';
   createdAt: string;
   updatedAt: string;
+  avatar_url?: string;
 }
 
 export interface AuthResponse {
