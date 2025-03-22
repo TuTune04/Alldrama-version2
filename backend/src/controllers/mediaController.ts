@@ -1,12 +1,17 @@
 import { Logger } from '../utils/logger';
 import { Request, Response } from 'express';
+import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
+import fetch from 'node-fetch';
 import { 
   uploadFileToR2, 
+  downloadFromR2, 
   generatePresignedUrl, 
   deleteFileFromR2,
-  deleteHlsFiles
+  deleteHlsFiles,
+  uploadDirectoryToR2
 } from '../services/media/r2Service';
 import { 
   convertToHls, 
@@ -203,7 +208,7 @@ export const uploadEpisodeVideo = async (req: Request, res: Response): Promise<v
         // Cập nhật URL trong database
         await Episode.update(
           { 
-            playlistUrl: `https://${process.env.CLOUDFLARE_DOMAIN}/episodes/${movieId}/${episodeId}/hls/master.m3u8`,
+            playlistUrl: `https://${process.env.CLOUDFLARE_DOMAIN}/hls/episodes/${movieId}/${episodeId}/hls/master.m3u8`,
             thumbnailUrl,
             duration,
             isProcessed: true
@@ -528,13 +533,13 @@ export const processVideo = async (req: Request, res: Response): Promise<void> =
     
     // Xác thực Worker Secret
     const workerSecret = req.header('X-Worker-Secret');
-    if (workerSecret !== 'alldrama-worker-secret') {
+    if (workerSecret !== process.env.WORKER_SECRET && workerSecret !== 'alldrama-worker-secret') {
       logger.debug("Unauthorized request - invalid worker secret");
       res.status(401).json({ error: 'Unauthorized' });
       return;
     }
     
-    const { videoKey, movieId, episodeId } = req.body;
+    const { videoKey, movieId, episodeId, jobId, callbackUrl } = req.body;
     
     if (!videoKey || !movieId || !episodeId) {
       logger.debug("Missing required fields");
@@ -546,15 +551,145 @@ export const processVideo = async (req: Request, res: Response): Promise<void> =
     }
     
     // Ghi log yêu cầu xử lý
-    logger.debug(`Processing video: ${videoKey} for movie ${movieId}, episode ${episodeId}`);
+    logger.info(`Processing video: ${videoKey} for movie ${movieId}, episode ${episodeId}`);
     
-    // Trong môi trường phát triển, chỉ cần giả lập xử lý thành công
-    const jobId = `job-${Date.now()}`;
+    // Tạo job ID nếu chưa có
+    const processJobId = jobId || `job-${Date.now()}`;
     
+    // Cập nhật trạng thái episode là đang xử lý
+    try {
+      await Episode.update(
+        { isProcessed: false, processingError: null },
+        { where: { id: episodeId, movieId } }
+      );
+    } catch (dbError) {
+      logger.error("Lỗi khi cập nhật trạng thái episode:", dbError);
+    }
+    
+    // Trả về response ngay để Worker không phải đợi
     res.json({ 
       success: true,
-      jobId 
+      jobId: processJobId
     });
+    
+    // Xử lý bất đồng bộ
+    (async () => {
+      try {
+        // Tạo thư mục tạm để xử lý
+        const tempDir = path.join(os.tmpdir(), `hls-${processJobId}`);
+        fs.mkdirSync(tempDir, { recursive: true });
+        
+        const outputDir = path.join(tempDir, 'hls');
+        fs.mkdirSync(outputDir, { recursive: true });
+        
+        // Tải video từ R2
+        const localVideoPath = path.join(tempDir, 'original.mp4');
+        logger.info(`Downloading video from R2: ${videoKey} to ${localVideoPath}`);
+        
+        await downloadFromR2(videoKey, localVideoPath);
+        logger.info('Download complete, starting HLS conversion');
+        
+        // Tạo thumbnail
+        const thumbnailPath = path.join(tempDir, 'thumbnail.jpg');
+        await createThumbnail(localVideoPath, thumbnailPath);
+        logger.info('Thumbnail created');
+        
+        // Upload thumbnail lên R2
+        const thumbnailKey = `episodes/${movieId}/${episodeId}/thumbnail.jpg`;
+        await uploadFileToR2(thumbnailPath, thumbnailKey, 'image/jpeg');
+        logger.info('Thumbnail uploaded to R2');
+        
+        // Chuyển đổi video sang HLS
+        await convertToHls(localVideoPath, outputDir, movieId, episodeId);
+        logger.info('HLS conversion complete');
+        
+        // Cập nhật trạng thái episode
+        const playlistUrl = `https://${process.env.CLOUDFLARE_DOMAIN}/hls/episodes/${movieId}/${episodeId}/hls/master.m3u8`;
+        const thumbnailUrl = `https://${process.env.CLOUDFLARE_DOMAIN}/${thumbnailKey}`;
+        
+        await Episode.update(
+          {
+            isProcessed: true,
+            processingError: null,
+            playlistUrl,
+            thumbnailUrl
+          },
+          { where: { id: episodeId, movieId } }
+        );
+        logger.info(`Episode ${episodeId} updated as processed`);
+        
+        // Gọi callback URL để thông báo cho Worker
+        if (callbackUrl) {
+          try {
+            await fetch(callbackUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Backend-Secret': process.env.BACKEND_SECRET || 'alldrama-backend-secret'
+              },
+              body: JSON.stringify({
+                status: 'completed',
+                movieId,
+                episodeId,
+                jobId: processJobId
+              })
+            });
+            logger.info(`Callback sent to ${callbackUrl}`);
+          } catch (callbackError) {
+            logger.error('Error calling worker callback:', callbackError);
+          }
+        }
+        
+        // Dọn dẹp thư mục tạm
+        try {
+          fs.rmSync(tempDir, { recursive: true, force: true });
+          logger.debug(`Cleaned up temp directory: ${tempDir}`);
+        } catch (cleanupError) {
+          logger.warn('Error cleaning temp directory:', cleanupError);
+        }
+      } catch (processingError) {
+        logger.error('Error processing video:', processingError);
+        
+        // Cập nhật trạng thái lỗi
+        try {
+          await Episode.update(
+            {
+              isProcessed: false,
+              processingError: processingError instanceof Error 
+                ? processingError.message 
+                : 'Unknown error during processing'
+            },
+            { where: { id: episodeId, movieId } }
+          );
+        } catch (dbError) {
+          logger.error('Error updating episode status:', dbError);
+        }
+        
+        // Gọi callback với lỗi
+        if (callbackUrl) {
+          try {
+            await fetch(callbackUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Backend-Secret': process.env.BACKEND_SECRET || 'alldrama-backend-secret'
+              },
+              body: JSON.stringify({
+                status: 'error',
+                error: processingError instanceof Error 
+                  ? processingError.message 
+                  : 'Unknown error during processing',
+                movieId,
+                episodeId,
+                jobId: processJobId
+              })
+            });
+          } catch (callbackError) {
+            logger.error('Error calling worker callback:', callbackError);
+          }
+        }
+      }
+    })();
   } catch (error: unknown) {
     logger.error('Error processing video:', error);
     res.status(500).json({ 

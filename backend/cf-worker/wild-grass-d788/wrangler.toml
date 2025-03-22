@@ -1,0 +1,27 @@
+name = "alldrama-media-service"
+main = "src/index.ts"
+compatibility_date = "2023-10-16"
+compatibility_flags = ["nodejs_compat"]
+
+[[r2_buckets]]
+binding = "MEDIA_BUCKET"
+bucket_name = "alldrama-storage"
+preview_bucket_name = "alldrama-storage-dev"
+
+# Cấu hình thêm để upload file lớn
+[site]
+bucket = "./public"
+
+[placement]
+mode = "smart"
+
+[limits]
+cpu_ms = 500
+memory_mb = 256
+
+# Biến môi trường
+[vars]
+API_KEY = "alldrama-production-token"
+CLOUDFLARE_DOMAIN = "alldrama.tech"
+WORKER_DOMAIN = "media.alldrama.tech"
+BACKEND_URL = "https://alldramaz.com" 

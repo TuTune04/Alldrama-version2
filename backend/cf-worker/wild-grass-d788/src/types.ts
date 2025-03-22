@@ -12,4 +12,8 @@ export const Task = z.object({
 // Sử dụng định nghĩa từ Cloudflare Workers Types
 export interface Env {
   MEDIA_BUCKET: R2Bucket;
+  API_KEY?: string;
+  CLOUDFLARE_DOMAIN: string;
+  WORKER_DOMAIN: string;
+  BACKEND_URL: string;
 }

@@ -18,7 +18,7 @@ FROM node:18-slim
 WORKDIR /app
 
 # Cài đặt ffmpeg cho xử lý video
-RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg \
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg curl \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -34,9 +34,12 @@ COPY --from=builder /app/scripts ./scripts
 COPY .env.production ./.env
 COPY tsconfig.json ./
 
-# Tạo thư mục uploads và đảm bảo quyền truy cập
-RUN mkdir -p uploads && chmod 777 uploads
-RUN mkdir -p logs && chmod 777 logs
+# Tạo thư mục uploads và đảm bảo quyền truy cập đúng
+RUN mkdir -p uploads/temp && chmod -R 777 uploads
+RUN mkdir -p logs && chmod -R 777 logs
+
+# Cấp quyền sở hữu toàn bộ thư mục /app cho user node (quan trọng)
+RUN chown -R node:node /app
 
 # Mở cổng ứng dụng
 EXPOSE 5000
