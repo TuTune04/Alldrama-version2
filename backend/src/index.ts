@@ -4,6 +4,8 @@ import app from "./app";
 import createDatabase from "./utils/createDatabase";
 import initDatabase from "./utils/initDatabase";
 import { startViewsSyncJob } from "./jobs/syncViewsJob";
+import os from 'os';
+import path from 'path';
 
 const logger = Logger.getLogger('index');
 
@@ -11,6 +13,9 @@ const logger = Logger.getLogger('index');
 dotenv.config();
 
 const PORT = process.env.PORT || 5000;
+const isFullLoggingEnabled = process.env.ENABLE_FULL_LOGGING === 'true';
+const NODE_ENV = process.env.NODE_ENV || 'development';
+const logFilePath = process.env.LOG_FILE_PATH || './logs/app.log';
 
 // Xử lý sự kiện không bắt được
 process.on('uncaughtException', (error) => {
@@ -23,9 +28,34 @@ process.on('unhandledRejection', (reason, promise) => {
   process.exit(1);
 });
 
+/**
+ * Hiển thị thông tin hệ thống
+ */
+function logSystemInfo() {
+  logger.debug('========== THÔNG TIN HỆ THỐNG ==========');
+  logger.debug(`Phiên bản Node.js: ${process.version}`);
+  logger.debug(`Hệ điều hành: ${os.type()} ${os.release()}`);
+  logger.debug(`CPU: ${os.cpus()[0].model} (${os.cpus().length} cores)`);
+  logger.debug(`Memory: ${Math.round(os.totalmem() / (1024 * 1024 * 1024))}GB`);
+  logger.debug(`Thư mục hiện tại: ${process.cwd()}`);
+  logger.debug(`Môi trường: ${NODE_ENV}`);
+  logger.debug(`Logging đầy đủ: ${isFullLoggingEnabled ? 'BẬT' : 'TẮT'}`);
+  logger.debug(`File log: ${path.resolve(logFilePath)}`);
+  logger.debug('========================================');
+  
+  // Test debug và info log
+  logger.debug('Đây là thông báo DEBUG - chỉ hiển thị khi development hoặc ENABLE_FULL_LOGGING=true');
+  logger.info('Đây là thông báo INFO - chỉ hiển thị khi development hoặc ENABLE_FULL_LOGGING=true');
+  logger.warn('Đây là thông báo WARN - luôn hiển thị');
+  logger.error('Đây là thông báo ERROR - luôn hiển thị');
+}
+
 // Khởi động server
 const startServer = async () => {
   try {
+    // In thông tin hệ thống
+    logSystemInfo();
+    
     // Tạo database nếu chưa tồn tại
     await createDatabase();
     
@@ -38,6 +68,11 @@ const startServer = async () => {
     // Lắng nghe kết nối
     const server = app.listen(PORT, () => {
       logger.debug(`Server đang chạy trên port ${PORT}`);
+      console.log(`===== Server đang chạy trên port ${PORT} =====`);
+      console.log(`Môi trường: ${NODE_ENV}`);
+      console.log(`Logging đầy đủ: ${isFullLoggingEnabled ? 'BẬT' : 'TẮT'}`);
+      console.log(`File log: ${path.resolve(logFilePath)}`);
+      console.log('=========================================');
     });
 
     // Xử lý graceful shutdown

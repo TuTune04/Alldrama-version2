@@ -22,8 +22,10 @@ import { Episode } from '../models/Episode';
 import { Movie } from '../models/Movie';
 import { UserWatchHistory } from '../models/UserWatchHistory';
 import sequelize from '../config/database';
+import { getMediaService, MediaService } from '../services';
 
 const logger = Logger.getLogger('mediaController');
+const mediaService = getMediaService();
 
 // Upload poster phim
 export const uploadMoviePoster = async (req: Request, res: Response): Promise<void> => {
@@ -36,17 +38,8 @@ export const uploadMoviePoster = async (req: Request, res: Response): Promise<vo
       return;
     }
     
-    // Tạo key cho file trên R2
-    const key = `movies/${movieId}/poster${path.extname(file.originalname)}`;
-    
-    // Upload lên R2
-    const fileUrl = await uploadFileToR2(file.path, key, file.mimetype);
-    
-    // Cập nhật URL trong database
-    await Movie.update({ posterUrl: fileUrl }, { where: { id: movieId } });
-    
-    // Xóa file tạm
-    fs.unlinkSync(file.path);
+    // Sử dụng MediaService để upload
+    const fileUrl = await mediaService.uploadMoviePoster(Number(movieId), file);
     
     // Trả về URL của file
     res.status(200).json({
@@ -76,17 +69,8 @@ export const uploadMovieBackdrop = async (req: Request, res: Response): Promise<
       return;
     }
     
-    // Tạo key cho file trên R2
-    const key = `movies/${movieId}/backdrop${path.extname(file.originalname)}`;
-    
-    // Upload lên R2
-    const fileUrl = await uploadFileToR2(file.path, key, file.mimetype);
-    
-    // Cập nhật URL trong database - thêm trường backdropUrl vào Movie model nếu chưa có
-    await Movie.update({ backdropUrl: fileUrl }, { where: { id: movieId } });
-    
-    // Xóa file tạm
-    fs.unlinkSync(file.path);
+    // Sử dụng MediaService để upload
+    const fileUrl = await mediaService.uploadMovieBackdrop(Number(movieId), file);
     
     // Trả về URL của file
     res.status(200).json({
@@ -116,35 +100,15 @@ export const uploadMovieTrailer = async (req: Request, res: Response): Promise<v
       return;
     }
     
-    // Tạo key cho file trên R2
-    const key = `movies/${movieId}/trailer${path.extname(file.originalname)}`;
+    // Sử dụng MediaService để upload
+    const fileUrl = await mediaService.uploadMovieTrailer(Number(movieId), file);
     
-    // Upload lên R2
-    const fileUrl = await uploadFileToR2(file.path, key, file.mimetype);
-    
-    // Tạo thumbnail từ trailer
-    const thumbnailPath = path.join(__dirname, '../../uploads/temp', `trailer-thumb-${movieId}.jpg`);
-    await createThumbnail(file.path, thumbnailPath);
-    
-    // Upload thumbnail
-    const thumbnailKey = `movies/${movieId}/trailer-thumb.jpg`;
-    const thumbnailUrl = await uploadFileToR2(thumbnailPath, thumbnailKey, 'image/jpeg');
-    
-    // Cập nhật URL trong database
-    await Movie.update({ 
-      trailerUrl: fileUrl,
-      trailerThumbnailUrl: thumbnailUrl
-    }, { where: { id: movieId } });
-    
-    // Xóa file tạm
-    fs.unlinkSync(file.path);
-    fs.unlinkSync(thumbnailPath);
+    // Tạo thumbnail từ trailer (đã được xử lý trong MediaService)
     
     // Trả về URL của file
     res.status(200).json({
       message: 'Upload trailer thành công',
-      trailerUrl: fileUrl,
-      thumbnailUrl: thumbnailUrl
+      trailerUrl: fileUrl
     });
   } catch (error) {
     logger.error('Lỗi khi upload trailer:', error);
@@ -169,80 +133,31 @@ export const uploadEpisodeVideo = async (req: Request, res: Response): Promise<v
       return;
     }
     
-    // Tạo thư mục HLS output
-    const hlsOutputDir = path.join(__dirname, '../../uploads/hls', episodeId.toString());
-    if (!fs.existsSync(hlsOutputDir)) {
-      fs.mkdirSync(hlsOutputDir, { recursive: true });
-    }
-    
-    // Upload video gốc lên R2
-    const originalKey = `episodes/${movieId}/${episodeId}/original${path.extname(file.originalname)}`;
-    const originalUrl = await uploadFileToR2(file.path, originalKey, file.mimetype);
-    
-    // Tạo thumbnail
-    const thumbnailPath = path.join(__dirname, '../../uploads/temp', `thumbnail-${episodeId}.jpg`);
-    await createThumbnail(file.path, thumbnailPath);
-    
-    // Upload thumbnail lên R2
-    const thumbnailKey = `episodes/${movieId}/${episodeId}/thumbnail.jpg`;
-    const thumbnailUrl = await uploadFileToR2(thumbnailPath, thumbnailKey, 'image/jpeg');
-    
-    // Lấy metadata video để biết thời lượng
-    const metadata = await getVideoMetadata(file.path);
-    const duration = Math.floor(parseFloat(metadata.format?.duration || '0'));
+    // Sử dụng MediaService để upload video và tạo thumbnail
+    const result = await mediaService.uploadEpisodeVideo(Number(movieId), Number(episodeId), file);
     
     // Bắt đầu xử lý HLS
     res.status(202).json({
       message: 'Đã nhận video, đang xử lý HLS',
-      originalUrl,
-      thumbnailUrl,
-      processingStatus: 'processing',
-      estimatedDuration: duration
+      originalUrl: result.originalUrl,
+      thumbnailUrl: result.thumbnailUrl,
+      processingStatus: result.processingStatus,
+      estimatedDuration: result.duration
     });
     
+    // Tạo thư mục HLS output
+    const hlsOutputDir = path.join(os.tmpdir(), `hls-${episodeId}`);
+    if (!fs.existsSync(hlsOutputDir)) {
+      fs.mkdirSync(hlsOutputDir, { recursive: true });
+    }
+    
     // Xử lý HLS bất đồng bộ sau khi đã trả về response
-    convertToHls(file.path, hlsOutputDir, movieId, episodeId)
-      .then(async (hlsUrls) => {
-        logger.debug('HLS URLs:', hlsUrls);
-        
-        // Cập nhật URL trong database
-        await Episode.update(
-          { 
-            playlistUrl: `https://${process.env.CLOUDFLARE_DOMAIN}/hls/episodes/${movieId}/${episodeId}/hls/master.m3u8`,
-            thumbnailUrl,
-            duration,
-            isProcessed: true
-          }, 
-          { where: { id: episodeId } }
-        );
-        
-        logger.debug(`Xử lý HLS thành công cho episode ${episodeId}`);
-        
-        // Xóa file tạm
-        fs.unlinkSync(file.path);
-        fs.unlinkSync(thumbnailPath);
-        fs.rmSync(hlsOutputDir, { recursive: true, force: true });
+    mediaService.processVideoToHLS(file.path, movieId, episodeId)
+      .then(async (hlsResult) => {
+        logger.debug('HLS xử lý thành công:', hlsResult);
       })
       .catch(error => {
         logger.error(`Lỗi khi xử lý HLS cho episode ${episodeId}:`, error);
-        
-        // Cập nhật trạng thái lỗi
-        Episode.update(
-          { 
-            isProcessed: false,
-            processingError: error.message
-          }, 
-          { where: { id: episodeId } }
-        ).catch(console.error);
-        
-        // Xóa file tạm
-        try {
-          if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
-          if (fs.existsSync(thumbnailPath)) fs.unlinkSync(thumbnailPath);
-          if (fs.existsSync(hlsOutputDir)) fs.rmSync(hlsOutputDir, { recursive: true, force: true });
-        } catch (e) {
-          logger.error('Lỗi khi xóa file tạm:', e);
-        }
       });
   } catch (error) {
     logger.error('Lỗi khi upload video:', error);
@@ -260,44 +175,62 @@ export const uploadEpisodeVideo = async (req: Request, res: Response): Promise<v
 export const getPresignedUploadUrl = async (req: Request, res: Response): Promise<void> => {
   try {
     const { movieId, episodeId, fileType } = req.body;
+    logger.debug('Yêu cầu presigned URL:', { movieId, episodeId, fileType, user: req.user?.id });
     
     if (!movieId || !fileType) {
       res.status(400).json({ message: 'Thiếu thông tin cần thiết' });
       return;
     }
     
-    let key: string;
-    let contentType: string;
+    let type: string;
+    let id: number;
+    let fileName: string;
     
     // Xác định key và content type dựa vào loại file
     if (fileType === 'poster') {
-      key = `movies/${movieId}/poster.jpg`;
-      contentType = 'image/jpeg';
+      type = 'movie-poster';
+      id = Number(movieId);
+      fileName = 'poster.jpg';
     } else if (fileType === 'backdrop') {
-      key = `movies/${movieId}/backdrop.jpg`;
-      contentType = 'image/jpeg';
+      type = 'movie-backdrop';
+      id = Number(movieId);
+      fileName = 'backdrop.jpg';
     } else if (fileType === 'trailer') {
-      key = `movies/${movieId}/trailer.mp4`;
-      contentType = 'video/mp4';
+      type = 'movie-trailer';
+      id = Number(movieId);
+      fileName = 'trailer.mp4';
     } else if (fileType === 'video' && episodeId) {
-      key = `episodes/${movieId}/${episodeId}/original.mp4`;
-      contentType = 'video/mp4';
+      type = 'episode-video';
+      console.log('Debug video upload:', { movieId, episodeId, type });
+      id = Number(movieId);
+      fileName = 'original.mp4';
     } else if (fileType === 'thumbnail' && episodeId) {
-      key = `episodes/${movieId}/${episodeId}/thumbnail.jpg`;
-      contentType = 'image/jpeg';
+      type = 'episode-thumbnail';
+      id = Number(`${movieId}-${episodeId}`);
+      fileName = 'thumbnail.jpg';
     } else {
       res.status(400).json({ message: 'Loại file không hợp lệ' });
       return;
     }
     
-    // Tạo presigned URL
-    const presignedUrl = await generatePresignedUrl(key, contentType);
+    // Tạo presigned URL thông qua service
+    let presignedUrl;
+    if (fileType === 'video' && episodeId) {
+      // Truyền movieId và episodeId riêng biệt
+      // Tăng thời gian hết hạn cho file lớn (3 giờ)
+      presignedUrl = await mediaService.getPresignedUploadUrl(type, Number(movieId), fileName, Number(episodeId), 10800);
+    } else {
+      presignedUrl = await mediaService.getPresignedUploadUrl(type, id, fileName);
+    }
+    
+    // Xác định CDN URL
+    const cdnUrl = `https://${process.env.CLOUDFLARE_DOMAIN}/`;
     
     res.status(200).json({
       presignedUrl,
-      key,
-      contentType,
-      cdnUrl: `https://${process.env.CLOUDFLARE_DOMAIN}/${key}`
+      contentType: fileName.endsWith('.mp4') ? 'video/mp4' : 'image/jpeg',
+      cdnUrl,
+      expiresIn: fileType === 'video' ? 10800 : 3600 // 3 giờ cho video, 1 giờ cho các file còn lại
     });
   } catch (error) {
     logger.error('Lỗi khi tạo presigned URL:', error);
@@ -312,37 +245,39 @@ export const deleteMedia = async (req: Request, res: Response): Promise<void> =>
   try {
     const { movieId, mediaType } = req.params;
     
-    // Xác định key trong R2
-    let key: string;
-    let updateField: string;
+    // Xác định URL cần xóa
+    let url: string;
+    let updateField: string | null = null;
     
     switch (mediaType) {
       case 'poster':
-        key = `movies/${movieId}/poster.jpg`;
+        url = `https://${process.env.CLOUDFLARE_DOMAIN}/movies/${movieId}/poster.jpg`;
         updateField = 'posterUrl';
         break;
       case 'backdrop':
-        key = `movies/${movieId}/backdrop.jpg`;
+        url = `https://${process.env.CLOUDFLARE_DOMAIN}/movies/${movieId}/backdrop.jpg`;
         updateField = 'backdropUrl';
         break;
       case 'trailer':
-        key = `movies/${movieId}/trailer.mp4`;
+        url = `https://${process.env.CLOUDFLARE_DOMAIN}/movies/${movieId}/trailer.mp4`;
         updateField = 'trailerUrl';
         break;
       default:
-        res.status(400).json({ success: false, error: 'Loại media không hợp lệ' });
-        return;
+        url = req.params.key; // Sử dụng path param key cho old API
+        break;
     }
     
-    // Xóa file từ R2
-    await deleteFileFromR2(key);
+    // Sử dụng service để xóa
+    const success = await mediaService.deleteMedia(url);
     
-    // Cập nhật database
-    await Movie.update({ [updateField]: null }, { where: { id: movieId } });
+    if (success && updateField) {
+      // Cập nhật database
+      await Movie.update({ [updateField]: null }, { where: { id: movieId } });
+    }
     
     res.json({
-      success: true,
-      message: `Đã xóa ${mediaType} thành công`
+      success,
+      message: success ? 'Đã xóa media thành công' : 'Không thể xóa media'
     });
   } catch (error) {
     logger.error('Error deleting media:', error);
@@ -368,31 +303,13 @@ export const deleteEpisode = async (req: Request, res: Response): Promise<void> 
       return;
     }
     
-    // 1. Xóa file video gốc
-    try {
-      await deleteFileFromR2(`episodes/${movieId}/${episodeId}/original.mp4`);
-    } catch (err) {
-      logger.warn(`Cảnh báo: Không thể xóa video gốc của tập ${episodeId}:`, err);
-    }
+    // Xóa tất cả media liên quan đến tập phim
+    await mediaService.deleteEpisodeMedia(movieId, episodeId);
     
-    // 2. Xóa thumbnail
-    try {
-      await deleteFileFromR2(`episodes/${movieId}/${episodeId}/thumbnail.jpg`);
-    } catch (err) {
-      logger.warn(`Cảnh báo: Không thể xóa thumbnail của tập ${episodeId}:`, err);
-    }
-    
-    // 3. Xóa tất cả file HLS
-    try {
-      await deleteHlsFiles(movieId, episodeId);
-    } catch (err) {
-      logger.warn(`Cảnh báo: Không thể xóa một số file HLS của tập ${episodeId}:`, err);
-    }
-    
-    // 4. Xóa thông tin episode từ database
+    // Xóa thông tin episode từ database
     await Episode.destroy({ where: { id: episodeId } });
     
-    // 5. Xóa lịch sử xem liên quan
+    // Xóa lịch sử xem liên quan
     await UserWatchHistory.destroy({ 
       where: { 
         movieId: Number(movieId),
@@ -435,27 +352,14 @@ export const deleteMovie = async (req: Request, res: Response): Promise<void> =>
     
     try {
       // 1. Xóa tất cả media của phim (poster, backdrop, trailer)
-      try {
-        await deleteFileFromR2(`movies/${movieId}/poster.jpg`);
-        await deleteFileFromR2(`movies/${movieId}/backdrop.jpg`);
-        await deleteFileFromR2(`movies/${movieId}/trailer.mp4`);
-      } catch (mediaError) {
-        logger.warn('Cảnh báo: Không thể xóa một số file media:', mediaError);
-        // Tiếp tục xử lý, không throw error
-      }
+      if (movie.posterUrl) await mediaService.deleteMedia(movie.posterUrl);
+      if ((movie as any).backdropUrl) await mediaService.deleteMedia((movie as any).backdropUrl);
+      if (movie.trailerUrl) await mediaService.deleteMedia(movie.trailerUrl);
       
       // 2. Xóa tất cả tập phim và file liên quan
       if (movie.episodes && movie.episodes.length > 0) {
         for (const episode of movie.episodes) {
-          // Xóa file video gốc
-          try {
-            await deleteFileFromR2(`episodes/${movieId}/${episode.id}/original.mp4`);
-            await deleteFileFromR2(`episodes/${movieId}/${episode.id}/thumbnail.jpg`);
-            await deleteHlsFiles(movieId, episode.id);
-          } catch (episodeError) {
-            logger.warn(`Cảnh báo: Không thể xóa file của tập ${episode.id}:`, episodeError);
-            // Tiếp tục xử lý
-          }
+          await mediaService.deleteEpisodeMedia(movieId, episode.id);
         }
       }
       
@@ -503,21 +407,10 @@ export const getVideoProcessingStatus = async (req: Request, res: Response): Pro
   try {
     const { episodeId } = req.params;
     
-    // Lấy thông tin episode từ database
-    const episode = await Episode.findByPk(episodeId);
+    // Lấy trạng thái từ service
+    const status = await mediaService.getVideoProcessingStatus(Number(episodeId));
     
-    if (!episode) {
-      res.status(404).json({ message: 'Không tìm thấy tập phim' });
-      return;
-    }
-    
-    res.status(200).json({
-      episodeId,
-      isProcessed: episode.isProcessed,
-      processingError: episode.processingError,
-      playlistUrl: episode.playlistUrl,
-      thumbnailUrl: episode.thumbnailUrl
-    });
+    res.status(200).json(status);
   } catch (error) {
     logger.error('Lỗi khi lấy trạng thái xử lý video:', error);
     res.status(500).json({ message: 'Lỗi khi lấy trạng thái xử lý video' });
@@ -556,140 +449,26 @@ export const processVideo = async (req: Request, res: Response): Promise<void> =
     // Tạo job ID nếu chưa có
     const processJobId = jobId || `job-${Date.now()}`;
     
-    // Cập nhật trạng thái episode là đang xử lý
-    try {
-      await Episode.update(
-        { isProcessed: false, processingError: null },
-        { where: { id: episodeId, movieId } }
-      );
-    } catch (dbError) {
-      logger.error("Lỗi khi cập nhật trạng thái episode:", dbError);
-    }
+    // Sử dụng MediaService để xử lý video và truyền thêm callbackUrl
+    const result = await mediaService.processVideoFromWorker(
+      videoKey, 
+      movieId, 
+      episodeId, 
+      processJobId,
+      callbackUrl
+    );
     
     // Trả về response ngay để Worker không phải đợi
     res.json({ 
-      success: true,
-      jobId: processJobId
+      success: result.success,
+      jobId: result.jobId,
+      error: result.error
     });
     
-    // Xử lý bất đồng bộ
-    (async () => {
-      try {
-        // Tạo thư mục tạm để xử lý
-        const tempDir = path.join(os.tmpdir(), `hls-${processJobId}`);
-        fs.mkdirSync(tempDir, { recursive: true });
-        
-        const outputDir = path.join(tempDir, 'hls');
-        fs.mkdirSync(outputDir, { recursive: true });
-        
-        // Tải video từ R2
-        const localVideoPath = path.join(tempDir, 'original.mp4');
-        logger.info(`Downloading video from R2: ${videoKey} to ${localVideoPath}`);
-        
-        await downloadFromR2(videoKey, localVideoPath);
-        logger.info('Download complete, starting HLS conversion');
-        
-        // Tạo thumbnail
-        const thumbnailPath = path.join(tempDir, 'thumbnail.jpg');
-        await createThumbnail(localVideoPath, thumbnailPath);
-        logger.info('Thumbnail created');
-        
-        // Upload thumbnail lên R2
-        const thumbnailKey = `episodes/${movieId}/${episodeId}/thumbnail.jpg`;
-        await uploadFileToR2(thumbnailPath, thumbnailKey, 'image/jpeg');
-        logger.info('Thumbnail uploaded to R2');
-        
-        // Chuyển đổi video sang HLS
-        await convertToHls(localVideoPath, outputDir, movieId, episodeId);
-        logger.info('HLS conversion complete');
-        
-        // Cập nhật trạng thái episode
-        const playlistUrl = `https://${process.env.CLOUDFLARE_DOMAIN}/hls/episodes/${movieId}/${episodeId}/hls/master.m3u8`;
-        const thumbnailUrl = `https://${process.env.CLOUDFLARE_DOMAIN}/${thumbnailKey}`;
-        
-        await Episode.update(
-          {
-            isProcessed: true,
-            processingError: null,
-            playlistUrl,
-            thumbnailUrl
-          },
-          { where: { id: episodeId, movieId } }
-        );
-        logger.info(`Episode ${episodeId} updated as processed`);
-        
-        // Gọi callback URL để thông báo cho Worker
-        if (callbackUrl) {
-          try {
-            await fetch(callbackUrl, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'X-Backend-Secret': process.env.BACKEND_SECRET || 'alldrama-backend-secret'
-              },
-              body: JSON.stringify({
-                status: 'completed',
-                movieId,
-                episodeId,
-                jobId: processJobId
-              })
-            });
-            logger.info(`Callback sent to ${callbackUrl}`);
-          } catch (callbackError) {
-            logger.error('Error calling worker callback:', callbackError);
-          }
-        }
-        
-        // Dọn dẹp thư mục tạm
-        try {
-          fs.rmSync(tempDir, { recursive: true, force: true });
-          logger.debug(`Cleaned up temp directory: ${tempDir}`);
-        } catch (cleanupError) {
-          logger.warn('Error cleaning temp directory:', cleanupError);
-        }
-      } catch (processingError) {
-        logger.error('Error processing video:', processingError);
-        
-        // Cập nhật trạng thái lỗi
-        try {
-          await Episode.update(
-            {
-              isProcessed: false,
-              processingError: processingError instanceof Error 
-                ? processingError.message 
-                : 'Unknown error during processing'
-            },
-            { where: { id: episodeId, movieId } }
-          );
-        } catch (dbError) {
-          logger.error('Error updating episode status:', dbError);
-        }
-        
-        // Gọi callback với lỗi
-        if (callbackUrl) {
-          try {
-            await fetch(callbackUrl, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'X-Backend-Secret': process.env.BACKEND_SECRET || 'alldrama-backend-secret'
-              },
-              body: JSON.stringify({
-                status: 'error',
-                error: processingError instanceof Error 
-                  ? processingError.message 
-                  : 'Unknown error during processing',
-                movieId,
-                episodeId,
-                jobId: processJobId
-              })
-            });
-          } catch (callbackError) {
-            logger.error('Error calling worker callback:', callbackError);
-          }
-        }
-      }
-    })();
+    // Log việc sẽ gọi callback
+    if (callbackUrl) {
+      logger.debug(`Callback URL sẽ được gọi khi hoàn thành: ${callbackUrl}`);
+    }
   } catch (error: unknown) {
     logger.error('Error processing video:', error);
     res.status(500).json({ 

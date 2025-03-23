@@ -25,6 +25,8 @@ services:
       - REDIS_PORT=6379
       - REDIS_PASSWORD=${REDIS_PASSWORD}
       - LOG_FILE_PATH=/app/logs/production.log
+      - ENABLE_FULL_LOGGING=true
+      - NODE_OPTIONS=--enable-source-maps --unhandled-rejections=strict --trace-warnings
     networks:
       - alldrama-network
     healthcheck:
@@ -33,6 +35,19 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '1'
+          memory: 2G
 
   postgres:
     image: postgres:15-alpine
