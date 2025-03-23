@@ -46,9 +46,13 @@ EXPOSE 5000
 
 # Thêm các biến môi trường cần thiết
 ENV NODE_ENV=production
+ENV NODE_OPTIONS="--max-old-space-size=4096 --enable-source-maps"
 
 # Người dùng không đặc quyền
 USER node
 
 # Lệnh khởi động ứng dụng
 CMD ["node", "dist/index.js"]
+
+# Đảm bảo docker logs hiển thị đầy đủ
+ENV NODE_OPTIONS="--enable-source-maps --unhandled-rejections=strict --trace-warnings"

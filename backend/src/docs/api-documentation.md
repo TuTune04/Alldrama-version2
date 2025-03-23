@@ -963,7 +963,8 @@ Hầu hết các API yêu cầu authentication. API sử dụng JWT (JSON Web To
 
 ```json
 {
-  "posterUrl": "https://cdn.alldrama.tech/images/movies/movie_id/poster.jpg"
+  "message": "Upload poster thành công",
+  "url": "https://cdn.alldrama.tech/movies/movie_id/poster.jpg"
 }
 ```
 
@@ -984,7 +985,8 @@ Hầu hết các API yêu cầu authentication. API sử dụng JWT (JSON Web To
 
 ```json
 {
-  "backdropUrl": "https://cdn.alldrama.tech/images/movies/movie_id/backdrop.jpg"
+  "message": "Upload backdrop thành công",
+  "url": "https://cdn.alldrama.tech/movies/movie_id/backdrop.jpg"
 }
 ```
 
@@ -1005,7 +1007,8 @@ Hầu hết các API yêu cầu authentication. API sử dụng JWT (JSON Web To
 
 ```json
 {
-  "trailerUrl": "https://cdn.alldrama.tech/videos/movies/movie_id/trailer.mp4"
+  "message": "Upload trailer thành công",
+  "trailerUrl": "https://cdn.alldrama.tech/movies/movie_id/trailer.mp4"
 }
 ```
 
@@ -1020,13 +1023,17 @@ Hầu hết các API yêu cầu authentication. API sử dụng JWT (JSON Web To
 
 **Form Data:**
 
-- `video`: File video (mp4, webm)
+- `video`: File video (mp4, webm) - kích thước tối đa 2GB
 
-**Response (200):**
+**Response (202):**
 
 ```json
 {
-  "videoUrl": "https://cdn.alldrama.tech/videos/movies/movie_id/episodes/episode_id/video.mp4"
+  "message": "Đã nhận video, đang xử lý HLS",
+  "originalUrl": "https://cdn.alldrama.tech/episodes/movie_id/episode_id/original.mp4",
+  "thumbnailUrl": "https://cdn.alldrama.tech/episodes/movie_id/episode_id/thumbnail.jpg",
+  "processingStatus": "processing",
+  "estimatedDuration": 3600
 }
 ```
 
@@ -1040,10 +1047,11 @@ Hầu hết các API yêu cầu authentication. API sử dụng JWT (JSON Web To
 
 ```json
 {
-  "episodeId": "episode_id",
-  "status": "completed", // hoặc "processing", "failed"
-  "progress": 100,
-  "message": "Xử lý video hoàn tất"
+  "episodeId": 123,
+  "isProcessed": true,
+  "processingError": null,
+  "playlistUrl": "https://cdn.alldrama.tech/hls/episodes/movie_id/episode_id/hls/master.m3u8",
+  "thumbnailUrl": "https://cdn.alldrama.tech/episodes/movie_id/episode_id/thumbnail.jpg"
 }
 ```
 
@@ -1057,9 +1065,9 @@ Hầu hết các API yêu cầu authentication. API sử dụng JWT (JSON Web To
 
 ```json
 {
-  "fileName": "video.mp4",
-  "contentType": "video/mp4",
-  "folder": "movies/movie_id/episodes"
+  "movieId": 123,
+  "fileType": "poster|backdrop|trailer|video",
+  "episodeId": 456 // chỉ cần thiết khi fileType là "video"
 }
 ```
 
@@ -1067,16 +1075,44 @@ Hầu hết các API yêu cầu authentication. API sử dụng JWT (JSON Web To
 
 ```json
 {
-  "url": "https://presigned-upload-url...",
-  "fields": {
-    "key": "movies/movie_id/episodes/video.mp4",
-    "acl": "public-read",
-    "Content-Type": "video/mp4"
-  }
+  "presignedUrl": "https://presigned-upload-url...",
+  "contentType": "video/mp4", // hoặc "image/jpeg"
+  "cdnUrl": "https://cdn.alldrama.tech/",
+  "expiresIn": 10800 // 3 giờ cho video, 1 giờ cho hình ảnh
 }
 ```
 
-### 9.7. Xóa media
+### 9.7. Xử lý video đã tải lên
+
+**Endpoint:** `POST /api/media/process-video`
+
+**Headers:**
+
+- `X-Worker-Secret`: Chuỗi xác thực cho worker
+
+**Request Body:**
+
+```json
+{
+  "videoKey": "episodes/123/456/original.mp4",
+  "movieId": 123,
+  "episodeId": 456,
+  "jobId": "optional-job-id",
+  "callbackUrl": "https://optional-callback-url..."
+}
+```
+
+**Response (200):**
+
+```json
+{
+  "success": true,
+  "jobId": "job-12345678",
+  "error": null
+}
+```
+
+### 9.8. Xóa media
 
 **Endpoint:** `DELETE /api/media/movies/:movieId/:mediaType`
 
@@ -1091,11 +1127,12 @@ Hầu hết các API yêu cầu authentication. API sử dụng JWT (JSON Web To
 
 ```json
 {
-  "message": "Media đã được xóa thành công"
+  "success": true,
+  "message": "Đã xóa media thành công"
 }
 ```
 
-### 9.8. Xóa tập phim (bao gồm media)
+### 9.9. Xóa tập phim (bao gồm media)
 
 **Endpoint:** `DELETE /api/media/episodes/:movieId/:episodeId`
 
@@ -1105,11 +1142,12 @@ Hầu hết các API yêu cầu authentication. API sử dụng JWT (JSON Web To
 
 ```json
 {
-  "message": "Tập phim và các media liên quan đã được xóa thành công"
+  "success": true,
+  "message": "Đã xóa tập phim thành công"
 }
 ```
 
-### 9.9. Xóa phim (bao gồm media)
+### 9.10. Xóa phim (bao gồm media)
 
 **Endpoint:** `DELETE /api/media/movies/:movieId`
 
@@ -1119,13 +1157,55 @@ Hầu hết các API yêu cầu authentication. API sử dụng JWT (JSON Web To
 
 ```json
 {
-  "message": "Phim và tất cả media liên quan đã được xóa thành công"
+  "success": true,
+  "message": "Đã xóa phim và tất cả tập phim thành công"
 }
 ```
 
-## 10. View API
+## 10. HLS Streaming (Thông tin kỹ thuật)
 
-### 10.1. Tăng lượt xem cho tập phim
+### 10.1 Cấu trúc URL HLS
+
+**Format URL HLS:**
+
+```
+https://cdn.alldrama.tech/hls/episodes/{movieId}/{episodeId}/hls/master.m3u8
+```
+
+**Các độ phân giải có sẵn:**
+
+- Video thông thường (dưới 20 phút): 240p, 360p, 480p, 720p, 1080p
+- Video dài (trên 20 phút): 360p, 720p
+
+**Thông số kỹ thuật:**
+
+- Format: fMP4 (fragmented MP4)
+- Codec video: H.264 (main profile)
+- Codec audio: AAC (48kHz, 128kbps)
+- Segment duration: 6 giây
+- Bitrates theo độ phân giải:
+  - 240p: 400kbps
+  - 360p: 700kbps
+  - 480p: 1500kbps
+  - 720p: 2500kbps
+  - 1080p: 4500kbps
+
+### 10.2 Quy trình xử lý video
+
+1. Upload video gốc sử dụng một trong hai phương pháp:
+
+   - Upload trực tiếp qua API với kích thước tối đa 2GB
+   - Upload sử dụng presigned URL (khuyến nghị cho video lớn)
+
+2. Hệ thống tự động chuyển đổi video thành HLS với nhiều độ phân giải
+
+3. Theo dõi trạng thái xử lý qua API `/api/media/episodes/:episodeId/processing-status`
+
+4. Khi xử lý hoàn tất, sử dụng HLS URL cho phát video
+
+## 11. View API
+
+### 11.1. Tăng lượt xem cho tập phim
 
 **Endpoint:** `POST /api/views/episode/:episodeId`
 
@@ -1138,9 +1218,9 @@ Hầu hết các API yêu cầu authentication. API sử dụng JWT (JSON Web To
 }
 ```
 
-## 11. Stats API (Admin)
+## 12. Stats API (Admin)
 
-### 11.1. Lấy thống kê tổng quan
+### 12.1. Lấy thống kê tổng quan
 
 **Endpoint:** `GET /api/stats/overview`
 
@@ -1158,7 +1238,7 @@ Hầu hết các API yêu cầu authentication. API sử dụng JWT (JSON Web To
 }
 ```
 
-### 11.2. Lấy thống kê theo thời gian
+### 12.2. Lấy thống kê theo thời gian
 
 **Endpoint:** `GET /api/stats/time-series`
 

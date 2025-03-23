@@ -37,7 +37,7 @@ export const videoUpload = multer({
     }
   },
   limits: {
-    fileSize: 1024 * 1024 * parseInt(process.env.MAX_UPLOAD_SIZE || '500'), // Default 500MB
+    fileSize: 1024 * 1024 * parseInt(process.env.MAX_UPLOAD_SIZE || '2000'), // Default 500MB
   }
 });
 
@@ -85,9 +85,10 @@ export const handleMulterError = (error: Error, _req: Request, res: Response, ne
   if (error instanceof multer.MulterError) {
     // Lỗi multer
     if (error.code === 'LIMIT_FILE_SIZE') {
+      const maxSize = parseInt(process.env.MAX_UPLOAD_SIZE || '2000');
       res.status(400).json({ 
         success: false, 
-        message: 'File quá lớn. Kích thước tối đa cho phép là 500MB đối với video và 10MB đối với hình ảnh.' 
+        message: `File quá lớn. Kích thước tối đa cho phép là ${maxSize}MB đối với video và 10MB đối với hình ảnh.` 
       });
       return;
     }

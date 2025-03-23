@@ -36,7 +36,6 @@
 	 * https://developers.cloudflare.com/workers/wrangler/configuration/#environment-variables
 	 */
 	"vars": { 
-		"API_KEY": "",
 		"CLOUDFLARE_DOMAIN": "alldrama.tech",
 		"WORKER_DOMAIN": "media.alldrama.tech",
 		"BACKEND_URL": "https://alldramaz.com"

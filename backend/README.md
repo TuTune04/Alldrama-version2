@@ -174,3 +174,13 @@ http://localhost:8000/api-docs
 ## 📝 License
 
 MIT License - xem [LICENSE](LICENSE) để biết thêm chi tiết.
+
+## Logging trong môi trường production
+
+Hệ thống hỗ trợ ghi log đầy đủ (bao gồm cả debug logs) trong môi trường production bằng cách thiết lập biến môi trường:
+
+```
+ENABLE_FULL_LOGGING=true
+```
+
+Khi biến này được bật, tất cả các log bao gồm cả debug logs sẽ được hiển thị, hỗ trợ việc khắc phục sự cố trong môi trường production.

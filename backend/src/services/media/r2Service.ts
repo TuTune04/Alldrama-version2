@@ -93,14 +93,29 @@ export const downloadFromR2 = async (
 // Tạo presigned URL cho upload trực tiếp
 export const generatePresignedUrl = async (
   key: string,
-  contentType: string,
-  expiresIn = 3600 // 1 giờ
+  fileExtension: string,
+  expiresIn = 3600 // 1 giờ mặc định
 ): Promise<string> => {
+  // Xác định content type dựa vào phần mở rộng
+  let contentType = 'application/octet-stream';
+  if (fileExtension === '.jpg' || fileExtension === '.jpeg') {
+    contentType = 'image/jpeg';
+  } else if (fileExtension === '.png') {
+    contentType = 'image/png';
+  } else if (fileExtension === '.mp4') {
+    contentType = 'video/mp4';
+  } else if (fileExtension === '.webm') {
+    contentType = 'video/webm';
+  }
+
   const command = new PutObjectCommand({
     Bucket: R2_BUCKET,
     Key: key,
     ContentType: contentType,
   });
+  
+  // Ghi log thông tin đang tạo URL
+  logger.debug(`Tạo presigned URL cho key=${key}, contentType=${contentType}, expiresIn=${expiresIn}s`);
   
   return await getSignedUrl(r2Client, command, { expiresIn });
 };
