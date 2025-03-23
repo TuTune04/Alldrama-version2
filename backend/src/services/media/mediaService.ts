@@ -203,10 +203,56 @@ export class MediaService {
       let needToCleanupVideo = false;
       
       if (videoPath.startsWith('episodes/')) {
-        localVideoPath = path.join(tempDir, 'original.mp4');
-        await downloadFromR2(videoPath, localVideoPath);
-        needToCleanupVideo = true;
-        logger.info(`Đã tải video từ R2: ${videoPath}`);
+        try {
+          localVideoPath = path.join(tempDir, 'original.mp4');
+          // Thử tải video tối đa 3 lần trước khi bỏ cuộc
+          let downloadSuccess = false;
+          let lastError: any = null;
+          
+          for (let attempt = 1; attempt <= 3; attempt++) {
+            try {
+              logger.info(`Tải video từ R2, lần thử ${attempt}/3: ${videoPath}`);
+              await downloadFromR2(videoPath, localVideoPath);
+              
+              // Đảm bảo file đã được tải xuống thành công và có kích thước > 0
+              const stats = fs.statSync(localVideoPath);
+              if (stats.size === 0) {
+                throw new Error('File tải về có kích thước 0 byte');
+              }
+              
+              logger.info(`Đã tải video từ R2 thành công, kích thước: ${stats.size} bytes`);
+              downloadSuccess = true;
+              break;
+            } catch (attemptError) {
+              lastError = attemptError;
+              logger.warn(`Lỗi khi tải video từ R2 (lần ${attempt}/3):`, attemptError);
+              // Đợi 2 giây trước khi thử lại
+              if (attempt < 3) {
+                logger.info(`Đợi 2 giây trước khi thử lại...`);
+                await new Promise(resolve => setTimeout(resolve, 2000));
+              }
+            }
+          }
+          
+          if (!downloadSuccess) {
+            throw new Error(`Không thể tải video sau 3 lần thử: ${lastError?.message || 'Lỗi không xác định'}`);
+          }
+          
+          needToCleanupVideo = true;
+        } catch (downloadError) {
+          logger.error(`Lỗi khi tải video từ R2: ${downloadError}`);
+          
+          // Cập nhật trạng thái lỗi cho episode
+          await Episode.update(
+            {
+              isProcessed: false,
+              processingError: `Lỗi khi tải video: ${downloadError instanceof Error ? downloadError.message : String(downloadError)}`
+            },
+            { where: { id: episodeId, movieId } }
+          );
+          
+          throw new Error(`Không thể tải video từ R2: ${downloadError instanceof Error ? downloadError.message : String(downloadError)}`);
+        }
       }
       
       // Tạo thumbnail nếu chưa có

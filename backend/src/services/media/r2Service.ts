@@ -62,28 +62,115 @@ export const downloadFromR2 = async (
       Key: key,
     };
     
-    const { Body } = await r2Client.send(new GetObjectCommand(params));
+    const response = await r2Client.send(new GetObjectCommand(params));
+    const { Body } = response;
     
     if (!Body) {
       throw new Error('Không tìm thấy dữ liệu');
     }
     
-    // Chuyển đổi ReadableStream thành Buffer
-    const chunks: Uint8Array[] = [];
-    const stream = Body as unknown as ReadableStream;
-    const reader = stream.getReader();
+    // Xử lý nhiều loại Body khác nhau từ R2/S3
+    // 1. Node.js Readable stream
+    if (typeof (Body as any).pipe === 'function') {
+      return new Promise<void>((resolve, reject) => {
+        const writeStream = fs.createWriteStream(outputPath);
+        (Body as any).pipe(writeStream);
+        writeStream.on('finish', () => resolve());
+        writeStream.on('error', reject);
+      });
+    }
     
-    let done = false; 
-    while (!done) {
-      const { done: isDone, value } = await reader.read();
-      done = isDone;
-      if (value) {
-        chunks.push(value);
+    // 2. Web API ReadableStream
+    if (typeof (Body as any).getReader === 'function') {
+      const chunks: Uint8Array[] = [];
+      const reader = (Body as any).getReader();
+      
+      let done = false;
+      while (!done) {
+        const { done: isDone, value } = await reader.read();
+        done = isDone;
+        if (value) {
+          chunks.push(value);
+        }
+      }
+      
+      const buffer = Buffer.concat(chunks);
+      fs.writeFileSync(outputPath, buffer);
+      return;
+    }
+    
+    // 3. AWS SDK v3 streaming
+    try {
+      const chunks: Buffer[] = [];
+      // Sử dụng for-await với Body như một async iterable
+      // @ts-ignore: AWS SDK v3 Body có thể là Async Iterable
+      for await (const chunk of Body) {
+        chunks.push(Buffer.from(chunk));
+      }
+      const buffer = Buffer.concat(chunks);
+      fs.writeFileSync(outputPath, buffer);
+      return;
+    } catch (streamError) {
+      // Ghi log lỗi nhưng tiếp tục thử các phương thức khác
+      logger.debug('Không thể xử lý Body như Async Iterable:', streamError);
+    }
+    
+    // 4. Phương thức transformToByteArray
+    if (typeof (Body as any).transformToByteArray === 'function') {
+      try {
+        const bytes = await (Body as any).transformToByteArray();
+        fs.writeFileSync(outputPath, Buffer.from(bytes));
+        return;
+      } catch (err) {
+        logger.debug('Không thể dùng transformToByteArray:', err);
       }
     }
     
-    const buffer = Buffer.concat(chunks);
-    fs.writeFileSync(outputPath, buffer);
+    // 5. Xử lý Body là Buffer hoặc Uint8Array
+    if (Buffer.isBuffer(Body) || Body instanceof Uint8Array) {
+      fs.writeFileSync(outputPath, Body);
+      return;
+    }
+    
+    // 6. Xử lý Body là Blob
+    if (typeof (Body as any).arrayBuffer === 'function') {
+      try {
+        const buffer = Buffer.from(await (Body as any).arrayBuffer());
+        fs.writeFileSync(outputPath, buffer);
+        return;
+      } catch (err) {
+        logger.debug('Không thể chuyển đổi Blob thành ArrayBuffer:', err);
+      }
+    }
+    
+    // 7. Body.body là một ReadableStream (thường gặp với node-fetch)
+    if ((Body as any).body && typeof (Body as any).body.getReader === 'function') {
+      const chunks: Uint8Array[] = [];
+      const reader = (Body as any).body.getReader();
+      
+      let done = false;
+      while (!done) {
+        const { done: isDone, value } = await reader.read();
+        done = isDone;
+        if (value) {
+          chunks.push(value);
+        }
+      }
+      
+      const buffer = Buffer.concat(chunks);
+      fs.writeFileSync(outputPath, buffer);
+      return;
+    }
+    
+    // Log thông tin Body để debug
+    logger.error('Không thể xử lý Body R2.', {
+      bodyType: typeof Body,
+      methods: Object.getOwnPropertyNames(Object.getPrototypeOf(Body) || {}).join(', '),
+      hasBody: !!(Body as any).body,
+      bodyBodyType: (Body as any).body ? typeof (Body as any).body : undefined
+    });
+    
+    throw new Error('Không thể đọc dữ liệu: kiểu Body không được hỗ trợ');
   } catch (error) {
     logger.error('Lỗi khi download file từ R2:', error);
     throw error;

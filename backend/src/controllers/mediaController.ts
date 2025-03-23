@@ -22,10 +22,11 @@ import { Episode } from '../models/Episode';
 import { Movie } from '../models/Movie';
 import { UserWatchHistory } from '../models/UserWatchHistory';
 import sequelize from '../config/database';
-import { getMediaService, MediaService } from '../services';
+import { MediaService } from '../services/media/mediaService';
 
 const logger = Logger.getLogger('mediaController');
-const mediaService = getMediaService();
+// Tạo instance mediaService trực tiếp thay vì dùng getMediaService để tránh lỗi khi chạy test
+const mediaService = new MediaService();
 
 // Upload poster phim
 export const uploadMoviePoster = async (req: Request, res: Response): Promise<void> => {
