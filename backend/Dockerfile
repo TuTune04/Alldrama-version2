@@ -37,6 +37,7 @@ COPY tsconfig.json ./
 # Tạo thư mục uploads và đảm bảo quyền truy cập đúng
 RUN mkdir -p uploads/temp && chmod -R 777 uploads
 RUN mkdir -p logs && chmod -R 777 logs
+RUN chmod -R 777 /app/logs
 
 # Cấp quyền sở hữu toàn bộ thư mục /app cho user node (quan trọng)
 RUN chown -R node:node /app
