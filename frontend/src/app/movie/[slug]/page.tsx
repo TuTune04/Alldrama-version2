@@ -1,8 +1,8 @@
 import { Suspense } from 'react';
-import MovieDetail from '@/components/ui/MovieDetail';
+import MovieDetail from '@/components/features/movie/MovieDetail';
 import { mockMovies } from '@/mocks';
 import { getEpisodeListResponse } from '@/mocks/episodes';
-import MovieSlider from '@/components/ui/MovieSlider';
+import MovieSlider from '@/components/features/movie/MovieSlider';
 import { getIdFromSlug} from '@/utils/url';
 interface MovieDetailPageProps {
   params: {

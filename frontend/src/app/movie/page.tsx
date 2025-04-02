@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
-import MovieGrid from '@/components/ui/MovieGrid';
+import MovieGrid from '@/components/features/movie/MovieGrid';
 import { mockMovieListResponse } from '@/mocks';
-import GenreList from '@/components/ui/GenreList';
+import GenreList from '@/components/features/genre/GenreList';
 
 export default function MovieListPage() {
   return (

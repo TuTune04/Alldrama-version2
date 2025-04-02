@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { mockMovies } from '@/mocks';
 import { mockGenres } from '@/mocks/genres';
-import MovieCard from '@/components/ui/MovieCard';
+import MovieCard from '@/components/features/movie/MovieCard';
 import { Movie, Genre } from '@/types';
 
 const SearchPage = () => {

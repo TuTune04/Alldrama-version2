@@ -1,6 +1,6 @@
 import Hero from '@/components/ui/Hero';
-import MovieSlider from '@/components/ui/MovieSlider';
-import GenreList from '@/components/ui/GenreList';
+import MovieSlider from '@/components/features/movie/MovieSlider';
+import GenreList from '@/components/features/genre/GenreList';
 import { mockMovies } from '@/mocks';
 
 export default function Home() {

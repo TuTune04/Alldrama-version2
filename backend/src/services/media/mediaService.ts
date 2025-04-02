@@ -21,12 +21,14 @@ import { UserWatchHistory } from '../../models/UserWatchHistory';
 import sequelize from '../../config/database';
 import os from 'os';
 
-const logger = Logger.getLogger('mediaService');
+const logger = Logger.getLogger('MediaService');
 
 /**
  * Service xử lý media (ảnh, video)
  */
 export class MediaService {
+  private readonly logger = Logger.getLogger('MediaService');
+
   /**
    * Upload poster cho phim
    */
@@ -269,8 +271,8 @@ export class MediaService {
       await convertToHls(localVideoPath, outputDir, movieId, episodeId);
       logger.info('Đã hoàn thành chuyển đổi HLS');
       
-      // Tạo URL playlist
-      const playlistUrl = `https://${process.env.CLOUDFLARE_DOMAIN}/hls/episodes/${movieId}/${episodeId}/hls/master.m3u8`;
+      // Tạo URL playlist - Sửa lại đường dẫn cho đúng
+      const playlistUrl = `https://${process.env.CLOUDFLARE_DOMAIN}/episodes/${movieId}/${episodeId}/hls/master.m3u8`;
       
       // Cập nhật trạng thái episode trong database
       await Episode.update(
@@ -282,7 +284,20 @@ export class MediaService {
         },
         { where: { id: episodeId, movieId } }
       );
-      logger.info(`Đã cập nhật trạng thái episode ${episodeId} thành đã xử lý`);
+      
+      // Kiểm tra xem update đã được thực hiện thành công chưa
+      const updatedEpisode = await Episode.findOne({ where: { id: episodeId, movieId } });
+      this.logger.info(`Đã cập nhật trạng thái episode ${episodeId} thành đã xử lý. playlistUrl: ${updatedEpisode?.playlistUrl}, thumbnailUrl: ${updatedEpisode?.thumbnailUrl}`);
+      
+      // Nếu playlistUrl hoặc thumbnailUrl chưa được cập nhật, thử cập nhật lại
+      if (!updatedEpisode?.playlistUrl || !updatedEpisode?.thumbnailUrl) {
+        this.logger.warn(`URLs chưa được cập nhật đúng cho episode ${episodeId}, thử cập nhật lại`);
+        try {
+          await this.updateEpisodeWithMediaUrls(Number(episodeId), playlistUrl, thumbnailUrl);
+        } catch (updateError) {
+          this.logger.error(`Lỗi khi cập nhật lại URLs:`, updateError);
+        }
+      }
       
       // Dọn dẹp thư mục tạm
       try {
@@ -550,5 +565,34 @@ export class MediaService {
       playlistUrl: episode.playlistUrl,
       thumbnailUrl: episode.thumbnailUrl
     };
+  }
+
+  /**
+   * Cập nhật URL playlist và thumbnail cho episode sau khi xử lý HLS
+   */
+  private async updateEpisodeWithMediaUrls(episodeId: number, playlistUrl?: string, thumbnailUrl?: string): Promise<void> {
+    try {
+      const updateData: any = {};
+      
+      if (playlistUrl) {
+        updateData.playlistUrl = playlistUrl;
+      }
+      
+      if (thumbnailUrl) {
+        updateData.thumbnailUrl = thumbnailUrl;
+      }
+      
+      // Chỉ cập nhật khi có dữ liệu
+      if (Object.keys(updateData).length > 0) {
+        await Episode.update(updateData, {
+          where: { id: episodeId }
+        });
+        
+        this.logger.info(`Đã cập nhật URLs cho episode ${episodeId}:`, updateData);
+      }
+    } catch (error) {
+      this.logger.error(`Lỗi khi cập nhật URLs cho episode ${episodeId}:`, error);
+      throw error;
+    }
   }
 } 
