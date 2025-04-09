@@ -1,6 +1,7 @@
 import Hero from '@/components/ui/Hero';
 import MovieSlider from '@/components/features/movie/MovieSlider';
 import GenreList from '@/components/features/genre/GenreList';
+import TopMoviesSection from '@/components/features/movie/TopMoviesSection';
 import { mockMovies } from '@/mocks';
 
 export default function Home() {
@@ -22,6 +23,9 @@ export default function Home() {
   return (
     <div className="min-h-screen">
       <Hero />
+      
+      {/* Top 10 Movies Section with trapezoid cards */}
+      <TopMoviesSection movies={mostViewedMovies} />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <MovieSlider 

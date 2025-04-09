@@ -14,6 +14,7 @@ export interface Movie {
   views?: number;
   createdAt: string;
   updatedAt: string;
+  actors?: string[];
 }
 
 export interface MovieListResponse {
@@ -40,6 +41,7 @@ export interface CreateMovieDto {
   posterUrl: string;
   trailerUrl: string;
   genres: string[];
+  actors?: string[];
 }
 
 export interface UpdateMovieDto extends Partial<CreateMovieDto> {} 

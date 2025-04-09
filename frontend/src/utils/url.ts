@@ -69,3 +69,8 @@ export function createSlug(text: string): string {
   export function generateWatchUrl(movieId: string, movieTitle: string, episodeId: string, episodeNumber: number): string {
     return `/watch/${movieId}-${createSlug(movieTitle)}/episode/${episodeId}-tap-${episodeNumber}`;
   }
+
+  export const generateEpisodeUrl = (movieId: string, movieTitle: string, episodeId: string) => {
+    const slug = `${movieId}-${movieTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
+    return `/watch/${slug}/episode/${episodeId}`
+  }
