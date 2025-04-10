@@ -5,7 +5,7 @@ import type { Movie } from "@/types"
 import MovieCard from "./MovieCard"
 import { ChevronLeft, ChevronRight, ArrowRight } from "lucide-react"
 import Link from "next/link"
-import MovieCardHover from "./MovieCardHover"
+import { Button } from "@/components/ui/button"
 
 interface MovieSliderProps {
   title: string
@@ -15,31 +15,14 @@ interface MovieSliderProps {
   viewAllHref?: string
 }
 
-const MovieSlider = ({ title, movies, viewMoreLink, variant = "default", viewAllHref = "/movie" }: MovieSliderProps) => {
+const MovieSlider = ({ title, movies, variant = "default", viewAllHref = "/movie" }: MovieSliderProps) => {
   const sliderRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-  const [currentIndex, setCurrentIndex] = useState(0)
-  const [visibleItems, setVisibleItems] = useState(3) // Mặc định tối đa 3 item
-  const [isHovering, setIsHovering] = useState(false)
-  const [touchStart, setTouchStart] = useState(0)
-  const [touchEnd, setTouchEnd] = useState(0)
+  const [visibleItems, setVisibleItems] = useState(3) // Default maximum is 3 items
   const [scrollPosition, setScrollPosition] = useState(0)
   const [maxScrollPosition, setMaxScrollPosition] = useState(0)
-  const [containerWidth, setContainerWidth] = useState(0)
-  const [hoveredMovie, setHoveredMovie] = useState<string | null>(null)
-  const [popupPosition, setPopupPosition] = useState<{ top: number, left: number } | null>(null)
 
-  // Xác định màu sắc dựa trên variant
-  const getTextColor = () => {
-    switch (variant) {
-      case 'popular': return 'text-amber-500';
-      case 'trending': return 'text-rose-500';
-      case 'new': return 'text-emerald-500';
-      case 'top': return 'text-sky-500';
-      default: return 'text-amber-500';
-    }
-  }
-
+  // Determine color based on variant
   const getAccentColor = () => {
     switch (variant) {
       case "popular": return "bg-amber-600"
@@ -50,26 +33,30 @@ const MovieSlider = ({ title, movies, viewMoreLink, variant = "default", viewAll
     }
   }
 
-  // Xử lý đa phương tiện và tối ưu responsive
+  // Handle responsiveness for different screen sizes
   useEffect(() => {
     const handleResize = () => {
       const width = window.innerWidth
       
-      if (width >= 1280) { // xl và 2xl
-        setVisibleItems(3) // Tối đa 3 item
+      if (width >= 1280) { // xl and 2xl
+        setVisibleItems(5)
       } else if (width >= 1024) { // lg
-        setVisibleItems(3)
+        setVisibleItems(4)
       } else if (width >= 768) { // md
-        setVisibleItems(2.5)
+        setVisibleItems(3.5)
       } else if (width >= 640) { // sm
-        setVisibleItems(2)
+        setVisibleItems(3)
       } else { // xs
-        setVisibleItems(1.5) // 1 item đầy đủ và nửa item tiếp theo
+        setVisibleItems(2) // 2 items on mobile for better UX
       }
 
-      // Cập nhật chiều rộng container
+      // Update container width
       if (containerRef.current) {
-        setContainerWidth(containerRef.current.clientWidth)
+        const containerWidth = containerRef.current.clientWidth
+        // Calculate max scroll position based on movie count and visible items
+        const totalItems = movies.length
+        const maxPosition = Math.max(0, totalItems - visibleItems)
+        setMaxScrollPosition(maxPosition)
       }
     }
     
@@ -79,96 +66,29 @@ const MovieSlider = ({ title, movies, viewMoreLink, variant = "default", viewAll
     // Update visible items on resize
     window.addEventListener("resize", handleResize)
     return () => window.removeEventListener("resize", handleResize)
-  }, [])
+  }, [movies.length])
 
-  // Update maxScrollPosition when movies or visibleItems change
-  useEffect(() => {
-    if (sliderRef.current) {
-      const totalItems = movies.length
-      const maxPosition = Math.max(0, totalItems - visibleItems)
-      setMaxScrollPosition(maxPosition)
-    }
-  }, [movies, visibleItems])
-
-  // Điều hướng qua lại
-  const navigate = (direction: "prev" | "next") => {
-    if (direction === "prev") {
-      setCurrentIndex((prev) => Math.max(0, prev - Math.floor(visibleItems)))
-    } else {
-      const maxIndex = Math.max(0, movies.length - Math.ceil(visibleItems))
-      setCurrentIndex((prev) => Math.min(maxIndex, prev + Math.floor(visibleItems)))
-    }
-  }
-
-  // Điều hướng bằng cử chỉ chạm (touch gestures)
-  const handleTouchStart = (e: React.TouchEvent) => {
-    setTouchStart(e.targetTouches[0].clientX)
-  }
-  
-  const handleTouchMove = (e: React.TouchEvent) => {
-    setTouchEnd(e.targetTouches[0].clientX)
-  }
-  
-  const handleTouchEnd = () => {
-    if (!touchStart || !touchEnd) return
-    
-    const distance = touchStart - touchEnd
-    const isLeftSwipe = distance > 50
-    const isRightSwipe = distance < -50
-    
-    if (isLeftSwipe && currentIndex < movies.length - visibleItems) {
-      navigate("next")
-    }
-    
-    if (isRightSwipe && currentIndex > 0) {
-      navigate("prev")
-    }
-    
-    setTouchStart(0)
-    setTouchEnd(0)
-  }
-
-  // Kiểm tra điều kiện hiển thị nút điều hướng
-  const canNavigatePrev = currentIndex > 0
-  const canNavigateNext = currentIndex + visibleItems < movies.length
-
-  // Phân trang
-  const pageCount = Math.ceil(movies.length / Math.floor(visibleItems))
-  const currentPage = Math.floor(currentIndex / Math.floor(visibleItems))
-
-  // ---- Navigation Methods ----
+  // Scroll carousel handler
   const scroll = useCallback((direction: "left" | "right") => {
     setScrollPosition(prev => {
       if (direction === "left") {
-        return Math.max(0, prev - (visibleItems < 1 ? 1 : visibleItems))
+        return Math.max(0, prev - Math.floor(visibleItems))
       } else {
-        return Math.min(maxScrollPosition, prev + (visibleItems < 1 ? 1 : visibleItems))
+        return Math.min(maxScrollPosition, prev + Math.floor(visibleItems))
       }
     })
   }, [maxScrollPosition, visibleItems])
   
-  // Handle mouse hover for popup
-  const handleMouseEnter = (movieId: string, event: React.MouseEvent<HTMLDivElement>) => {
-    const target = event.currentTarget
-    const rect = target.getBoundingClientRect()
-    
-    // Tính toán vị trí chính giữa phía trên của thẻ phim
-    setPopupPosition({
-      top: rect.top + window.scrollY - 10, // Vị trí ở phía trên card với 10px offset
-      left: rect.left + window.scrollX + (rect.width / 2) // Căn giữa theo chiều ngang
-    })
-    setHoveredMovie(movieId)
-  }
-  
+  // Check if navigation buttons should be enabled
   const canScrollLeft = scrollPosition > 0
   const canScrollRight = scrollPosition < maxScrollPosition && movies.length > visibleItems
 
   return (
-    <div className="relative py-4 md:py-6 lg:py-8">
-      {/* Tiêu đề và nút điều hướng */}
+    <div className="relative py-6 md:py-8 overflow-hidden">
+      {/* Title and navigation buttons */}
       <div className="flex items-stretch mb-6">
-        {/* Cột trái: Tiêu đề và link Xem tất cả */}
-        <div className="w-1/4 flex flex-col justify-between">
+        {/* Left column: Title and View All link */}
+        <div className="md:w-1/4 flex flex-col justify-between">
           <div className="flex items-center gap-3">
             <div className={`w-1 h-6 ${getAccentColor()} rounded-full`}></div>
             <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white">{title}</h2>
@@ -176,92 +96,72 @@ const MovieSlider = ({ title, movies, viewMoreLink, variant = "default", viewAll
           
           <Link 
             href={viewAllHref} 
-            className={`hidden sm:flex items-center text-sm font-medium text-gray-400 hover:text-white transition-colors mt-2`}
+            className="hidden sm:flex items-center text-sm font-medium text-gray-400 hover:text-white transition-colors mt-2"
           >
             Xem tất cả
             <ChevronRight size={16} className="ml-1" />
           </Link>
         </div>
         
-        {/* Cột phải: điều hướng carousel */}
-        <div className="w-3/4 flex items-end justify-end gap-2">
-          <button 
+        {/* Right column: carousel navigation */}
+        <div className="md:w-3/4 ml-auto flex items-end justify-end gap-2">
+          <Button 
+            size="icon"
+            variant="outline"
             onClick={() => scroll("left")} 
             disabled={!canScrollLeft}
-            className={`p-1.5 sm:p-2 rounded-full ${canScrollLeft ? 'bg-gray-800 hover:bg-gray-700' : 'bg-gray-800/50 cursor-not-allowed'} text-white transition-colors`}
-            aria-label="Scroll left"
+            className={`rounded-full ${canScrollLeft ? 'bg-gray-800 hover:bg-gray-700 border-gray-700' : 'bg-gray-800/50 cursor-not-allowed border-transparent opacity-50'}`}
           >
             <ChevronLeft size={20} />
-          </button>
+          </Button>
           
-          <button 
+          <Button 
+            size="icon"
+            variant="outline"
             onClick={() => scroll("right")} 
             disabled={!canScrollRight}
-            className={`p-1.5 sm:p-2 rounded-full ${canScrollRight ? 'bg-gray-800 hover:bg-gray-700' : 'bg-gray-800/50 cursor-not-allowed'} text-white transition-colors`}
-            aria-label="Scroll right"
+            className={`rounded-full ${canScrollRight ? 'bg-gray-800 hover:bg-gray-700 border-gray-700' : 'bg-gray-800/50 cursor-not-allowed border-transparent opacity-50'}`}
           >
             <ChevronRight size={20} />
-          </button>
+          </Button>
         </div>
       </div>
       
-      {/* Link "Xem tất cả" cho màn hình nhỏ */}
+      {/* "View all" link for small screens */}
       <div className="sm:hidden mb-4">
         <Link 
           href={viewAllHref}
-          className={`flex items-center text-sm font-medium text-gray-400 hover:text-white transition-colors`}
+          className="flex items-center text-sm font-medium text-gray-400 hover:text-white transition-colors"
         >
           Xem tất cả
           <ChevronRight size={16} className="ml-1" />
         </Link>
       </div>
       
-      {/* Layout 2 cột cho carousel */}
-      <div className="flex">
-        {/* Cột trái - padding cho điều chỉnh canh lề với header */}
-        <div className="w-1/4 pr-4 hidden md:block">
-          {/* Nội dung phụ hoặc để trống để giữ cấu trúc */}
-          <div className="h-full flex flex-col justify-center">
-            <div className={`w-1 h-20 ${getAccentColor()} rounded-full opacity-30 ml-3`}></div>
-          </div>
-        </div>
-        
-        {/* Cột phải - Carousel */}
-        <div 
-          ref={containerRef}
-          className="w-full md:w-3/4 relative overflow-hidden" 
+      {/* Slider container */}
+      <div 
+        ref={containerRef}
+        className="relative w-full overflow-hidden" 
+      >
+        <div
+          ref={sliderRef}
+          className="flex gap-4 transition-transform duration-500 ease-out"
+          style={{
+            transform: `translateX(-${scrollPosition * (100 / visibleItems)}%)`,
+            width: `${(movies.length / visibleItems) * 100}%`,
+          }}
         >
-          <div
-            ref={sliderRef}
-            className="flex gap-5 transition-transform duration-500 ease-out"
-            style={{
-              transform: `translateX(-${scrollPosition * (100 / visibleItems)}%)`,
-              width: `${(movies.length / visibleItems) * 100}%`, // Đảm bảo tổng chiều rộng đúng
-            }}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-          >
-            {movies.map((movie, index) => (
-              <div 
-                key={movie.id}
-                className="flex-shrink-0 z-10 hover:z-50"
-                style={{ width: `${100 / movies.length}%` }} // Đảm bảo tổng chiều rộng là 100%
-                onMouseEnter={(e) => handleMouseEnter(movie.id, e)}
-                onMouseLeave={() => {
-                  setHoveredMovie(null)
-                  setPopupPosition(null)
-                }}
-              >
+          {movies.map((movie, index) => (
+            <div 
+              key={movie.id}
+              className="flex-shrink-0 group relative py-4 px-1"
+              style={{ width: `${100 / movies.length}%` }}
+            >
+              <div className="relative transition-all duration-300 hover:z-50">
                 <MovieCard movie={movie} index={index} variant="slider" />
-                
-                {/* Hover popup */}
-                {hoveredMovie === movie.id && popupPosition && (
-                  <MovieCardHover movie={movie} position={popupPosition} />
-                )}
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>

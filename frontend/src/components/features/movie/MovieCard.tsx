@@ -7,14 +7,14 @@ import { generateMovieUrl } from "@/utils/url"
 import { Star, Eye, Play, Heart, Info, Calendar, Clock, Film, User } from "lucide-react"
 import { useEffect, useState, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
-import MovieCardHover from "./MovieCardHover"
-// Tạm thời loại bỏ framer-motion để khắc phục lỗi
-// import { motion } from "framer-motion"
+import MoviePopover from "./MoviePopover"
+import { motion } from "framer-motion"
+import { AspectRatio } from "@/components/ui/aspect-ratio"
 
 interface MovieCardProps {
   movie: Movie
   index?: number
-  variant?: "default" | "grid" | "slider" | "poster" | "hero"
+  variant?: "slider" | "grid" | "featured" | "trending"
   trapezoid?: boolean
 }
 
@@ -31,6 +31,7 @@ const MovieCard = ({ movie, index = 0, variant = "slider", trapezoid = false }: 
     isMobile: false
   })
   const movieDetailUrl = generateMovieUrl(movie.id, movie.title)
+  const [imageLoaded, setImageLoaded] = useState(false)
   
   // Debounced resize handler
   const handleResize = useCallback(() => {
@@ -106,40 +107,13 @@ const MovieCard = ({ movie, index = 0, variant = "slider", trapezoid = false }: 
   
   // Dynamic aspect ratio based on variant and screen size
   const getAspectRatio = useCallback(() => {
-    // Base aspect ratios
-    const aspectRatios = {
-      poster: {
-        mobile: "aspect-[2/3]",
-        tablet: "aspect-[2/3]",
-        desktop: "aspect-[2/3]"
-      },
-      hero: {
-        mobile: "aspect-[16/9]",
-        tablet: "aspect-[16/9]",
-        desktop: "aspect-[16/9]"
-      },
-      grid: {
-        mobile: "aspect-[2/3]",
-        tablet: "aspect-[2/3]",
-        desktop: "aspect-[2/3]"
-      },
-      slider: {
-        mobile: "aspect-video",
-        tablet: "aspect-[16/9]",
-        desktop: "aspect-[16/9]"
-      },
-      default: {
-        mobile: "aspect-[2/3]",
-        tablet: "aspect-[2/3]",
-        desktop: "aspect-[2/3]"
-      }
+    switch (variant) {
+      case "slider": return "3/4" // Portrait format for slider
+      case "grid": return "16/9" // Landscape for grid
+      case "featured": return "16/9" // Landscape for featured
+      case "trending": return "16/9" // Landscape for trending
+      default: return "3/4"
     }
-    
-    // Get the variant's aspect ratios
-    const variantRatios = aspectRatios[variant] || aspectRatios.default
-    
-    // Return responsive class string based on screen size
-    return `${variantRatios.mobile} sm:${variantRatios.tablet} lg:${variantRatios.desktop}`
   }, [variant])
   
   // Card classes with appropriate sizing
@@ -153,110 +127,74 @@ const MovieCard = ({ movie, index = 0, variant = "slider", trapezoid = false }: 
     router.push(movieDetailUrl)
   }, [router, movieDetailUrl])
   
-  return (
-    <div 
-      ref={cardRef}
-      className={getCardClasses()}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-    >
-      {/* Card Container */}
-      <div 
-        className={`relative h-full bg-gray-900 rounded-lg overflow-hidden border border-gray-800 transition-all duration-300 z-10 group-hover/card:border-amber-500/50 group-hover/card:shadow-lg cursor-pointer ${trapezoid ? 'transform perspective-1000' : ''}`}
-        onClick={handleCardClick}
+  const isPortrait = variant === "slider"
+  const cardContent = (
+    <>
+      <AspectRatio 
+        ratio={getAspectRatio() as any} 
+        className="relative overflow-hidden rounded-lg"
       >
-        {/* Border gradient animation */}
-        <div className="absolute inset-0 bg-gradient-to-br from-amber-600/0 via-amber-600/0 to-amber-600/0 opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 rounded-lg group-hover/card:from-amber-600/10 group-hover/card:via-amber-600/5 group-hover/card:to-purple-700/10"></div>
+        <Image
+          src={movie.posterUrl}
+          alt={movie.title}
+          fill
+          sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+          priority={index < 5}
+          className={`object-cover transition-all duration-500 ${
+            imageLoaded 
+              ? "opacity-100 scale-100" 
+              : "opacity-0 scale-110"
+          } group-hover:scale-105`}
+          onLoad={() => setImageLoaded(true)}
+        />
         
-        {/* Trapezoid shape effect */}
-        {trapezoid && (
-          <div className="absolute inset-0 trapezoid-shape bg-gradient-to-r from-amber-500/10 to-red-600/10 transform skew-x-6 -mx-6 z-0"></div>
+        {/* Gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60" />
+        
+        {/* Index number for trending */}
+        {variant === "trending" && (
+          <div className="absolute top-2 left-2 w-8 h-8 rounded-full bg-accent text-center flex items-center justify-center text-black font-bold">
+            {index + 1}
+          </div>
         )}
         
-        {/* Thumbnail Container with responsive aspect ratio */}
-        <div className={`relative ${getAspectRatio()} w-full`}>
-          <Image 
-            src={imageUrl} 
-            alt={movie.title} 
-            fill 
-            sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
-            className="object-cover"
-            priority={index < 3} // Prioritize loading of first 3 images
-          />
-          
-          {/* Overlay for hover state */}
-          <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/50 to-transparent opacity-60 transition-opacity duration-300 group-hover/card:opacity-75"></div>
-          
-          {/* Movie info overlay */}
-          <div className="absolute bottom-0 left-0 w-full p-2 sm:p-3 z-10">
-            <div className="flex flex-col gap-1">
-              <h3 className="text-white font-bold text-xs sm:text-sm md:text-base line-clamp-1 relative movie-card-title">
-                {movie.title}
-              </h3>
-              
-              <div className="flex items-center justify-between">
-                <span className="text-gray-300 text-xs">
-                  {movie.releaseYear}
-                </span>
-                
-                <div className="flex items-center gap-1 sm:gap-2 md:gap-3">
-                  <div className="flex items-center">
-                    <Star className="w-3 h-3 mr-0.5 sm:mr-1 text-amber-500" />
-                    <span className="text-amber-400 text-xs">{movie.rating || "N/A"}</span>
-                  </div>
-                  <div className="flex items-center">
-                    <Eye className="w-3 h-3 mr-0.5 sm:mr-1 text-blue-400" />
-                    <span className="text-blue-300 text-xs">{movie.views ? new Intl.NumberFormat("vi-VN", { notation: "compact" }).format(movie.views) : 0}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
+        {/* Play button overlay - only visible on hover */}
+        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="w-12 h-12 rounded-full bg-accent flex items-center justify-center">
+            <Play className="text-black h-5 w-5" />
           </div>
-          
-          {/* Hover overlay with play button */}
-          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/card:opacity-100 transition-all duration-300">
-            <div className="p-1.5 sm:p-2 md:p-3 rounded-full bg-amber-600/80 text-white transform scale-0 group-hover/card:scale-100 transition-transform duration-300 movie-card-button">
-              <Play 
-                fill="white" 
-                className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" 
-              />
-            </div>
-          </div>
-          
-          {/* Gleam effect */}
-          <div className="movie-card-shine"></div>
         </div>
-        
-        {variant === "grid" && (
-          <div className="p-1.5 sm:p-2 md:p-3">
-            <h3 className="text-white font-medium text-xs sm:text-sm md:text-base line-clamp-1">
-              {movie.title}
-            </h3>
-            <div className="flex justify-between items-center mt-0.5 sm:mt-1 md:mt-1.5">
-              <span className="text-xs text-gray-400">{movie.releaseYear}</span>
-              <div className="flex items-center gap-1 text-xs text-gray-400">
-                <Star size={10} className="text-amber-500" />
-                <span>{movie.rating || "N/A"}</span>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+      </AspectRatio>
       
-      {/* Popup using Portal - Only render on desktop */}
-      {isHovering && popupPosition && screenSize.isDesktop && (
-        <div 
-          className="fixed z-[9999]"
-          style={{
-            top: `${popupPosition.top}px`,
-            left: `${popupPosition.left}px`,
-            transform: 'translate(-50%, -120%)',
-          }}
-        >
-          <MovieCardHover movie={movie} />
+      {/* Title shown for non-slider variants */}
+      {variant !== "slider" && (
+        <div className="mt-2">
+          <h3 className="text-sm font-medium line-clamp-1">{movie.title}</h3>
+          <p className="text-xs text-gray-400">{movie.releaseYear}</p>
         </div>
       )}
-    </div>
+    </>
+  )
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, delay: index * 0.05 }}
+      className={`
+        relative 
+        ${variant === "grid" ? "h-full" : ""}
+        ${variant === "slider" ? "w-full" : ""}
+      `}
+    >
+      {variant === "slider" ? (
+        <MoviePopover movie={movie} trigger={cardContent} variant="default" size="md" />
+      ) : (
+        <Link href={`/movie/${movie.id}-${movie.title.toLowerCase().replace(/\s+/g, '-')}`} className="group block">
+          {cardContent}
+        </Link>
+      )}
+    </motion.div>
   )
 }
 

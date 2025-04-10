@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button"
 import CommentSection from "./comment-section"
 import { Badge } from "@/components/ui/badge"
 import { mockMovies } from "@/mocks"
-import MovieCardHover from "./MovieCardHover"
+
 
 // Mock actors data (in a real app, this would come from the API)
 const mockActors = [
@@ -373,9 +373,9 @@ const MovieDetail = ({ movie, episodes = [] }: MovieDetailProps) => {
                         </Link>
                         
                         {/* Popup hiển thị khi hover */}
-                        {hoveredMovie === topMovie.id && popupPosition && (
+                        {/* {hoveredMovie === topMovie.id && popupPosition && (
                           <MovieCardHover movie={topMovie} position={popupPosition} />
-                        )}
+                        )} */}
                       </div>
                     ))}
                   </div>
