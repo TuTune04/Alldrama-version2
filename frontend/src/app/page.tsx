@@ -2,7 +2,9 @@ import Hero from '@/components/ui/Hero';
 import MovieSlider from '@/components/features/movie/MovieSlider';
 import TopMoviesSection from '@/components/features/movie/TopMoviesSection';
 import GenreList from '@/components/features/genre/GenreList';
+import CommentsAndRankings from "@/components/features/movie/CommentsAndRankings"
 import { mockMovies } from '@/mocks';
+import FeaturedContentSwitcher from '@/components/features/movie/FeaturedContentSwitcher';
 
 export default function Home() {
   // Phim mới nhất (sắp xếp theo thời gian tạo)
@@ -21,33 +23,52 @@ export default function Home() {
   );
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-gray-950">
       <Hero />
       
       {/* Top 10 Movies Section with trapezoid cards */}
       <TopMoviesSection movies={mostViewedMovies} />
-      
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <MovieSlider 
-          title="Phim mới nhất" 
-          movies={newestMovies} 
-          viewMoreLink="/movie?sort=newest" 
-        />
+        {/* Section for featured movie sliders */}
+        <section className="py-4 space-y-12">
+          <MovieSlider 
+            title="Phim mới nhất" 
+            movies={newestMovies} 
+            viewMoreLink="/movie?sort=newest"
+            variant="new" 
+          />
+          
+          <MovieSlider 
+            title="Phim xem nhiều" 
+            movies={mostViewedMovies} 
+            viewMoreLink="/movie?sort=most-viewed"
+            variant="popular" 
+          />
+          
+          <MovieSlider 
+            title="Phim đánh giá cao" 
+            movies={topRatedMovies} 
+            viewMoreLink="/movie?sort=top-rated"
+            variant="top" 
+          />
+        </section>
         
-        <MovieSlider 
-          title="Phim xem nhiều" 
-          movies={mostViewedMovies} 
-          viewMoreLink="/movie?sort=most-viewed" 
-        />
-        
-        <MovieSlider 
-          title="Phim đánh giá cao" 
-          movies={topRatedMovies} 
-          viewMoreLink="/movie?sort=top-rated" 
-        />
-        
-        <GenreList />
+        {/* Genre list section */}
+        <section className="py-8 mt-8">
+          <GenreList />
+        </section>
       </div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <CommentsAndRankings />
+      </div>
+
+      <FeaturedContentSwitcher
+        items={mockMovies}
+        title="Phim nổi bật"
+        variant="dark"
+        aspectRatio="video"
+      />
     </div>
   );
 }

@@ -22,8 +22,6 @@ const MovieCard = ({ movie, index = 0, variant = "slider", trapezoid = false }: 
   const router = useRouter()
   const cardRef = useRef<HTMLDivElement>(null)
   const imageUrl = movie.posterUrl || "/images/placeholder-poster.jpg"
-  const [popupPosition, setPopupPosition] = useState<{ top: number, left: number } | null>(null)
-  const [isHovering, setIsHovering] = useState(false)
   const [screenSize, setScreenSize] = useState({
     width: typeof window !== 'undefined' ? window.innerWidth : 0,
     isDesktop: false,
@@ -67,71 +65,18 @@ const MovieCard = ({ movie, index = 0, variant = "slider", trapezoid = false }: 
     }
   }, [handleResize])
   
-  // Smart position calculation for the popup
-  const calculatePopupPosition = useCallback((element: HTMLDivElement) => {
-    const rect = element.getBoundingClientRect()
-    const scrollY = window.scrollY
-    const scrollX = window.scrollX
-    
-    // Adjust based on screen size
-    if (screenSize.isDesktop) {
-      // On desktop, position above the card
-      const top = rect.top + scrollY
-      const left = rect.left + scrollX + (rect.width / 2)
-      return { top, left }
-    } else if (screenSize.isTablet) {
-      // For tablets, we could use a different position if needed
-      const top = rect.top + scrollY
-      const left = rect.left + scrollX + (rect.width / 2)
-      return { top, left }
-    } else {
-      // For mobile - though we don't show popup on mobile, including for completeness
-      const top = rect.bottom + scrollY
-      const left = rect.left + scrollX + (rect.width / 2)
-      return { top, left }
-    }
-  }, [screenSize])
-  
-  // Handle mouse enter with position calculation
-  const handleMouseEnter = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (!screenSize.isDesktop || !cardRef.current) return
-    
-    const position = calculatePopupPosition(cardRef.current)
-    setPopupPosition(position)
-    setIsHovering(true)
-  }, [screenSize.isDesktop, calculatePopupPosition])
-  
-  const handleMouseLeave = useCallback(() => {
-    setIsHovering(false)
-  }, [])
-  
-  // Dynamic aspect ratio based on variant and screen size
-  const getAspectRatio = useCallback(() => {
-    switch (variant) {
-      case "slider": return "3/4" // Portrait format for slider
-      case "grid": return "16/9" // Landscape for grid
-      case "featured": return "16/9" // Landscape for featured
-      case "trending": return "16/9" // Landscape for trending
-      default: return "3/4"
-    }
-  }, [variant])
-  
-  // Card classes with appropriate sizing
-  const getCardClasses = useCallback(() => {
-    const baseClasses = "group/card relative overflow-visible"
-    return `${baseClasses} w-full h-full`
-  }, [])
-  
   // Card click handler
   const handleCardClick = useCallback(() => {
     router.push(movieDetailUrl)
   }, [router, movieDetailUrl])
   
-  const isPortrait = variant === "slider"
+  // Xác định tỷ lệ khung hình dựa vào variant - tất cả đều là landscape
+  const aspectRatio = 16/9
+  
   const cardContent = (
-    <>
+    <div className="w-full h-full" ref={cardRef}>
       <AspectRatio 
-        ratio={getAspectRatio() as any} 
+        ratio={aspectRatio}
         className="relative overflow-hidden rounded-lg"
       >
         <Image
@@ -158,10 +103,26 @@ const MovieCard = ({ movie, index = 0, variant = "slider", trapezoid = false }: 
           </div>
         )}
         
+        {/* Information overlay on slider cards */}
+        {variant === "slider" && (
+          <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black to-transparent">
+            <h3 className="text-white text-sm font-medium line-clamp-1">{movie.title}</h3>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-gray-300 text-xs">{movie.releaseYear}</span>
+              {movie.rating && (
+                <div className="flex items-center text-amber-400 text-xs">
+                  <Star size={10} className="mr-0.5" fill="currentColor" />
+                  <span>{movie.rating}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        
         {/* Play button overlay - only visible on hover */}
         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-          <div className="w-12 h-12 rounded-full bg-accent flex items-center justify-center">
-            <Play className="text-black h-5 w-5" />
+          <div className="w-12 h-12 rounded-full bg-amber-500 flex items-center justify-center">
+            <Play className="text-black h-5 w-5" fill="currentColor" />
           </div>
         </div>
       </AspectRatio>
@@ -173,7 +134,7 @@ const MovieCard = ({ movie, index = 0, variant = "slider", trapezoid = false }: 
           <p className="text-xs text-gray-400">{movie.releaseYear}</p>
         </div>
       )}
-    </>
+    </div>
   )
 
   return (
@@ -186,9 +147,17 @@ const MovieCard = ({ movie, index = 0, variant = "slider", trapezoid = false }: 
         ${variant === "grid" ? "h-full" : ""}
         ${variant === "slider" ? "w-full" : ""}
       `}
+      style={{ zIndex: variant === "slider" ? 10 : 1 }}
     >
       {variant === "slider" ? (
-        <MoviePopover movie={movie} trigger={cardContent} variant="default" size="md" />
+        <div className="relative group">
+          <MoviePopover 
+            movie={movie} 
+            trigger={cardContent} 
+            variant="default" 
+            size="md" 
+          />
+        </div>
       ) : (
         <Link href={`/movie/${movie.id}-${movie.title.toLowerCase().replace(/\s+/g, '-')}`} className="group block">
           {cardContent}

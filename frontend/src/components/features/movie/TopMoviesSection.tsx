@@ -84,7 +84,7 @@ const TopMoviesSection = ({ movies, title = "Top 10 Phim Xem Nhiều", limit = 1
                         <div 
                           className="relative overflow-hidden shadow-[0_4px_12px_rgba(0,0,0,0.2)] transition-all duration-300 bg-[#1A1C25] group"
                           style={{
-                            borderRadius: '0 0 8px 8px',
+                            borderRadius: '10px 10px 10px 10px',
                             clipPath: index % 2 === 0 
                               ? 'polygon(0 0, 100% 25px, 100% 100%, 0 100%)' // Card lẻ: cắt chéo nhiều hơn từ trái sang phải
                               : 'polygon(0 25px, 100% 0, 100% 100%, 0 100%)' // Card chẵn: cắt chéo nhiều hơn từ phải sang trái

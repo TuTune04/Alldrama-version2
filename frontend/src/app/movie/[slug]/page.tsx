@@ -50,11 +50,22 @@ export default async function MovieDetailPage({ params }: MovieDetailPageProps) 
         <MovieDetail movie={movie} episodes={episodeList.episodes} />
       </Suspense>
       
-      {relatedMovies.length > 0 && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
-          <MovieSlider title="Phim tương tự" movies={relatedMovies} viewMoreLink={`/movie?genre=${encodeURIComponent(typeof movie.genres[0] === 'string' ? movie.genres[0] : movie.genres[0].name)}`} />
+        {relatedMovies.length > 0 ? (
+          <MovieSlider 
+            title="Phim tương tự" 
+            movies={relatedMovies} 
+            variant="trending"
+            viewMoreLink={`/movie?genre=${encodeURIComponent(typeof movie.genres[0] === 'string' ? movie.genres[0] : movie.genres[0].name)}`} 
+          />
+        ) : (
+          <MovieSlider 
+            title="Phim phổ biến" 
+            variant="popular"
+            viewMoreLink="/movie?sort=most-viewed" 
+          />
+        )}
         </div>
-      )}
     </div>
   );
 } 

@@ -1,3 +1,30 @@
+/**
+ * URL generator utilities for the application
+ */
+
+/**
+ * Generate a URL for a movie detail page
+ * @param id The movie ID
+ * @param title The movie title (will be slugified)
+ * @returns The URL string
+ */
+export const generateMovieUrl = (id: string, title: string): string => {
+  const slug = title.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, '');
+  return `/movie/${id}/${slug}`;
+};
+
+/**
+ * Generate a URL for an episode detail page
+ * @param movieId The parent movie/series ID
+ * @param movieTitle The parent movie/series title (will be slugified)
+ * @param episodeId The episode ID
+ * @returns The URL string
+ */
+export const generateEpisodeUrl = (movieId: string, movieTitle: string, episodeId: string): string => {
+  const slug = movieTitle.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, '');
+  return `/episode/${movieId}/${slug}/${episodeId}`;
+};
+
 export function createSlug(text: string): string {
     return text
       .normalize('NFD')
@@ -62,15 +89,6 @@ export function createSlug(text: string): string {
     return slug;
   }
   
-  export function generateMovieUrl(id: string, title: string): string {
-    return `/movie/${id}-${createSlug(title)}`;
-  }
-  
   export function generateWatchUrl(movieId: string, movieTitle: string, episodeId: string, episodeNumber: number): string {
     return `/watch/${movieId}-${createSlug(movieTitle)}/episode/${episodeId}-tap-${episodeNumber}`;
-  }
-
-  export const generateEpisodeUrl = (movieId: string, movieTitle: string, episodeId: string) => {
-    const slug = `${movieId}-${movieTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
-    return `/watch/${slug}/episode/${episodeId}`
   }
