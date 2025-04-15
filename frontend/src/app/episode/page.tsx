@@ -22,6 +22,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Episode } from '@/types/episode';
+
+// Enhanced episode type with additional movie information
+interface EnhancedEpisode extends Episode {
+  movieTitle: string;
+  moviePoster: string;
+}
 
 // Get all series movies (those with episodes)
 const seriesMovies = mockMovies.filter(movie => {
@@ -30,19 +37,18 @@ const seriesMovies = mockMovies.filter(movie => {
 });
 
 // Get all episodes from all series
-const allEpisodes = seriesMovies.flatMap(movie => {
+const allEpisodes: EnhancedEpisode[] = seriesMovies.flatMap(movie => {
   const episodes = getEpisodeListResponse(movie.id).episodes || [];
   return episodes.map(episode => ({
     ...episode,
     movieTitle: movie.title,
-    movieId: movie.id,
     moviePoster: movie.posterUrl
   }));
 });
 
-// Sort episodes by release date (newest first)
+// Sort episodes by creation date (newest first)
 const sortedEpisodes = [...allEpisodes].sort((a, b) => 
-  new Date(b.releaseDate).getTime() - new Date(a.releaseDate).getTime()
+  new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
 );
 
 export default function EpisodeListPage() {
@@ -63,11 +69,19 @@ export default function EpisodeListPage() {
     episode.movieTitle.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Get trending episodes (could be based on views in a real app)
-  const trendingEpisodes = [...sortedEpisodes].slice(0, 12);
+  // Get trending episodes (based on views in this demo)
+  const trendingEpisodes = [...sortedEpisodes]
+    .sort((a, b) => (b.views || 0) - (a.views || 0))
+    .slice(0, 12);
   
   // Get latest episodes
   const latestEpisodes = [...sortedEpisodes].slice(0, 16);
+
+  // Helper function to create proper episode URL
+  const generateEpisodeUrl = (movieId: string, movieTitle: string, episodeId: string) => {
+    const movieSlug = movieTitle.toLowerCase().replace(/\s+/g, '-');
+    return `/episode/${movieId}/${episodeId}-${movieSlug}`;
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950">
@@ -167,13 +181,13 @@ export default function EpisodeListPage() {
           <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 ${isLoading ? 'opacity-60' : ''}`}>
             {latestEpisodes.map((episode) => (
               <Link 
-                href={`/episode/${episode.movieId}/${encodeURIComponent(episode.movieTitle.toLowerCase().replace(/\s+/g, '-'))}/${episode.id}`}
+                href={generateEpisodeUrl(episode.movieId, episode.movieTitle, episode.id)}
                 key={`${episode.movieId}-${episode.id}`}
               >
                 <Card className="bg-gray-800/40 border-gray-700 hover:border-indigo-500 transition-all overflow-hidden h-full flex flex-col">
                   <div className="relative aspect-video">
                     <img 
-                      src={episode.thumbnail || episode.moviePoster || "https://picsum.photos/500/300"} 
+                      src={episode.moviePoster} 
                       alt={episode.title}
                       className="w-full h-full object-cover"
                     />
@@ -189,7 +203,7 @@ export default function EpisodeListPage() {
                     <p className="text-sm text-gray-400 mb-2 line-clamp-1">{episode.movieTitle}</p>
                     <div className="mt-auto pt-2 flex items-center justify-between">
                       <span className="text-xs text-gray-400">
-                        {new Date(episode.releaseDate).toLocaleDateString('vi-VN')}
+                        {new Date(episode.createdAt).toLocaleDateString('vi-VN')}
                       </span>
                       <Badge variant="outline" className="bg-gray-700/50 text-gray-300 border-gray-600">
                         {Math.floor(episode.duration / 60)}:{(episode.duration % 60).toString().padStart(2, '0')}
@@ -214,13 +228,13 @@ export default function EpisodeListPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {trendingEpisodes.map((episode, index) => (
               <Link 
-                href={`/episode/${episode.movieId}/${encodeURIComponent(episode.movieTitle.toLowerCase().replace(/\s+/g, '-'))}/${episode.id}`}
+                href={generateEpisodeUrl(episode.movieId, episode.movieTitle, episode.id)}
                 key={`${episode.movieId}-${episode.id}`}
               >
                 <Card className="bg-gray-800/40 border-gray-700 hover:border-indigo-500 transition-all overflow-hidden h-full flex flex-col">
                   <div className="relative aspect-video">
                     <img 
-                      src={episode.thumbnail || episode.moviePoster || "https://picsum.photos/500/300"} 
+                      src={episode.moviePoster} 
                       alt={episode.title}
                       className="w-full h-full object-cover"
                     />
@@ -239,7 +253,7 @@ export default function EpisodeListPage() {
                     <p className="text-sm text-gray-400 mb-2 line-clamp-1">{episode.movieTitle}</p>
                     <div className="mt-auto pt-2 flex items-center justify-between">
                       <span className="text-xs text-gray-400">
-                        {new Date(episode.releaseDate).toLocaleDateString('vi-VN')}
+                        {new Date(episode.createdAt).toLocaleDateString('vi-VN')}
                       </span>
                       <Badge variant="outline" className="bg-gray-700/50 text-gray-300 border-gray-600">
                         {Math.floor(episode.duration / 60)}:{(episode.duration % 60).toString().padStart(2, '0')}
@@ -257,74 +271,66 @@ export default function EpisodeListPage() {
           <h2 className="text-2xl font-bold text-white mb-6 flex items-center">
             <ListFilter size={20} className="mr-2 text-indigo-400" />
             <span className="bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
-              Theo bộ phim
+              Phim bộ
             </span>
           </h2>
           
-          <div className="grid grid-cols-1 gap-6">
-            {seriesMovies.slice(0, 5).map((movie) => {
-              const episodes = getEpisodeListResponse(movie.id).episodes || [];
-              return (
-                <Card key={movie.id} className="bg-gray-800/40 border-gray-700 overflow-hidden">
-                  <div className="flex flex-col md:flex-row">
-                    <div className="md:w-1/4 lg:w-1/5 aspect-[2/3] md:aspect-auto relative overflow-hidden">
-                      <img 
-                        src={movie.posterUrl || "https://picsum.photos/300/450"} 
-                        alt={movie.title}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="flex-grow p-4">
-                      <h3 className="text-xl font-bold text-white mb-2">{movie.title}</h3>
-                      <p className="text-sm text-gray-400 mb-4 line-clamp-2">{movie.description}</p>
-                      
-                      <div className="mb-3 flex justify-between items-center">
-                        <h4 className="text-md font-medium text-indigo-300">Tập mới nhất</h4>
-                        <Link href={`/movie/${movie.id}/${encodeURIComponent(movie.title.toLowerCase().replace(/\s+/g, '-'))}`}>
-                          <Button variant="link" className="text-indigo-400 hover:text-indigo-300 p-0">
-                            Xem tất cả
-                          </Button>
-                        </Link>
-                      </div>
-                      
-                      <ScrollArea className="h-44">
-                        <div className="space-y-3">
-                          {episodes.slice(0, 5).map((episode) => (
-                            <Link 
-                              key={episode.id}
-                              href={`/episode/${movie.id}/${encodeURIComponent(movie.title.toLowerCase().replace(/\s+/g, '-'))}/${episode.id}`}
-                              className="flex items-center gap-3 p-2 hover:bg-gray-700/50 rounded-lg transition-colors"
-                            >
-                              <div className="relative w-24 aspect-video flex-shrink-0 rounded overflow-hidden">
-                                <img 
-                                  src={episode.thumbnail || "https://picsum.photos/500/300"} 
-                                  alt={episode.title}
-                                  className="w-full h-full object-cover"
-                                />
-                                <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity bg-black/50">
-                                  <Play size={16} fill="white" />
-                                </div>
-                              </div>
-                              <div className="flex-grow min-w-0">
-                                <h5 className="font-medium text-white text-sm mb-1 line-clamp-1">
-                                  Tập {episode.episodeNumber}: {episode.title}
-                                </h5>
-                                <div className="flex items-center text-xs text-gray-400">
-                                  <span>{Math.floor(episode.duration / 60)}:{(episode.duration % 60).toString().padStart(2, '0')}</span>
-                                  <Separator orientation="vertical" className="mx-2 h-3 bg-gray-600" />
-                                  <span>{new Date(episode.releaseDate).toLocaleDateString('vi-VN')}</span>
-                                </div>
-                              </div>
-                              <Badge className="bg-indigo-600 text-white">Tập {episode.episodeNumber}</Badge>
-                            </Link>
-                          ))}
-                        </div>
-                      </ScrollArea>
-                    </div>
+          <div className="space-y-10">
+            {seriesMovies.slice(0, 5).map((movie) => (
+              <div key={movie.id} className="mb-8">
+                <div className="flex items-center justify-between mb-4">
+                  <Link href={`/movie/${movie.id}/${movie.title.toLowerCase().replace(/\s+/g, '-')}`} className="group">
+                    <h3 className="text-xl font-bold text-white group-hover:text-indigo-400 transition-colors">{movie.title}</h3>
+                  </Link>
+                  <Link href={`/movie/${movie.id}/${movie.title.toLowerCase().replace(/\s+/g, '-')}`}>
+                    <Button variant="outline" size="sm" className="bg-transparent border-indigo-600 text-indigo-400 hover:bg-indigo-600 hover:text-white">
+                      Xem tất cả tập
+                    </Button>
+                  </Link>
+                </div>
+                
+                <ScrollArea className="pb-4">
+                  <div className="flex gap-4">
+                    {getEpisodeListResponse(movie.id).episodes?.slice(0, 5).map((episode) => (
+                      <Link 
+                        href={generateEpisodeUrl(movie.id, movie.title, episode.id)}
+                        key={episode.id}
+                        className="flex-shrink-0 w-[280px]"
+                      >
+                        <Card className="bg-gray-800/40 border-gray-700 hover:border-indigo-500 transition-all overflow-hidden h-full">
+                          <div className="relative aspect-video">
+                            <img 
+                              src={movie.posterUrl} 
+                              alt={episode.title}
+                              className="w-full h-full object-cover"
+                            />
+                            <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity bg-black/50">
+                              <Button size="icon" className="bg-indigo-600 hover:bg-indigo-700 text-white h-12 w-12 rounded-full">
+                                <Play size={24} fill="white" />
+                              </Button>
+                            </div>
+                            <Badge className="absolute top-2 right-2 bg-indigo-600 text-white">Tập {episode.episodeNumber}</Badge>
+                          </div>
+                          <CardContent className="p-4">
+                            <h4 className="font-medium text-white line-clamp-1">{episode.title}</h4>
+                            <div className="flex items-center justify-between mt-2">
+                              <span className="text-xs text-gray-400">
+                                {Math.floor(episode.duration / 60)}:{(episode.duration % 60).toString().padStart(2, '0')}
+                              </span>
+                              <span className="text-xs text-gray-400">
+                                {new Date(episode.createdAt).toLocaleDateString('vi-VN')}
+                              </span>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </Link>
+                    ))}
                   </div>
-                </Card>
-              );
-            })}
+                </ScrollArea>
+                
+                <Separator className="bg-gray-800 my-8" />
+              </div>
+            ))}
           </div>
         </div>
       </div>

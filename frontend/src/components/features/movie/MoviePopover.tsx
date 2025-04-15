@@ -3,7 +3,7 @@
 import Link from "next/link"
 import Image from "next/image"
 import type { Movie } from "@/types"
-import { generateMovieUrl } from "@/utils/url"
+import { generateMovieUrl, generateWatchUrl } from "@/utils/url"
 import { Star, Play, Heart, Info, Calendar, Clock, Film, User } from "lucide-react"
 import {
   Popover,
@@ -33,6 +33,17 @@ const MoviePopover = ({
   const triggerRef = useRef<HTMLDivElement>(null)
   const popoverRef = useRef<HTMLDivElement>(null)
   const movieDetailUrl = generateMovieUrl(movie.id, movie.title)
+  
+  // Create watch URL - check if we have episode information
+  let watchUrl = '';
+  if (movie.episodes && movie.episodes.length > 0) {
+    const firstEpisode = movie.episodes[0];
+    watchUrl = generateWatchUrl(movie.id, movie.title, firstEpisode.id, firstEpisode.episodeNumber);
+  } else {
+    // Fallback to direct movie URL if no episodes
+    watchUrl = `/watch/${movie.id}`;
+  }
+  
   const imageUrl = movie.posterUrl || "/images/placeholder-poster.jpg"
 
   // Kiểm tra xem có phải là desktop không
@@ -116,7 +127,7 @@ const MoviePopover = ({
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
               
               {/* Play button overlay */}
-              <Link href={`/watch/${movie.id}`} className="absolute inset-0 flex items-center justify-center">
+              <Link href={watchUrl} className="absolute inset-0 flex items-center justify-center">
                 <div className="p-3 rounded-full bg-amber-600/80 text-white hover:bg-amber-600 transform hover:scale-110 transition-all duration-300 cursor-pointer">
                   <Play fill="white" size={24} />
                 </div>
@@ -169,7 +180,7 @@ const MoviePopover = ({
                     asChild 
                     className="flex-1 bg-amber-600 hover:bg-amber-700 text-white h-9"
                   >
-                    <Link href={`/watch/${movie.id}`}>
+                    <Link href={watchUrl}>
                       <Play size={16} className="mr-1" />
                       Xem phim
                     </Link>
@@ -217,7 +228,7 @@ const MoviePopover = ({
                       asChild 
                       className="flex-1 bg-amber-600 hover:bg-amber-700 text-white h-9"
                     >
-                      <Link href={`/watch/${movie.id}`}>
+                      <Link href={watchUrl}>
                         <Play size={16} className="mr-1" />
                         Xem ngay
                       </Link>

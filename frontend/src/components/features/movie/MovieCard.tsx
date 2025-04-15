@@ -4,7 +4,7 @@ import Link from "next/link"
 import Image from "next/image"
 import type { Movie } from "@/types"
 import { generateMovieUrl } from "@/utils/url"
-import { Star, Eye, Play, Heart, Info, Calendar, Clock, Film, User } from "lucide-react"
+import { Star, Play } from "lucide-react"
 import { useEffect, useState, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
 import MoviePopover from "./MoviePopover"
@@ -14,14 +14,14 @@ import { AspectRatio } from "@/components/ui/aspect-ratio"
 interface MovieCardProps {
   movie: Movie
   index?: number
-  variant?: "slider" | "grid" | "featured" | "trending"
+  variant?: "slider" | "grid" | "featured" | "trending" | "compact"
   trapezoid?: boolean
 }
 
 const MovieCard = ({ movie, index = 0, variant = "slider", trapezoid = false }: MovieCardProps) => {
   const router = useRouter()
   const cardRef = useRef<HTMLDivElement>(null)
-  const imageUrl = movie.posterUrl || "/images/placeholder-poster.jpg"
+  const [imageUrl, setImageUrl] = useState(movie.posterUrl || "/images/placeholder-poster.jpg")
   const [screenSize, setScreenSize] = useState({
     width: typeof window !== 'undefined' ? window.innerWidth : 0,
     isDesktop: false,
@@ -30,8 +30,8 @@ const MovieCard = ({ movie, index = 0, variant = "slider", trapezoid = false }: 
   })
   const movieDetailUrl = generateMovieUrl(movie.id, movie.title)
   const [imageLoaded, setImageLoaded] = useState(false)
-  
-  // Debounced resize handler
+  const [imageError, setImageError] = useState(false)
+
   const handleResize = useCallback(() => {
     if (typeof window === 'undefined') return
     
@@ -43,129 +43,152 @@ const MovieCard = ({ movie, index = 0, variant = "slider", trapezoid = false }: 
       isMobile: width < 768
     })
   }, [])
-  
-  // Initialize and track screen size
+
   useEffect(() => {
-    // Initialize on mount
     handleResize()
-    
-    // Add debounced event listener
     let timeoutId: NodeJS.Timeout
     const debouncedResize = () => {
       clearTimeout(timeoutId)
-      timeoutId = setTimeout(handleResize, 100)
+      timeoutId = setTimeout(handleResize, 200)
     }
-    
+
     window.addEventListener('resize', debouncedResize)
-    
-    // Cleanup
     return () => {
       window.removeEventListener('resize', debouncedResize)
       clearTimeout(timeoutId)
     }
   }, [handleResize])
-  
-  // Card click handler
-  const handleCardClick = useCallback(() => {
+
+  const handleImageLoad = () => setImageLoaded(true)
+  const handleImageError = () => {
+    setImageError(true)
+    setImageUrl("/images/placeholder-poster.jpg")
+  }
+
+  const handleCardClick = () => {
     router.push(movieDetailUrl)
-  }, [router, movieDetailUrl])
-  
-  // Xác định tỷ lệ khung hình dựa vào variant - tất cả đều là landscape
-  const aspectRatio = 16/9
-  
-  const cardContent = (
-    <div className="w-full h-full" ref={cardRef}>
-      <AspectRatio 
-        ratio={aspectRatio}
-        className="relative overflow-hidden rounded-lg"
-      >
-        <Image
-          src={movie.posterUrl}
-          alt={movie.title}
-          fill
-          sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
-          priority={index < 5}
-          className={`object-cover transition-all duration-500 ${
-            imageLoaded 
-              ? "opacity-100 scale-100" 
-              : "opacity-0 scale-110"
-          } group-hover:scale-105`}
-          onLoad={() => setImageLoaded(true)}
-        />
-        
-        {/* Gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60" />
-        
-        {/* Index number for trending */}
-        {variant === "trending" && (
-          <div className="absolute top-2 left-2 w-8 h-8 rounded-full bg-accent text-center flex items-center justify-center text-black font-bold">
-            {index + 1}
+  }
+
+  // Render compact variant (used in watch pages for related movies)
+  if (variant === "compact") {
+    return (
+      <Link href={movieDetailUrl} className="block">
+        <div className="group relative overflow-hidden rounded-lg transition-transform hover:scale-105">
+          <div className="aspect-[2/3] overflow-hidden">
+            <img
+              src={imageUrl}
+              alt={movie.title}
+              className="h-full w-full object-cover transition-transform group-hover:scale-110"
+              onLoad={handleImageLoad}
+              onError={handleImageError}
+            />
           </div>
-        )}
-        
-        {/* Information overlay on slider cards */}
-        {variant === "slider" && (
-          <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black to-transparent">
-            <h3 className="text-white text-sm font-medium line-clamp-1">{movie.title}</h3>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-gray-300 text-xs">{movie.releaseYear}</span>
+          <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-80"></div>
+          <div className="absolute bottom-0 left-0 right-0 p-3">
+            <h3 className="text-sm font-medium text-white truncate">{movie.title}</h3>
+            <div className="flex items-center mt-1 text-xs text-gray-300">
+              <span>{movie.releaseYear}</span>
               {movie.rating && (
-                <div className="flex items-center text-amber-400 text-xs">
-                  <Star size={10} className="mr-0.5" fill="currentColor" />
-                  <span>{movie.rating}</span>
-                </div>
+                <>
+                  <span className="mx-1">•</span>
+                  <span className="flex items-center text-amber-400">
+                    <Star size={10} className="fill-current mr-0.5" /> {movie.rating}
+                  </span>
+                </>
               )}
             </div>
           </div>
-        )}
-        
-        {/* Play button overlay - only visible on hover */}
-        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-          <div className="w-12 h-12 rounded-full bg-amber-500 flex items-center justify-center">
-            <Play className="text-black h-5 w-5" fill="currentColor" />
-          </div>
         </div>
-      </AspectRatio>
-      
-      {/* Title shown for non-slider variants */}
-      {variant !== "slider" && (
-        <div className="mt-2">
-          <h3 className="text-sm font-medium line-clamp-1">{movie.title}</h3>
-          <p className="text-xs text-gray-400">{movie.releaseYear}</p>
-        </div>
-      )}
-    </div>
-  )
+      </Link>
+    );
+  }
 
+  // Render standard card variants
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay: index * 0.05 }}
-      className={`
-        relative 
-        ${variant === "grid" ? "h-full" : ""}
-        ${variant === "slider" ? "w-full" : ""}
-      `}
-      style={{ zIndex: variant === "slider" ? 10 : 1 }}
+    <div 
+      ref={cardRef} 
+      className={`group relative rounded-md overflow-hidden ${
+        variant === "featured" ? "w-full aspect-[16/9]" : "aspect-[2/3]"
+      }`}
     >
-      {variant === "slider" ? (
-        <div className="relative group">
-          <MoviePopover 
-            movie={movie} 
-            trigger={cardContent} 
-            variant="default" 
-            size="md" 
+      <div className={`absolute inset-0 ${variant === "trending" ? "bg-gradient-to-t from-indigo-600 via-indigo-500/30 to-transparent" : ""}`}>
+        <div 
+          className={`
+            h-full w-full relative
+            ${!imageLoaded ? "animate-pulse bg-gray-800" : ""}
+            ${trapezoid ? "trapezoid" : ""}
+          `}
+        >
+          <img
+            src={imageUrl}
+            alt={movie.title}
+            className={`
+              h-full w-full object-cover
+              ${imageLoaded ? "opacity-100" : "opacity-0"}
+              ${trapezoid ? "trapezoid-image" : ""}
+              ${variant === "featured" ? "duration-700 group-hover:scale-105" : ""}
+            `}
+            onLoad={handleImageLoad}
+            onError={handleImageError}
           />
         </div>
-      ) : (
-        <Link href={`/movie/${movie.id}-${movie.title.toLowerCase().replace(/\s+/g, '-')}`} className="group block">
-          {cardContent}
-        </Link>
-      )}
-    </motion.div>
+      </div>
+
+      {/* Overlay and content */}
+      <div 
+        className={`
+          absolute inset-0 flex flex-col justify-end
+          ${variant === "featured" ? "p-6" : "p-3"}
+          ${variant === "trending" ? "" : "bg-gradient-to-t from-gray-900 to-transparent"}
+        `}
+      >
+        {/* Rating badge - top right */}
+        {variant !== "trending" && movie.rating && (
+          <div className="absolute top-2 right-2 flex items-center bg-black/60 px-1.5 py-0.5 rounded text-xs font-medium">
+            <Star size={12} className="text-amber-400 fill-current mr-0.5" /> 
+            <span className="text-white">{movie.rating}</span>
+          </div>
+        )}
+
+        {/* Play button - center */}
+        {(variant === "featured" || variant === "trending") && (
+          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="w-12 h-12 flex items-center justify-center bg-indigo-600/90 rounded-full">
+              <Play size={24} className="text-white ml-1" />
+            </div>
+          </div>
+        )}
+
+        {/* Title and info */}
+        <h3 className={`font-medium text-white line-clamp-1 ${variant === "featured" ? "text-xl mb-1" : "text-sm"}`}>
+          {movie.title}
+        </h3>
+        
+        <div className="flex items-center text-xs text-gray-300">
+          <span>{movie.releaseYear}</span>
+          
+          {variant === "trending" && movie.rating && (
+            <>
+              <span className="mx-1">•</span>
+              <span className="flex items-center">
+                <Star size={10} className="text-amber-400 fill-current mr-0.5" /> 
+                {movie.rating}
+              </span>
+            </>
+          )}
+          
+          {(variant === "featured" || variant === "trending") && movie.genres && movie.genres[0] && (
+            <>
+              <span className="mx-1">•</span>
+              <span>
+                {typeof movie.genres[0] === "string" ? movie.genres[0] : movie.genres[0].name}
+              </span>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
   )
 }
 
 export default MovieCard
-

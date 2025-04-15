@@ -15,6 +15,7 @@ export interface Movie {
   createdAt: string;
   updatedAt: string;
   actors?: string[];
+  trending?: boolean;
 }
 
 export interface MovieListResponse {

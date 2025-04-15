@@ -1,32 +1,37 @@
-"use client"
+'use client'
 
 import { useState, useRef, useEffect, useCallback } from "react"
 import type { Movie } from "@/types"
 import MovieCard from "./MovieCard"
-import { ChevronLeft, ChevronRight, ArrowRight } from "lucide-react"
+import { ChevronLeft, ChevronRight } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { mockMovies, mockMovieListResponse } from "@/mocks"
+import { mockMovies } from "@/mocks"
 
 interface MovieSliderProps {
   title: string
   movies?: Movie[]
-  viewMoreLink?: string
-  variant?: "default" | "popular" | "trending" | "new" | "top"
   viewAllHref?: string
+  variant?: "default" | "popular" | "trending" | "new" | "top"
+  useSimpleScroll?: boolean // Add option to use simple scroll method
 }
 
 const MovieSlider = ({ 
   title, 
   movies = mockMovies, 
   variant = "default", 
-  viewAllHref = "/movie" 
+  viewAllHref = "/movie",
+  useSimpleScroll = false // Default to false to maintain existing behavior
 }: MovieSliderProps) => {
   const sliderRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-  const [visibleItems, setVisibleItems] = useState(3) // Default maximum is 3 items
+  const [visibleItems, setVisibleItems] = useState(4)
   const [scrollPosition, setScrollPosition] = useState(0)
   const [maxScrollPosition, setMaxScrollPosition] = useState(0)
+  const [isDragging, setIsDragging] = useState(false)
+  const [startX, setStartX] = useState(0)
+  const [scrollLeft, setScrollLeft] = useState(0)
+  const [isMobile, setIsMobile] = useState(false)
 
   // Determine color based on variant
   const getAccentColor = () => {
@@ -49,147 +54,227 @@ const MovieSlider = ({
       default: return "from-amber-600/10 to-transparent"
     }
   }
-  
-  // Get border color based on variant
-  const getBorderColor = () => {
-    switch (variant) {
-      case "popular": return "border-amber-600/20"
-      case "trending": return "border-rose-600/20"
-      case "new": return "border-emerald-600/20"
-      case "top": return "border-sky-600/20"
-      default: return "border-amber-600/20"
-    }
-  }
 
-  // Handle responsiveness for different screen sizes
+  // Handle responsiveness
   useEffect(() => {
     const handleResize = () => {
       const width = window.innerWidth
       
-      // Vì card đã chuyển sang dạng ngang, nên giảm số lượng item hiển thị
+      // Set mobile state
+      setIsMobile(width < 768)
+      
       if (width >= 1280) { // xl and 2xl
-        setVisibleItems(3)
+        setVisibleItems(4)
       } else if (width >= 1024) { // lg
-        setVisibleItems(3)
+        setVisibleItems(4)
       } else if (width >= 768) { // md
+        setVisibleItems(3)
+      } else { // sm and xs
         setVisibleItems(2)
-      } else if (width >= 640) { // sm
-        setVisibleItems(2)
-      } else { // xs
-        setVisibleItems(2) // phù hợp với thẻ ngang trên mobile
       }
 
-      // Update container width
       if (containerRef.current) {
-        const containerWidth = containerRef.current.clientWidth
-        // Calculate max scroll position based on movie count and visible items
         const totalItems = movies.length
         const maxPosition = Math.max(0, totalItems - visibleItems)
         setMaxScrollPosition(maxPosition)
       }
     }
     
-    // Set initial visible items
     handleResize()
-    
-    // Update visible items on resize
     window.addEventListener("resize", handleResize)
     return () => window.removeEventListener("resize", handleResize)
-  }, [movies.length])
+  }, [movies.length, visibleItems])
 
-  // Scroll carousel handler
+  // Update maxScrollPosition when movies or visibleItems change
+  useEffect(() => {
+    const totalItems = movies.length
+    const maxPosition = Math.max(0, totalItems - visibleItems)
+    setMaxScrollPosition(maxPosition)
+    
+    // Reset scroll position if it exceeds new max
+    if (scrollPosition > maxPosition) {
+      setScrollPosition(maxPosition)
+    }
+  }, [movies.length, visibleItems, scrollPosition])
+
+  // Scroll handler for buttons
   const scroll = useCallback((direction: "left" | "right") => {
     setScrollPosition(prev => {
       if (direction === "left") {
-        return Math.max(0, prev - Math.floor(visibleItems))
+        return Math.max(0, prev - 1)
       } else {
-        return Math.min(maxScrollPosition, prev + Math.floor(visibleItems))
+        return Math.min(maxScrollPosition, prev + 1)
       }
     })
-  }, [maxScrollPosition, visibleItems])
-  
-  // Check if navigation buttons should be enabled
+  }, [maxScrollPosition])
+
+  // Drag handlers
+  const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!sliderRef.current) return;
+    
+    setIsDragging(true);
+    setStartX(e.pageX - sliderRef.current.offsetLeft);
+    setScrollLeft(sliderRef.current.scrollLeft);
+    sliderRef.current.style.cursor = 'grabbing';
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    setIsDragging(false);
+    if (sliderRef.current) {
+      sliderRef.current.style.cursor = 'grab';
+    }
+  }, []);
+
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false);
+    if (sliderRef.current) {
+      sliderRef.current.style.cursor = 'grab';
+      // Snap to nearest card
+      const cardWidth = sliderRef.current.scrollWidth / movies.length;
+      const newPosition = Math.round(sliderRef.current.scrollLeft / cardWidth);
+      setScrollPosition(Math.min(newPosition, maxScrollPosition));
+    }
+  }, [movies.length, maxScrollPosition]);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isDragging || !sliderRef.current) return;
+    
+    e.preventDefault();
+    const x = e.pageX - sliderRef.current.offsetLeft;
+    const walk = (x - startX) * 1.5; // Adjust scroll speed
+    sliderRef.current.scrollLeft = scrollLeft - walk;
+  }, [isDragging, startX, scrollLeft]);
+
+  // Touch handlers
+  const handleTouchStart = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
+    if (!sliderRef.current) return;
+    
+    setIsDragging(true);
+    setStartX(e.touches[0].pageX - sliderRef.current.offsetLeft);
+    setScrollLeft(sliderRef.current.scrollLeft);
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
+    if (!isDragging || !sliderRef.current) return;
+    
+    const x = e.touches[0].pageX - sliderRef.current.offsetLeft;
+    const walk = (x - startX) * 1.5;
+    sliderRef.current.scrollLeft = scrollLeft - walk;
+  }, [isDragging, startX, scrollLeft]);
+
+  const handleTouchEnd = useCallback(() => {
+    setIsDragging(false);
+    if (sliderRef.current) {
+      // Snap to nearest card
+      const cardWidth = sliderRef.current.scrollWidth / movies.length;
+      const newPosition = Math.round(sliderRef.current.scrollLeft / cardWidth);
+      setScrollPosition(Math.min(newPosition, maxScrollPosition));
+    }
+  }, [movies.length, maxScrollPosition]);
+
   const canScrollLeft = scrollPosition > 0
   const canScrollRight = scrollPosition < maxScrollPosition && movies.length > visibleItems
 
-  // If there are no movies to display, return nothing
   if (!movies || movies.length === 0) {
-    return null;
+    return null
   }
 
-  return (
-    <div className={`relative my-8 p-6 rounded-xl bg-gradient-to-r ${getGradientBg()} border ${getBorderColor()} shadow-lg overflow-hidden`}>
-      <div className="flex flex-col md:flex-row gap-6">
-        {/* Left column: Title, description and navigation */}
-        <div className="md:w-1/4 flex flex-col">
-          <div className="mb-4">
-            <div className="flex items-center gap-3 mb-3">
-              <div className={`w-1 h-6 ${getAccentColor()} rounded-full`}></div>
-              <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white">{title}</h2>
-            </div>
-            <p className="text-gray-300 text-sm md:text-base mb-4 hidden md:block">
-              Khám phá những bộ phim {title.toLowerCase()} với chất lượng hình ảnh tuyệt vời và nội dung đặc sắc.
-            </p>
-            <Link 
-              href={viewAllHref} 
-              className="inline-flex items-center text-sm font-medium text-white bg-gray-800/60 hover:bg-gray-700/80 transition-colors py-2 px-4 rounded-md mt-2"
-            >
-              Xem tất cả
-              <ChevronRight size={16} className="ml-1" />
-            </Link>
-          </div>
-        </div>
-        
-        {/* Right column: Movie slider container */}
-        <div className="md:w-3/4">
-          {/* Slider container */}
-          <div 
-            ref={containerRef}
-            className="relative w-full overflow-hidden" 
-          >
-            {/* Left navigation button */}
-            <Button 
-              size="icon"
-              variant="outline"
-              onClick={() => scroll("left")} 
-              disabled={!canScrollLeft}
-              className={`absolute left-0 top-1/2 -translate-y-1/2 z-10 rounded-full ${canScrollLeft ? 'bg-gray-800/80 hover:bg-gray-700 border-gray-700' : 'bg-gray-800/50 cursor-not-allowed border-transparent opacity-50'}`}
-            >
-              <ChevronLeft size={20} />
-            </Button>
-            
-            {/* Right navigation button */}
-            <Button 
-              size="icon"
-              variant="outline"
-              onClick={() => scroll("right")} 
-              disabled={!canScrollRight}
-              className={`absolute right-0 top-1/2 -translate-y-1/2 z-10 rounded-full ${canScrollRight ? 'bg-gray-800/80 hover:bg-gray-700 border-gray-700' : 'bg-gray-800/50 cursor-not-allowed border-transparent opacity-50'}`}
-            >
-              <ChevronRight size={20} />
-            </Button>
+  // Decide which scrolling method to use based on props or screen size
+  const useOverflowScroll = useSimpleScroll || isMobile
 
-            <div
+  return (
+    <div className={`relative my-6 px-4 sm:px-6 bg-gradient-to-r ${getGradientBg()}`}>
+      <div className="py-4">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <div className={`w-1 h-6 ${getAccentColor()} rounded-full`}></div>
+            <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white">{title}</h2>
+          </div>
+          <Link 
+            href={viewAllHref}
+            className="text-sm text-gray-300 hover:text-white transition-colors"
+          >
+            Xem tất cả
+          </Link>
+        </div>
+
+        <div ref={containerRef} className="relative overflow-hidden">
+          {!useOverflowScroll && (
+            <>
+              <Button 
+                size="icon"
+                variant="outline"
+                onClick={() => scroll("left")} 
+                disabled={!canScrollLeft}
+                className={`absolute left-0 top-1/2 -translate-y-1/2 z-10 rounded-full ${
+                  canScrollLeft 
+                    ? 'bg-gray-800/80 hover:bg-gray-700 border-gray-700' 
+                    : 'bg-gray-800/50 cursor-not-allowed border-transparent opacity-50'
+                } hidden sm:flex`}
+              >
+                <ChevronLeft size={20} />
+              </Button>
+
+              <Button 
+                size="icon"
+                variant="outline"
+                onClick={() => scroll("right")} 
+                disabled={!canScrollRight}
+                className={`absolute right-0 top-1/2 -translate-y-1/2 z-10 rounded-full ${
+                  canScrollRight 
+                    ? 'bg-gray-800/80 hover:bg-gray-700 border-gray-700' 
+                    : 'bg-gray-800/50 cursor-not-allowed border-transparent opacity-50'
+                } hidden sm:flex`}
+              >
+                <ChevronRight size={20} />
+              </Button>
+            </>
+          )}
+
+          {useOverflowScroll ? (
+            // Simple overflow scroll method for mobile
+            <div 
               ref={sliderRef}
-              className="flex gap-4 transition-transform duration-500 ease-out"
-              style={{
-                transform: `translateX(-${scrollPosition * (100 / visibleItems)}%)`,
-                width: `${(movies.length / visibleItems) * 100}%`,
-              }}
+              className="flex overflow-x-auto gap-4 pb-4 snap-x snap-mandatory scrollbar-hide"
             >
-              {movies.map((movie, index) => (
+              {movies.map((movie) => (
                 <div 
                   key={movie.id}
-                  className="flex-shrink-0 group relative py-2 px-1"
-                  style={{ width: `${100 / movies.length}%` }}
+                  className="flex-shrink-0 snap-start"
+                  style={{ width: `${100 / Math.min(2, visibleItems)}%`, minWidth: '200px' }}
                 >
-                  <div className="relative transition-all duration-300 hover:z-50 hover:scale-105 shadow-md hover:shadow-xl hover:shadow-black/30">
-                    <MovieCard movie={movie} index={index} variant="slider" />
-                  </div>
+                  <MovieCard movie={movie} variant="slider" />
                 </div>
               ))}
             </div>
-          </div>
+          ) : (
+            // Original slider with transform-based scrolling for desktop
+            <div
+              ref={sliderRef}
+              className="flex gap-4 transition-transform duration-300 ease-out cursor-grab select-none"
+              style={{
+                transform: `translateX(-${scrollPosition * (100 / visibleItems)}%)`,
+                width: `${(movies.length / visibleItems) * 100}%`
+              }}
+              onMouseDown={handleMouseDown}
+              onMouseLeave={handleMouseLeave}
+              onMouseUp={handleMouseUp}
+              onMouseMove={handleMouseMove}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+            >
+              {movies.map((movie) => (
+                <div 
+                  key={movie.id}
+                  className="flex-shrink-0"
+                  style={{ width: `${100 / visibleItems}%` }}
+                >
+                  <MovieCard movie={movie} variant="slider" />
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -197,4 +282,3 @@ const MovieSlider = ({
 }
 
 export default MovieSlider
-

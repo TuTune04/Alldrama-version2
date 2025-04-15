@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { mockMovieListResponse } from '@/mocks';
+import { Movie } from '@/types/movie';
 import MovieGrid from '@/components/features/movie/MovieGrid';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -23,6 +24,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import MoviePopover from '@/components/features/movie/MoviePopover';
+import Link from 'next/link';
 
 // Genre data for filter badges
 const GENRES = [
@@ -39,6 +41,12 @@ const GENRES = [
   { id: 'animation', name: 'Hoạt hình' },
 ];
 
+// Helper function to create movie URL
+const generateMovieUrl = (id: string, title: string): string => {
+  const slug = title.toLowerCase().replace(/\s+/g, '-');
+  return `/movie/${id}/${slug}`;
+};
+
 export default function MovieListPage() {
   const [activeGenre, setActiveGenre] = useState('all');
   const [isLoading, setIsLoading] = useState(false);
@@ -52,17 +60,28 @@ export default function MovieListPage() {
   };
 
   // Get the actual movies array from the mock data
-  const movieItems = mockMovieListResponse.movies || [];
+  const movieItems: Movie[] = mockMovieListResponse.movies || [];
+  
+  // Add movie type info for demo purposes
+  const moviesWithType = movieItems.map(movie => ({
+    ...movie,
+    type: movie.episodes && movie.episodes.length > 0 ? 'series' : 'movie'
+  }));
   
   // Filter movies based on type for different tabs
-  const movieData = mockMovieListResponse;
+  const movieData = {
+    ...mockMovieListResponse,
+    movies: moviesWithType
+  };
+  
   const moviesOnly = {
     ...movieData,
-    movies: movieItems.filter(movie => (movie as any).type === 'movie')
+    movies: moviesWithType.filter(movie => movie.type === 'movie')
   };
+  
   const seriesOnly = {
     ...movieData,
-    movies: movieItems.filter(movie => (movie as any).type === 'series')
+    movies: moviesWithType.filter(movie => movie.type === 'series')
   };
 
   return (
@@ -81,7 +100,7 @@ export default function MovieListPage() {
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Filters Bar */}
-        <div className="mb-8 bg-gray-800/30 backdrop-blur-sm rounded-lg p-4 border border-gray-700/50 sticky top-0 z-10">
+        <div className="mb-8 bg-gray-800/30 backdrop-blur-sm rounded-lg p-4 border border-gray-700/50 top-0 z-10">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="flex flex-wrap gap-2 overflow-x-auto pb-2 md:pb-0">
               {GENRES.slice(0, 7).map((genre) => (
@@ -225,7 +244,7 @@ export default function MovieListPage() {
               <Card key={movie.id} className="bg-gray-800/40 border-gray-700 overflow-hidden hover:border-gray-500 transition-all">
                 <div className="aspect-video relative overflow-hidden">
                   <img 
-                    src={movie.posterUrl || `https://picsum.photos/seed/${movie.id}/500/300`} 
+                    src={movie.posterUrl} 
                     alt={movie.title}
                     className="w-full h-full object-cover"
                   />
@@ -245,11 +264,18 @@ export default function MovieListPage() {
                 <CardContent className="p-4">
                   <p className="text-gray-300 text-sm line-clamp-2">{movie.description}</p>
                   <div className="flex flex-wrap gap-2 mt-3">
-                    {movie.genres?.slice(0, 3).map((genre: any, index) => (
+                    {movie.genres?.slice(0, 3).map((genre, index) => (
                       <Badge key={index} variant="outline" className="bg-gray-700/50 text-gray-300 border-gray-600">
                         {typeof genre === 'string' ? genre : genre.name}
                       </Badge>
                     ))}
+                  </div>
+                  <div className="mt-4">
+                    <Link href={generateMovieUrl(movie.id, movie.title)}>
+                      <Button className="w-full bg-amber-500 hover:bg-amber-600 text-gray-900">
+                        Xem chi tiết
+                      </Button>
+                    </Link>
                   </div>
                 </CardContent>
               </Card>

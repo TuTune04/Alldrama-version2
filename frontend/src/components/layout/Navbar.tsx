@@ -40,6 +40,7 @@ const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [mobileSearchVisible, setMobileSearchVisible] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
   const pathname = usePathname()
   const router = useRouter()
 
@@ -47,20 +48,34 @@ const Navbar = () => {
   const { isAuthenticated, user, logout } = useAuthStore()
 
   // Xử lý sự kiện scroll
+  // Kiểm tra thiết bị mobile và xử lý scroll
   useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768) // Breakpoint cho mobile
+    }
+
     const handleScroll = () => {
-      if (window.scrollY > 50) {
-        setIsScrolled(true)
+      if (isMobile) {
+        // Các trang khác trên mobile: ẩn navbar khi cuộn xuống
+        setIsScrolled(window.scrollY > 0)
+      } else if (pathname === "/") {
+        // Trang chính: luôn hiển thị navbar khi cuộn
+        setIsScrolled(window.scrollY > 50)
       } else {
-        setIsScrolled(false)
+        // Các trang khác trên desktop: hiển thị navbar khi cuộn
+        setIsScrolled(window.scrollY > 50)
       }
     }
 
+    handleResize()
+    window.addEventListener("resize", handleResize)
     window.addEventListener("scroll", handleScroll)
+
     return () => {
+      window.removeEventListener("resize", handleResize)
       window.removeEventListener("scroll", handleScroll)
     }
-  }, [])
+  }, [pathname, isMobile])
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -93,13 +108,22 @@ const Navbar = () => {
     { name: "Hoạt hình", slug: "hoat-hinh" },
   ]
 
+  // Ẩn navbar trên mobile ở các trang khác khi cuộn xuống
+  if (isMobile && pathname !== "/" && isScrolled) {
+    return null
+  }
+
   return (
     <nav
       className={cn(
         "fixed w-full z-50 transition-all duration-300",
-        isScrolled
+        pathname === "/"
+          ? isScrolled
+            ? "bg-black/80 backdrop-blur-md shadow-md py-2 border-b border-gray-800/50"
+            : "bg-gray-950 py-3" // Nền đen ở trang chính khi chưa cuộn
+          : !isScrolled && !isMobile
           ? "bg-black/80 backdrop-blur-md shadow-md py-2 border-b border-gray-800/50"
-          : "bg-gradient-to-b from-black/90 via-black/70 to-transparent py-3",
+          : "bg-gradient-to-b from-black/90 via-black/70 to-transparent py-3", // Nền đen ở các trang khác khi chưa cuộn
       )}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

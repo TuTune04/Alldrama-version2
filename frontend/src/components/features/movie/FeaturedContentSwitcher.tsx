@@ -276,52 +276,74 @@ const FeaturedContentSwitcher = ({
           </CardContent>
         </Card>
         
-        {/* Thumbnail Navigation - positioned to overlap with the card */}
+        {/* Thumbnail Navigation - Desktop only */}
         {showThumbnails && (
-          <div className="absolute bottom-0 left-0 right-0 translate-y-1/2 px-8">
-            <div className="flex justify-center">
-              <div className="inline-flex bg-black/70 backdrop-blur-md p-2 rounded-xl space-x-4 shadow-xl">
-                {items.slice(0, visibleThumbs).map((item, index) => (
-                  <div
-                    key={item.id}
-                    className={cn(
-                      'relative rounded-md overflow-hidden transition-all duration-200 cursor-pointer h-16 w-24',
-                      index === selectedIndex 
-                        ? 'ring-2 ring-primary ring-offset-2 ring-offset-black z-10 scale-110' 
-                        : 'opacity-70 hover:opacity-100'
-                    )}
-                    onClick={() => handleItemSelect(index)}
-                  >
-                    <img
-                      src={item.posterUrl}
-                      alt={item.title}
-                      className="w-full h-full object-cover"
-                    />
-                    <div className={cn(
-                      "absolute bottom-0 left-0 right-0 py-1 px-1.5 text-[10px] font-medium truncate",
-                      index === selectedIndex 
-                        ? `bg-gradient-to-r ${styles.gradient} text-white`
-                        : 'bg-black/60 text-gray-300'
-                    )}>
-                      {item.title}
-                    </div>
-                    {index === selectedIndex && (
-                      <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-                        <div className="rounded-full bg-primary/80 p-1">
-                          <Play className="h-3 w-3 text-white" />
-                        </div>
+          <>
+            {/* Desktop thumbnails */}
+            <div className="absolute bottom-0 left-0 right-0 translate-y-1/2 px-8 hidden md:block">
+              <div className="flex justify-center">
+                <div className="inline-flex bg-black/70 backdrop-blur-md p-2 rounded-xl space-x-4 shadow-xl">
+                  {items.slice(0, visibleThumbs).map((item, index) => (
+                    <div
+                      key={item.id}
+                      className={cn(
+                        'relative rounded-md overflow-hidden transition-all duration-200 cursor-pointer h-16 w-24',
+                        index === selectedIndex 
+                          ? 'ring-2 ring-primary ring-offset-2 ring-offset-black z-10 scale-110' 
+                          : 'opacity-70 hover:opacity-100'
+                      )}
+                      onClick={() => handleItemSelect(index)}
+                    >
+                      <img
+                        src={item.posterUrl}
+                        alt={item.title}
+                        className="w-full h-full object-cover"
+                      />
+                      <div className={cn(
+                        "absolute bottom-0 left-0 right-0 py-1 px-1.5 text-[10px] font-medium truncate",
+                        index === selectedIndex 
+                          ? `bg-gradient-to-r ${styles.gradient} text-white`
+                          : 'bg-black/60 text-gray-300'
+                      )}>
+                        {item.title}
                       </div>
+                      {index === selectedIndex && (
+                        <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                          <div className="rounded-full bg-primary/80 p-1">
+                            <Play className="h-3 w-3 text-white" />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            
+            {/* Mobile dots navigation */}
+            <div className="md:hidden flex items-center justify-center mt-8">
+              <div className="inline-flex bg-black/70 backdrop-blur-md px-3 py-2 rounded-full space-x-2">
+                {items.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleItemSelect(index)}
+                    className={cn(
+                      'rounded-full transition-all',
+                      index === selectedIndex 
+                        ? 'bg-primary w-3 h-3' 
+                        : 'bg-white/30 w-2 h-2 hover:bg-white/60'
                     )}
-                  </div>
+                    aria-label={`Go to item ${index + 1}`}
+                  />
                 ))}
               </div>
             </div>
-          </div>
+          </>
         )}
         
-        {/* Progress Indicator */}
-        {showProgress && items.length > visibleThumbs && (
-          <div className="flex items-center justify-center mt-16 gap-1">
+        {/* Progress Indicator for non-thumbnail mode */}
+        {showProgress && !showThumbnails && (
+          <div className="flex items-center justify-center mt-8 gap-1">
             {items.map((_, index) => (
               <button
                 key={index}
@@ -353,4 +375,4 @@ const FeaturedContentSwitcher = ({
   return content
 }
 
-export default FeaturedContentSwitcher 
+export default FeaturedContentSwitcher
