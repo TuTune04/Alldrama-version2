@@ -2,8 +2,9 @@
 import { Fragment } from 'react';
 import { Menu, Transition } from '@headlessui/react';
 import { UserCircleIcon } from '@heroicons/react/24/outline';
-
+import { useAuth } from '@/contexts/AuthContext';
 export default function Header() {
+  const { user, logout } = useAuth();
   return (
     <header className="flex h-16 items-center justify-between border-b border-gray-200 bg-white px-4">
       <div className="flex items-center">
@@ -41,10 +42,12 @@ export default function Header() {
                 <a
                   href="#"
                   className={`${
-                    active ? 'bg-gray-100' : ''
+                    active
+                      ? 'bg-gray-100'
+                      : ''
                   } block px-4 py-2 text-sm text-gray-700`}
                 >
-                  Sign out
+                  <button onClick={logout}>Sign out</button>
                 </a>
               )}
             </Menu.Item>

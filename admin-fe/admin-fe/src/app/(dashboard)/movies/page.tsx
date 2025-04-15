@@ -71,7 +71,7 @@ export default function MoviesPage() {
             setSelectedMovie(undefined);
             setIsFormOpen(true);
           }}
-          className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium  hover:bg-indigo-700"
+          className="rounded-md bg-indigo-600 px-4 py-2 text-white text-sm font-medium hover:bg-indigo-700"
         >
           Add New Movie
         </button>
@@ -90,7 +90,7 @@ export default function MoviesPage() {
         </div>
       </div>
 
-      <div className="rounded-lg bg-black shadow">
+      <div className="rounded-lg bg-white shadow">
         <MovieTable
           movies={movies}
           onEdit={handleEdit}
