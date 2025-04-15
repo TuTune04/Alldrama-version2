@@ -35,21 +35,21 @@ export default function Home() {
           <MovieSlider 
             title="Phim mới nhất" 
             movies={newestMovies} 
-            viewMoreLink="/movie?sort=newest"
+            viewAllHref="/movie?sort=newest"
             variant="new" 
           />
           
           <MovieSlider 
             title="Phim xem nhiều" 
             movies={mostViewedMovies} 
-            viewMoreLink="/movie?sort=most-viewed"
+            viewAllHref="/movie?sort=most-viewed"
             variant="popular" 
           />
           
           <MovieSlider 
             title="Phim đánh giá cao" 
             movies={topRatedMovies} 
-            viewMoreLink="/movie?sort=top-rated"
+            viewAllHref="/movie?sort=top-rated"
             variant="top" 
           />
         </section>

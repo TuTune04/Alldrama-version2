@@ -93,22 +93,27 @@ const MovieDetail = ({ movie, episodes = [] }: MovieDetailProps) => {
         <div className="absolute inset-0 w-full h-full">
           <div className="absolute inset-0 bg-gradient-to-r from-gray-800/40 to-gray-900/40 mix-blend-multiply z-20" />
           <div className="absolute inset-0 bg-[url('/images/noise.png')] opacity-[0.02] mix-blend-overlay pointer-events-none z-20" />
-          <Image
-            src={movie.posterUrl || "/placeholder.svg"}
-            alt={movie.title}
-            fill
-            priority
-            className="object-cover object-center scale-110 blur-sm"
-          />
           <div className="absolute inset-0 bg-gradient-to-t from-background via-background/90 to-background/30" />
+        </div>
+
+        {/* Poster for mobile */}
+        <div className="absolute top-4 left-4 md:hidden w-32 h-48 rounded-xl overflow-hidden shadow-2xl shadow-indigo-500/10">
+          <Image 
+            src={movie.posterUrl || "/placeholder.svg"} 
+            alt={movie.title} 
+            fill 
+            priority
+            className="object-cover transform hover:scale-105 transition-transform duration-700" 
+          />
+          <div className="absolute inset-0 ring-1 ring-indigo-500/20 rounded-xl hover:ring-indigo-500/40 transition-all"></div>
         </div>
 
         {/* Movie Details */}
         <div className="absolute inset-0 flex items-end">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full pb-8 md:pb-12">
-            <div className="flex flex-col md:flex-row md:items-end gap-6">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full pb-6 md:pb-12">
+            <div className="flex flex-col md:flex-row md:items-end gap-4 md:gap-6">
               {/* Poster with glow effect */}
-              <div className="hidden md:block w-64 h-96 flex-shrink-0 relative rounded-xl overflow-hidden shadow-2xl shadow-indigo-500/10 group">
+              <div className="hidden md:block w-48 h-72 md:w-64 md:h-96 flex-shrink-0 relative rounded-xl overflow-hidden shadow-2xl shadow-indigo-500/10 group">
                 <Image 
                   src={movie.posterUrl || "/placeholder.svg"} 
                   alt={movie.title} 
@@ -116,43 +121,43 @@ const MovieDetail = ({ movie, episodes = [] }: MovieDetailProps) => {
                   className="object-cover transform group-hover:scale-105 transition-transform duration-700" 
                 />
                 <div className="absolute inset-0 ring-1 ring-indigo-500/20 rounded-xl group-hover:ring-indigo-500/40 transition-all"></div>
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-center pb-4">
-                  <Button className="rounded-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg">
-                    <Play className="h-5 w-5 fill-current mr-2" /> Xem ngay
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-center pb-3">
+                  <Button className="rounded-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg text-xs md:text-sm px-2 md:px-3 py-1 md:py-1.5">
+                    <Play className="h-3 w-3 md:h-5 md:w-5 fill-current mr-1 md:mr-2" /> Xem ngay
                   </Button>
                 </div>
               </div>
 
               {/* Movie Info */}
-              <div className="space-y-5 flex-grow">
+              <div className="space-y-4 flex-grow">
                 <div>
-                  <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-2 drop-shadow-sm">{movie.title}</h1>
+                  <h1 className="text-2xl md:text-4xl lg:text-5xl font-bold text-white mb-1 md:mb-2 drop-shadow-sm">{movie.title}</h1>
                   <div className="relative">
                     <div className="absolute -left-3 top-0 bottom-0 w-1 bg-gradient-to-b from-indigo-500 to-purple-500"></div>
-                    <p className="text-lg text-gray-300 italic pl-1">{"Một bộ phim đáng xem"}</p>
+                    <p className="text-sm md:text-lg text-gray-300 italic pl-1">{"Một bộ phim đáng xem"}</p>
                   </div>
                 </div>
 
                 {/* Movie Metrics */}
-                <div className="flex flex-wrap gap-4 items-center text-sm md:text-base">
-                  <div className="flex items-center bg-black/20 backdrop-blur-md px-3 py-1.5 rounded-full text-indigo-200 border border-indigo-500/20">
-                    <Calendar className="w-4 h-4 mr-2 text-indigo-400" />
+                <div className="flex flex-wrap gap-2 md:gap-4 items-center text-xs md:text-base">
+                  <div className="flex items-center bg-black/20 backdrop-blur-md px-2 md:px-3 py-1 rounded-full text-indigo-200 border border-indigo-500/20">
+                    <Calendar className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2 text-indigo-400" />
                     <span>{movie.releaseYear}</span>
                   </div>
                   
-                  <div className="flex items-center bg-black/20 backdrop-blur-md px-3 py-1.5 rounded-full text-amber-200 border border-amber-500/20">
-                    <Star className="w-4 h-4 mr-2 text-amber-400 fill-amber-400" />
+                  <div className="flex items-center bg-black/20 backdrop-blur-md px-2 md:px-3 py-1 rounded-full text-amber-200 border border-amber-500/20">
+                    <Star className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2 text-amber-400 fill-amber-400" />
                     <span>{movie.rating || "8.5"}</span>
                   </div>
                   
-                  <div className="flex items-center bg-black/20 backdrop-blur-md px-3 py-1.5 rounded-full text-indigo-200 border border-indigo-500/20">
-                    <Eye className="w-4 h-4 mr-2 text-indigo-400" />
+                  <div className="flex items-center bg-black/20 backdrop-blur-md px-2 md:px-3 py-1 rounded-full text-indigo-200 border border-indigo-500/20">
+                    <Eye className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2 text-indigo-400" />
                     <span>{new Intl.NumberFormat("vi-VN").format(movie.views || 0)} lượt xem</span>
                   </div>
                 </div>
 
                 {/* Genres */}
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap items-center gap-1 md:gap-2">
                   {movie.genres && movie.genres.map((genre, index) => {
                     const genreId = typeof genre === "string" ? genre : genre.id
                     const genreName = typeof genre === "string" ? genre : genre.name
@@ -161,7 +166,7 @@ const MovieDetail = ({ movie, episodes = [] }: MovieDetailProps) => {
                       <Link
                         key={`${genreId}-${index}`}
                         href={`/movie?genre=${encodeURIComponent(genreName)}`}
-                        className="px-3 py-1 bg-gray-800/80 hover:bg-indigo-600 border border-gray-700 hover:border-indigo-500 rounded-full text-white text-sm transition-all backdrop-blur-sm shadow-sm"
+                        className="px-2 md:px-3 py-0.5 md:py-1 bg-gray-800/80 hover:bg-indigo-600 border border-gray-700 hover:border-indigo-500 rounded-full text-white text-xs md:text-sm transition-all backdrop-blur-sm shadow-sm"
                       >
                         {genreName}
                       </Link>
@@ -170,12 +175,12 @@ const MovieDetail = ({ movie, episodes = [] }: MovieDetailProps) => {
                 </div>
 
                 {/* Movie Versions */}
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-1 md:gap-2">
                   {movieVersions.map((version) => (
                     <button
                       key={version.id}
                       onClick={() => setSelectedVersion(version.id)}
-                      className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                      className={`px-2 md:px-3 py-1 text-xs md:text-sm rounded-md transition-colors ${
                         selectedVersion === version.id
                           ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md'
                           : 'bg-gray-800/40 text-gray-300 hover:bg-gray-800/60 border border-gray-700'
@@ -187,18 +192,18 @@ const MovieDetail = ({ movie, episodes = [] }: MovieDetailProps) => {
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex flex-wrap gap-3">
+                <div className="flex flex-wrap gap-1 md:gap-3">
                   {episodes.length > 0 ? (
-                    <Button asChild size="lg" className="rounded-full gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 border-none text-white shadow-lg">
+                    <Button asChild size="sm" className="rounded-full gap-1 md:gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 border-none text-white shadow-lg px-2 md:px-4 py-1 md:py-3 text-xs md:text-base">
                       <Link href={generateWatchUrl(movie.id, movie.title, episodes[0].id, episodes[0].episodeNumber)}>
-                        <Play className="h-5 w-5 fill-current" />
+                        <Play className="h-3 w-3 md:h-5 md:w-5 fill-current" />
                         Xem ngay
                       </Link>
                     </Button>
                   ) : (
-                    <Button asChild size="lg" className="rounded-full gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 border-none text-white shadow-lg">
+                    <Button asChild size="sm" className="rounded-full gap-1 md:gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 border-none text-white shadow-lg px-2 md:px-4 py-1 md:py-3 text-xs md:text-base">
                       <Link href={movie.trailerUrl || "#"}>
-                        <Play className="h-5 w-5 fill-current" />
+                        <Play className="h-3 w-3 md:h-5 md:w-5 fill-current" />
                         Xem phim
                       </Link>
                     </Button>
@@ -206,32 +211,32 @@ const MovieDetail = ({ movie, episodes = [] }: MovieDetailProps) => {
                   
                   <Button 
                     variant="outline" 
-                    size="lg" 
-                    className="rounded-full gap-2 border-gray-600 bg-gray-900/40 hover:bg-gray-800 text-white backdrop-blur-sm"
+                    size="sm" 
+                    className="rounded-full gap-1 md:gap-2 border-gray-600 bg-gray-900/40 hover:bg-gray-800 text-white backdrop-blur-sm px-2 md:px-4 py-1 md:py-3 text-xs md:text-base"
                     asChild
                   >
                     <Link href={movie.trailerUrl || "#"} target="_blank" rel="noopener noreferrer">
-                      <Film className="h-5 w-5" />
+                      <Film className="h-3 w-3 md:h-5 md:w-5" />
                       Xem trailer
                     </Link>
                   </Button>
                   
-                  <div className="flex gap-2">
+                  <div className="flex gap-1 md:gap-2">
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button 
                             variant="outline" 
                             size="icon" 
-                            className={`rounded-full w-11 h-11 ${isWatchlist 
+                            className={`rounded-full w-8 h-8 md:w-11 md:h-11 ${isWatchlist 
                               ? 'bg-indigo-600 text-white border-indigo-500' 
                               : 'bg-gray-900/40 border-gray-600 hover:bg-gray-800 text-white backdrop-blur-sm'}`}
                             onClick={() => setIsWatchlist(!isWatchlist)}
                           >
-                            <Bookmark className={`h-5 w-5 ${isWatchlist ? 'fill-white' : ''}`} />
+                            <Bookmark className={`h-4 w-4 md:h-5 md:w-5 ${isWatchlist ? 'fill-white' : ''}`} />
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent>
+                        <TooltipContent className="text-xs md:text-sm p-1 md:p-2">
                           <p>{isWatchlist ? 'Đã lưu' : 'Lưu phim'}</p>
                         </TooltipContent>
                       </Tooltip>
@@ -243,15 +248,15 @@ const MovieDetail = ({ movie, episodes = [] }: MovieDetailProps) => {
                           <Button 
                             variant="outline" 
                             size="icon" 
-                            className={`rounded-full w-11 h-11 ${isLiked 
+                            className={`rounded-full w-8 h-8 md:w-11 md:h-11 ${isLiked 
                               ? 'bg-pink-600 text-white border-pink-500' 
                               : 'bg-gray-900/40 border-gray-600 hover:bg-gray-800 text-white backdrop-blur-sm'}`}
                             onClick={() => setIsLiked(!isLiked)}
                           >
-                            <Heart className={`h-5 w-5 ${isLiked ? 'fill-white' : ''}`} />
+                            <Heart className={`h-4 w-4 md:h-5 md:w-5 ${isLiked ? 'fill-white' : ''}`} />
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent>
+                        <TooltipContent className="text-xs md:text-sm p-1 md:p-2">
                           <p>{isLiked ? 'Đã thích' : 'Thích phim'}</p>
                         </TooltipContent>
                       </Tooltip>
@@ -263,12 +268,12 @@ const MovieDetail = ({ movie, episodes = [] }: MovieDetailProps) => {
                           <Button 
                             variant="outline" 
                             size="icon" 
-                            className="rounded-full w-11 h-11 bg-gray-900/40 border-gray-600 hover:bg-gray-800 text-white backdrop-blur-sm"
+                            className="rounded-full w-8 h-8 md:w-11 md:h-11 bg-gray-900/40 border-gray-600 hover:bg-gray-800 text-white backdrop-blur-sm"
                           >
-                            <Share className="h-5 w-5" />
+                            <Share className="h-4 w-4 md:h-5 md:w-5" />
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent>
+                        <TooltipContent className="text-xs md:text-sm p-1 md:p-2">
                           <p>Chia sẻ</p>
                         </TooltipContent>
                       </Tooltip>
@@ -409,10 +414,10 @@ const MovieDetail = ({ movie, episodes = [] }: MovieDetailProps) => {
                     <div className="relative">
                       <div
                         ref={carouselRef}
-                        className="flex gap-2 sm:gap-3 transition-transform duration-300"
+                        className="flex gap-2 sm:gap-4 transition-transform duration-300"
                         style={{ 
                           transform: `translateX(-${currentIndex * (100 / Math.max(1, visibleCards))}%)`,
-                          width: `${(topRatedMovies.length / Math.max(1, visibleCards)) * 100}%`
+                          width: `${(topRatedMovies.length / Math.max(1, 1.75* visibleCards)) * 100}%`
                         }}
                       >
                         {topRatedMovies.map((movie, idx) => (

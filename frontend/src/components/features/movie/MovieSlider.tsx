@@ -19,7 +19,6 @@ interface MovieSliderProps {
 const MovieSlider = ({ 
   title, 
   movies = mockMovies, 
-  variant = "default", 
   viewAllHref = "/movie",
   useSimpleScroll = false // Default to false to maintain existing behavior
 }: MovieSliderProps) => {
@@ -33,27 +32,27 @@ const MovieSlider = ({
   const [scrollLeft, setScrollLeft] = useState(0)
   const [isMobile, setIsMobile] = useState(false)
 
-  // Determine color based on variant
-  const getAccentColor = () => {
-    switch (variant) {
-      case "popular": return "bg-amber-600"
-      case "trending": return "bg-rose-600"
-      case "new": return "bg-emerald-600"
-      case "top": return "bg-sky-600"
-      default: return "bg-amber-600"
-    }
-  }
+  // // Determine color based on variant
+  // const getAccentColor = () => {
+  //   switch (variant) {
+  //     case "popular": return "bg-amber-600"
+  //     case "trending": return "bg-rose-600"
+  //     case "new": return "bg-emerald-600"
+  //     case "top": return "bg-sky-600"
+  //     default: return "bg-amber-600"
+  //   }
+  // }
   
-  // Get gradient background based on variant
-  const getGradientBg = () => {
-    switch (variant) {
-      case "popular": return "from-amber-600/10 to-transparent"
-      case "trending": return "from-rose-600/10 to-transparent"
-      case "new": return "from-emerald-600/10 to-transparent"
-      case "top": return "from-sky-600/10 to-transparent"
-      default: return "from-amber-600/10 to-transparent"
-    }
-  }
+  // // Get gradient background based on variant
+  // const getGradientBg = () => {
+  //   switch (variant) {
+  //     case "popular": return "from-amber-600/10 to-transparent"
+  //     case "trending": return "from-rose-600/10 to-transparent"
+  //     case "new": return "from-emerald-600/10 to-transparent"
+  //     case "top": return "from-sky-600/10 to-transparent"
+  //     default: return "from-amber-600/10 to-transparent"
+  //   }
+  // }
 
   // Handle responsiveness
   useEffect(() => {
@@ -63,19 +62,23 @@ const MovieSlider = ({
       // Set mobile state
       setIsMobile(width < 768)
       
-      if (width >= 1280) { // xl and 2xl
-        setVisibleItems(4)
-      } else if (width >= 1024) { // lg
-        setVisibleItems(4)
-      } else if (width >= 768) { // md
-        setVisibleItems(3)
-      } else { // sm and xs
-        setVisibleItems(2)
+      let items = 4 // mặc định là 4
+      if (width >= 1280) {
+        items = 4
+      } else if (width >= 1024) {
+        items = 4
+      } else if (width >= 768) {
+        items = 3
+      } else {
+        items = 2
       }
+
+      // Giới hạn tối đa không vượt quá 4
+      setVisibleItems(Math.min(items, 4))
 
       if (containerRef.current) {
         const totalItems = movies.length
-        const maxPosition = Math.max(0, totalItems - visibleItems)
+        const maxPosition = Math.max(0, totalItems - items)
         setMaxScrollPosition(maxPosition)
       }
     }
@@ -183,12 +186,12 @@ const MovieSlider = ({
   const useOverflowScroll = useSimpleScroll || isMobile
 
   return (
-    <div className={`relative my-6 px-4 sm:px-6 bg-gradient-to-r ${getGradientBg()}`}>
+      
       <div className="py-4">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <div className={`w-1 h-6 ${getAccentColor()} rounded-full`}></div>
-            <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white">{title}</h2>
+            <div className={`w-1 h-6 bg-gradient-to-r from-gray-950 to-amber-500 rounded-full`}></div>
+            <h2 className="text-lg sm:text-xl md:text-2xl font-bold bg-gradient-to-r from-amber-700 to-amber-900 bg-clip-text text-transparent">{title}</h2>
           </div>
           <Link 
             href={viewAllHref}
@@ -235,13 +238,13 @@ const MovieSlider = ({
             // Simple overflow scroll method for mobile
             <div 
               ref={sliderRef}
-              className="flex overflow-x-auto gap-4 pb-4 snap-x snap-mandatory scrollbar-hide"
+              className="flex overflow-x-auto gap-2 pr-2 snap-x snap-mandatory scrollbar-hide"
             >
               {movies.map((movie) => (
                 <div 
                   key={movie.id}
                   className="flex-shrink-0 snap-start"
-                  style={{ width: `${100 / Math.min(2, visibleItems)}%`, minWidth: '200px' }}
+                  style={{ width: `${100 / Math.min(2, visibleItems)}%`}}
                 >
                   <MovieCard movie={movie} variant="slider" />
                 </div>
@@ -268,7 +271,7 @@ const MovieSlider = ({
                 <div 
                   key={movie.id}
                   className="flex-shrink-0"
-                  style={{ width: `${100 / visibleItems}%` }}
+                  style={{ width: `${100 / (visibleItems * 2)}%` }}
                 >
                   <MovieCard movie={movie} variant="slider" />
                 </div>
@@ -277,7 +280,7 @@ const MovieSlider = ({
           )}
         </div>
       </div>
-    </div>
+
   )
 }
 

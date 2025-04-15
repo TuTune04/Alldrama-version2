@@ -52,6 +52,22 @@ const FeaturedContentSwitcher = ({
   
   const totalItems = items.length
   
+  // Get viewport size
+  const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 })
+
+  useEffect(() => {
+    const updateSize = () => {
+      setViewportSize({
+        width: window.innerWidth,
+        height: window.innerHeight
+      })
+    }
+
+    updateSize()
+    window.addEventListener('resize', updateSize)
+    return () => window.removeEventListener('resize', updateSize)
+  }, [])
+
   // Get appropriate styles based on variant
   const getVariantStyles = () => {
     switch (variant) {
@@ -149,51 +165,51 @@ const FeaturedContentSwitcher = ({
   }, [totalItems])
   
   // Default render function for detail content if none provided
-  const defaultRenderDetailContent = (movie: Movie, index: number) => {
-    return (
-      <div className="flex flex-col md:flex-row gap-6">
-        <div className="aspect-[2/3] w-full max-w-[200px] rounded-lg overflow-hidden shadow-lg">
-          <img 
-            src={movie.posterUrl} 
-            alt={movie.title}
-            className="w-full h-full object-cover"
-          />
-        </div>
+  // const defaultRenderDetailContent = (movie: Movie, index: number) => {
+  //   return (
+  //     <div className="flex flex-col md:flex-row gap-6">
+  //       <div className="aspect-[2/3] w-full max-w-[200px] rounded-lg overflow-hidden shadow-lg">
+  //         <img 
+  //           src={movie.posterUrl} 
+  //           alt={movie.title}
+  //           className="w-full h-full object-cover"
+  //         />
+  //       </div>
         
-        <div className="flex-1">
-          <h3 className={`text-2xl font-bold mb-2 bg-gradient-to-r ${styles.titleGradient} bg-clip-text text-transparent`}>
-            {movie.title}
-          </h3>
-          <div className="flex items-center gap-2 mb-4">
-            <Badge>{movie.releaseYear}</Badge>
-            {movie.rating && (
-              <Badge variant="outline" className="flex items-center gap-1">
-                <Star className="h-3.5 w-3.5" />
-                {movie.rating.toFixed(1)}
-              </Badge>
-            )}
-          </div>
-          <p className="text-sm text-muted-foreground mb-4 line-clamp-3">
-            {movie.description}
-          </p>
-          <div className="flex items-center gap-2">
-            <Button asChild>
-              <Link href={`/watch/${movie.id}`}>
-                <Play className="mr-2 h-4 w-4" />
-                Xem ngay
-              </Link>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link href={generateMovieUrl(movie.id, movie.title)}>
-                <Info className="mr-2 h-4 w-4" />
-                Chi tiết
-              </Link>
-            </Button>
-          </div>
-        </div>
-      </div>
-    )
-  }
+  //       <div className="flex-1">
+  //         <h3 className={`text-2xl font-bold mb-2 bg-gradient-to-r ${styles.titleGradient} bg-clip-text text-transparent`}>
+  //           {movie.title}
+  //         </h3>
+  //         <div className="flex items-center gap-2 mb-4">
+  //           <Badge>{movie.releaseYear}</Badge>
+  //           {movie.rating && (
+  //             <Badge variant="outline" className="flex items-center gap-1">
+  //               <Star className="h-3.5 w-3.5" />
+  //               {movie.rating.toFixed(1)}
+  //             </Badge>
+  //           )}
+  //         </div>
+  //         <p className="text-sm text-muted-foreground mb-4 line-clamp-3">
+  //           {movie.description}
+  //         </p>
+  //         <div className="flex items-center gap-2">
+  //           <Button asChild>
+  //             <Link href={`/watch/${movie.id}`}>
+  //               <Play className="mr-2 h-4 w-4" />
+  //               Xem ngay
+  //             </Link>
+  //           </Button>
+  //           <Button variant="outline" asChild>
+  //             <Link href={generateMovieUrl(movie.id, movie.title)}>
+  //               <Info className="mr-2 h-4 w-4" />
+  //               Chi tiết
+  //             </Link>
+  //           </Button>
+  //         </div>
+  //       </div>
+  //     </div>
+  //   )
+  // }
   
   if (!items || items.length === 0) return null
   
@@ -227,9 +243,12 @@ const FeaturedContentSwitcher = ({
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
               
-              <div className="absolute bottom-0 left-0 p-6 w-full pb-16">
+              <div className={cn(
+                "absolute bottom-0 left-0 w-full p-2",
+                viewportSize.width < 640 ? "" : "p-6 pb-16"
+              )}>
                 <div className="flex flex-col gap-2 max-w-2xl">
-                  <h3 className={`text-3xl font-bold bg-gradient-to-r ${styles.titleGradient} bg-clip-text text-transparent`}>
+                  <h3 className={cn(` font-bold bg-gradient-to-r ${styles.titleGradient} bg-clip-text text-transparent`, viewportSize.width < 640 ? "text-base" : "text-3xl")}>
                     {selectedItem.title}
                   </h3>
                   <div className="flex items-center gap-2">
@@ -254,18 +273,18 @@ const FeaturedContentSwitcher = ({
                       asChild
                     >
                       <Link href={`/watch/${selectedItem.id}`}>
-                        <Play className="h-4 w-4" />
+                        <Play className="h-3 w-3" />
                         Xem ngay
                       </Link>
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
-                      className="gap-1 bg-white/10 hover:bg-white/20 text-white"
+                      className="gap-1 bg-white/10 hover:bg-white/20 text-sm text-white"
                       asChild
                     >
                       <Link href={generateMovieUrl(selectedItem.id, selectedItem.title)}>
-                        <Info className="h-4 w-4" />
+                        <Info className="h-3 w-3" />
                         Chi tiết
                       </Link>
                     </Button>
@@ -282,12 +301,12 @@ const FeaturedContentSwitcher = ({
             {/* Desktop thumbnails */}
             <div className="absolute bottom-0 left-0 right-0 translate-y-1/2 px-8 hidden md:block">
               <div className="flex justify-center">
-                <div className="inline-flex bg-black/70 backdrop-blur-md p-2 rounded-xl space-x-4 shadow-xl">
+                <div className="inline-flex bg-black/70 backdrop-blur-md p-2 rounded-xl space-x-6 shadow-xl">
                   {items.slice(0, visibleThumbs).map((item, index) => (
                     <div
                       key={item.id}
                       className={cn(
-                        'relative rounded-md overflow-hidden transition-all duration-200 cursor-pointer h-16 w-24',
+                        'relative rounded-md overflow-hidden transition-all duration-200 cursor-pointer h-27 w-20',
                         index === selectedIndex 
                           ? 'ring-2 ring-primary ring-offset-2 ring-offset-black z-10 scale-110' 
                           : 'opacity-70 hover:opacity-100'

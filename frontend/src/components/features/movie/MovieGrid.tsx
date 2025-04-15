@@ -8,6 +8,7 @@ import MoviePopover from "./MoviePopover"
 import Link from "next/link"
 import { generateMovieUrl } from "@/utils/url"
 
+
 interface MovieGridProps {
   movies: Movie[]
   isLoading?: boolean
@@ -60,7 +61,7 @@ const MovieGrid = ({
           <div key={movie.id} className="bg-gray-800/40 border border-gray-700 rounded-lg overflow-hidden hover:border-gray-500 transition-colors">
             <div className="flex flex-col sm:flex-row">
               <div className="w-full sm:w-1/4 md:w-1/5 h-48 sm:h-auto relative">
-                <Link href={generateMovieUrl(movie.id, movie.title)}>
+                <Link href={generateMovieUrl(movie.id, movie.title)} className="text-white hover:text-amber-400 transition-colors">
                   <img
                     src={movie.posterUrl}
                     alt={movie.title}
@@ -70,7 +71,7 @@ const MovieGrid = ({
               </div>
               <div className="flex-1 p-4 sm:p-6">
                 <div className="flex justify-between items-start">
-                  <Link href={generateMovieUrl(movie.id, movie.title)}>
+                  <Link href={generateMovieUrl(movie.id, movie.title)} className="text-white hover:text-amber-400 transition-colors">
                     <h3 className="text-xl font-bold text-white hover:text-indigo-400 transition-colors">{movie.title}</h3>
                   </Link>
                   <div className="flex items-center space-x-2">
@@ -93,7 +94,7 @@ const MovieGrid = ({
                   ))}
                 </div>
                 <div className="mt-4 flex space-x-3">
-                  <Link href={generateMovieUrl(movie.id, movie.title)}>
+                  <Link href={generateMovieUrl(movie.id, movie.title)} className="text-white hover:text-amber-400 transition-colors">
                     <button className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm transition-colors">
                       Chi tiết
                     </button>
@@ -132,9 +133,9 @@ const MovieGrid = ({
           <MoviePopover
             movie={movie}
             trigger={
-              <div className="transition-transform hover:scale-[1.03] duration-300 cursor-pointer">
+              <Link href={generateMovieUrl(movie.id, movie.title)} className="transition-transform hover:scale-[1.03] duration-300">
                 <MovieCard movie={movie} />
-              </div>
+              </Link>
             }
           />
         </motion.div>

@@ -25,6 +25,7 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/comp
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import MoviePopover from '@/components/features/movie/MoviePopover';
 import Link from 'next/link';
+import { generateMovieUrl } from '@/utils/url';
 
 // Genre data for filter badges
 const GENRES = [
@@ -41,11 +42,7 @@ const GENRES = [
   { id: 'animation', name: 'Hoạt hình' },
 ];
 
-// Helper function to create movie URL
-const generateMovieUrl = (id: string, title: string): string => {
-  const slug = title.toLowerCase().replace(/\s+/g, '-');
-  return `/movie/${id}/${slug}`;
-};
+// URL generation is now handled by the imported generateMovieUrl function from utils/url
 
 export default function MovieListPage() {
   const [activeGenre, setActiveGenre] = useState('all');
