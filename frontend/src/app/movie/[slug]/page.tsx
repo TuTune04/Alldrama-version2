@@ -3,20 +3,19 @@ import MovieDetail from '@/components/features/movie/MovieDetail';
 import { mockMovies } from '@/mocks';
 import { getEpisodeListResponse } from '@/mocks/episodes';
 import MovieSlider from '@/components/features/movie/MovieSlider';
-import { getIdFromSlug} from '@/utils/url';
+import { createSlug } from '@/utils/url';
+
 interface MovieDetailPageProps {
   params: {
-    slug: string
+    slug: string // Slug của phim như "ten-phim"
   };
 }
 
 export default async function MovieDetailPage({ params }: MovieDetailPageProps) {
   console.log("Slug received:", params.slug);
-  const movieId = getIdFromSlug(params.slug);
-  console.log("Extracted movieId:", movieId);
-  console.log("Available movie IDs:", mockMovies.map(m => m.id));
   
-  const movie = mockMovies.find(m => m.id === movieId);
+  // Tìm phim dựa trên slug
+  const movie = mockMovies.find(m => createSlug(m.title) === params.slug);
   console.log("Found movie:", movie ? `${movie.id} - ${movie.title}` : "Not found");
   
   if (!movie) {
@@ -28,12 +27,12 @@ export default async function MovieDetailPage({ params }: MovieDetailPageProps) 
     );
   }
   
-  const episodeList = getEpisodeListResponse(movieId);
+  const episodeList = getEpisodeListResponse(movie.id);
   
   // Lọc phim cùng thể loại
   const relatedMovies = mockMovies
     .filter(m => 
-      m.id !== movieId && 
+      m.id !== movie.id && 
       m.genres.some(g1 => 
         movie.genres.some(g2 => {
           const name1 = typeof g1 === 'string' ? g1 : g1.name;
@@ -50,22 +49,22 @@ export default async function MovieDetailPage({ params }: MovieDetailPageProps) 
         <MovieDetail movie={movie} episodes={episodeList.episodes} />
       </Suspense>
       
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
         {relatedMovies.length > 0 ? (
           <MovieSlider 
             title="Phim tương tự" 
             movies={relatedMovies} 
             variant="trending"
-            viewMoreLink={`/movie?genre=${encodeURIComponent(typeof movie.genres[0] === 'string' ? movie.genres[0] : movie.genres[0].name)}`} 
+            viewAllHref={`/movie?genre=${encodeURIComponent(typeof movie.genres[0] === 'string' ? movie.genres[0] : movie.genres[0].name)}`} 
           />
         ) : (
           <MovieSlider 
             title="Phim phổ biến" 
             variant="popular"
-            viewMoreLink="/movie?sort=most-viewed" 
+            viewAllHref="/movie?sort=most-viewed" 
           />
         )}
-        </div>
+      </div>
     </div>
   );
-} 
+}

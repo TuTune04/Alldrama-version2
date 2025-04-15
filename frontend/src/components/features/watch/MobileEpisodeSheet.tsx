@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { generateWatchEpisodeUrl } from '@/utils/url';
+import { generateWatchUrl } from '@/utils/url';
 
 interface EpisodeSheetProps {
   episodes: any[];
@@ -104,7 +104,7 @@ export default function MobileEpisodeSheet({
                 {episodes.map(ep => (
                   <a 
                     key={ep.id}
-                    href={generateWatchEpisodeUrl(ep.id)}
+                    href={generateWatchUrl(movieId, movieTitle, ep.id, ep.episodeNumber)}
                     className={`block rounded overflow-hidden ${
                       ep.id === currentEpisode?.id 
                         ? 'ring-2 ring-amber-500' 
@@ -134,7 +134,7 @@ export default function MobileEpisodeSheet({
                 {episodes.map(ep => (
                   <a 
                     key={ep.id}
-                    href={generateWatchEpisodeUrl(ep.id)}
+                    href={generateWatchUrl(movieId, movieTitle, ep.id, ep.episodeNumber)}
                     className={`flex items-center p-3 ${
                       ep.id === currentEpisode?.id 
                         ? 'bg-white/10 text-amber-400' 

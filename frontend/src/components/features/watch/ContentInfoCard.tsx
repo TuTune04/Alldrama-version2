@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import IconButton from './IconButton';
-import { generateWatchEpisodeUrl } from '@/utils/url';
+import { generateWatchUrl } from '@/utils/url';
 
 interface ContentInfoCardProps {
   movie: any;
@@ -91,7 +91,7 @@ export default function ContentInfoCard({
                       className="border-gray-700 bg-gray-800 text-white hover:bg-gray-700"
                       asChild
                     >
-                      <a href={generateWatchEpisodeUrl(prevEpisode.id)}>
+                      <a href={generateWatchUrl(movie.id, movie.title, prevEpisode.id, prevEpisode.episodeNumber)}>
                         <ChevronLeft size={16} className="mr-1" />
                         Tập trước
                       </a>
@@ -104,7 +104,7 @@ export default function ContentInfoCard({
                       className="border-gray-700 bg-gray-800 text-white hover:bg-gray-700"
                       asChild
                     >
-                      <a href={generateWatchEpisodeUrl(nextEpisode.id)}>
+                      <a href={generateWatchUrl(movie.id, movie.title, nextEpisode.id, nextEpisode.episodeNumber)}>
                         Tập sau
                         <ChevronRight size={16} className="ml-1" />
                       </a>
@@ -125,7 +125,7 @@ export default function ContentInfoCard({
               {episodeListResponse.episodes.slice(0, 12).map(ep => (
                 <a 
                   key={ep.id}
-                  href={generateWatchEpisodeUrl(ep.id)} 
+                  href={generateWatchUrl(movie.id, movie.title, ep.id, ep.episodeNumber)} 
                   className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
                     ep.id === currentEpisode?.id 
                       ? 'bg-amber-500 text-gray-900' 

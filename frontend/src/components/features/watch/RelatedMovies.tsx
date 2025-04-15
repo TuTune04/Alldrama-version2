@@ -2,6 +2,7 @@ import React from 'react';
 import { Star } from 'lucide-react';
 import { Card, CardContent } from "@/components/ui/card";
 import MoviePopover from "@/components/features/movie/MoviePopover";
+import { generateMovieUrl } from "@/utils/url";
 
 interface RelatedMoviesProps {
   relatedMovies: any[];
@@ -14,7 +15,7 @@ export default function RelatedMovies({ relatedMovies }: RelatedMoviesProps) {
   return (
     <Card className={GLASS_BG}>
       <CardContent className="p-4">
-        <h2 className="text-lg font-semibold text-white mb-4">Có thể bạn thích</h2>
+        <h2 className="text-lg font-semibold text-white mb-4">Related Movies</h2>
         <div className="space-y-3">
           {relatedMovies.map(relatedMovie => (
             <MoviePopover 
@@ -24,7 +25,7 @@ export default function RelatedMovies({ relatedMovies }: RelatedMoviesProps) {
               variant="simple"
               trigger={
                 <a 
-                  href={`/movie/${relatedMovie.id}-${relatedMovie.title.toLowerCase().replace(/\s+/g, '-')}`}
+                  href={generateMovieUrl(relatedMovie.id, relatedMovie.title)}
                   className="flex items-center p-2 hover:bg-gray-700/50 rounded-md transition-colors"
                 >
                   <div className="flex-shrink-0 w-16 h-24 rounded overflow-hidden bg-gray-900">

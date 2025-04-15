@@ -9,7 +9,7 @@ import {
   DropdownMenuItem
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { generateWatchEpisodeUrl } from '@/utils/url';
+import { generateWatchUrl } from '@/utils/url';
 
 interface DesktopEpisodePanelProps {
   episodes: any[];
@@ -116,7 +116,7 @@ export default function DesktopEpisodePanel({
                       : ''
                   }`}
                 >
-                  <a href={generateWatchEpisodeUrl(ep.id)}>
+                  <a href={generateWatchUrl(movieId, movieTitle, ep.id, ep.episodeNumber)}>
                     <div className="aspect-video bg-gray-800 relative overflow-hidden rounded-t-md">
                       <img 
                         src={`https://picsum.photos/seed/${ep.id}/300/200`} 
@@ -158,7 +158,7 @@ export default function DesktopEpisodePanel({
                 {episodes.map(ep => (
                   <a 
                     key={ep.id}
-                    href={generateWatchEpisodeUrl(ep.id)}
+                    href={generateWatchUrl(movieId, movieTitle, ep.id, ep.episodeNumber)}
                     className={`flex items-center p-3 ${
                       ep.id === currentEpisode.id
                         ? 'bg-white/10 text-amber-400'
