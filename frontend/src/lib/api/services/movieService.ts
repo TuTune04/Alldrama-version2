@@ -27,8 +27,8 @@ export const movieService = {
    * Lấy chi tiết phim theo ID
    * @param id ID của phim
    */
-  async getMovieById(id: string): Promise<Movie> {
-    return apiClient.get<Movie>(API_ENDPOINTS.MOVIES.DETAIL(id));
+  async getMovieById(id: string | number): Promise<Movie> {
+    return apiClient.get<Movie>(API_ENDPOINTS.MOVIES.DETAIL(String(id)));
   },
 
   /**
@@ -44,15 +44,15 @@ export const movieService = {
    * @param id ID của phim
    * @param data Dữ liệu cập nhật
    */
-  async updateMovie(id: string, data: UpdateMovieDto): Promise<Movie> {
-    return apiClient.put<Movie>(API_ENDPOINTS.MOVIES.UPDATE(id), data);
+  async updateMovie(id: string | number, data: UpdateMovieDto): Promise<Movie> {
+    return apiClient.put<Movie>(API_ENDPOINTS.MOVIES.UPDATE(String(id)), data);
   },
 
   /**
    * Xóa phim (Admin)
    * @param id ID của phim
    */
-  async deleteMovie(id: string): Promise<{ message: string }> {
-    return apiClient.delete<{ message: string }>(API_ENDPOINTS.MOVIES.DELETE(id));
+  async deleteMovie(id: string | number): Promise<{ message: string }> {
+    return apiClient.delete<{ message: string }>(API_ENDPOINTS.MOVIES.DELETE(String(id)));
   },
-}; 
+};

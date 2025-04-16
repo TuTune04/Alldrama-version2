@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react';
 import VideoPlayer from '@/components/ui/VideoPlayer';
 import { mockMovies } from '@/mocks';
-import { getEpisodeListResponse } from '@/mocks/episodes';
+import { getEpisodeListResponse, getPaginatedEpisodeResponse } from '@/mocks/episodes';
 import { createSlug } from '@/utils/url';
 
 // UI Components
@@ -32,7 +32,6 @@ export default function WatchPage({ params, searchParams }: WatchPageProps) {
   // UI control states
   const [showEpisodeList, setShowEpisodeList] = useState(false);
   const videoContainerRef = useRef<HTMLDivElement>(null);
-  const [currentSeason, setCurrentSeason] = useState(1);
   const [episodeView, setEpisodeView] = useState<'grid' | 'list'>('grid');
 
   // Get data from URL parameters
@@ -55,13 +54,13 @@ export default function WatchPage({ params, searchParams }: WatchPageProps) {
   const isEpisode = !!episodeId;
   const isMovie = !isEpisode;
 
-  // Get episodes for this movie
-  const episodeListResponse = getEpisodeListResponse(movie.id);
+  // Get episodes for this movie (direct array from API)
+  const episodes = getEpisodeListResponse(String(movie.id));
 
   // If we're watching an episode, find the episode
   let currentEpisode = null;
   if (isEpisode) {
-    currentEpisode = episodeListResponse.episodes.find(ep => ep.id === episodeId);
+    currentEpisode = episodes.find(ep => String(ep.id) === episodeId);
 
     if (!currentEpisode) {
       return <NotFoundMessage message="Không tìm thấy tập phim" description="Tập phim bạn đang tìm không tồn tại hoặc đã bị xóa." />;
@@ -73,15 +72,15 @@ export default function WatchPage({ params, searchParams }: WatchPageProps) {
   let nextEpisode = null;
 
   if (isEpisode && currentEpisode) {
-    const currentIndex = episodeListResponse.episodes.findIndex(ep => ep.id === episodeId);
-    prevEpisode = currentIndex > 0 ? episodeListResponse.episodes[currentIndex - 1] : null;
-    nextEpisode = currentIndex < episodeListResponse.episodes.length - 1
-      ? episodeListResponse.episodes[currentIndex + 1]
+    const currentIndex = episodes.findIndex(ep => String(ep.id) === episodeId);
+    prevEpisode = currentIndex > 0 ? episodes[currentIndex - 1] : null;
+    nextEpisode = currentIndex < episodes.length - 1
+      ? episodes[currentIndex + 1]
       : null;
   }
-
-  // Datos simulados
-  const seasons = [1, 2, 3, 4].map(num => ({ id: num, name: `Phần ${num}` }));
+  
+  // Get paginated response for UI components that require pagination
+  const paginatedEpisodeResponse = getPaginatedEpisodeResponse(String(movie.id));
 
   return (
     <div className="bg-gradient-to-b from-gray-950 via-gray-900 to-gray-800 min-h-screen pb-12">
@@ -105,14 +104,11 @@ export default function WatchPage({ params, searchParams }: WatchPageProps) {
               </div>
 
               {/* Mobile episode panel (for series only) */}
-              {!isMovie && episodeListResponse.episodes.length > 0 && (
+              {!isMovie && episodes.length > 0 && (
                 <MobileEpisodeSheet
-                  episodes={episodeListResponse.episodes}
+                  episodes={episodes}
                   currentEpisode={currentEpisode}
-                  currentSeason={currentSeason}
-                  setCurrentSeason={setCurrentSeason}
-                  seasons={seasons}
-                  movieId={movie.id}
+                  movieId={String(movie.id)}
                   movieTitle={movie.title}
                   episodeView={episodeView}
                   setEpisodeView={setEpisodeView}
@@ -121,24 +117,24 @@ export default function WatchPage({ params, searchParams }: WatchPageProps) {
 
               {/* Video Player */}
               <VideoPlayer
-                src={isMovie ? (movie as any).videoUrl || 'https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4' : (currentEpisode as any).videoUrl || 'https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4'}
+                src={isMovie ? movie.playlistUrl || 'https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4' : currentEpisode ? currentEpisode.playlistUrl : 'https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4'}
                 poster={isMovie ? movie.posterUrl : `https://picsum.photos/seed/${(currentEpisode as any)?.id || 'default'}/800/450`}
                 title={isMovie ? movie.title : `${movie.title} - Tập ${(currentEpisode as any)?.episodeNumber || '?'}: ${(currentEpisode as any)?.title || 'Không có tiêu đề'}`}
                 episodeInfo={isEpisode && currentEpisode ? {
-                  id: currentEpisode.id,
+                  id: String(currentEpisode.id),
                   title: currentEpisode.title,
                   number: currentEpisode.episodeNumber,
                   prevEpisode: prevEpisode ? {
-                    id: prevEpisode.id,
+                    id: String(prevEpisode.id),
                     number: prevEpisode.episodeNumber,
                     title: prevEpisode.title
                   } : null,
                   nextEpisode: nextEpisode ? {
-                    id: nextEpisode.id,
+                    id: String(nextEpisode.id),
                     number: nextEpisode.episodeNumber,
                     title: nextEpisode.title
                   } : null,
-                  movieId: movie.id,
+                  movieId: String(movie.id),
                   movieTitle: movie.title,
                 } : undefined}
                 controls={true}
@@ -146,17 +142,14 @@ export default function WatchPage({ params, searchParams }: WatchPageProps) {
               />
 
               {/* Desktop Episode Panel (for series only) */}
-              {!isMovie && episodeListResponse.episodes.length > 0 && (
+              {!isMovie && episodes.length > 0 && (
                 <DesktopEpisodePanel
-                  episodes={episodeListResponse.episodes}
+                  episodes={episodes}
                   currentEpisode={currentEpisode}
-                  movieId={movie.id}
+                  movieId={String(movie.id)}
                   movieTitle={movie.title}
                   showEpisodeList={showEpisodeList}
                   setShowEpisodeList={setShowEpisodeList}
-                  currentSeason={currentSeason}
-                  setCurrentSeason={setCurrentSeason}
-                  seasons={seasons}
                 />
               )}
 
@@ -182,7 +175,7 @@ export default function WatchPage({ params, searchParams }: WatchPageProps) {
                 prevEpisode={prevEpisode}
                 nextEpisode={nextEpisode}
                 isMovie={isMovie}
-                episodeListResponse={episodeListResponse}
+                episodeListResponse={paginatedEpisodeResponse}
                 setShowEpisodeList={setShowEpisodeList}
               />
 

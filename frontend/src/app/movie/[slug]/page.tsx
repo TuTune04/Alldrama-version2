@@ -27,7 +27,8 @@ export default async function MovieDetailPage({ params }: MovieDetailPageProps) 
     );
   }
   
-  const episodeList = getEpisodeListResponse(movie.id);
+  const episodes = getEpisodeListResponse(movie.id);
+  console.log("Episodes fetched for movie", movie.id, ":", episodes.length, "episodes");
   
   // Lọc phim cùng thể loại
   const relatedMovies = mockMovies
@@ -46,7 +47,7 @@ export default async function MovieDetailPage({ params }: MovieDetailPageProps) 
   return (
     <div>
       <Suspense fallback={<div className="h-[70vh] bg-gray-800 animate-pulse"></div>}>
-        <MovieDetail movie={movie} episodes={episodeList.episodes} />
+        <MovieDetail movie={movie} episodes={episodes} />
       </Suspense>
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">

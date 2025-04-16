@@ -14,9 +14,6 @@ import { generateWatchUrl } from '@/utils/url';
 interface EpisodeSheetProps {
   episodes: any[];
   currentEpisode: any;
-  currentSeason: number;
-  setCurrentSeason: (season: number) => void;
-  seasons: { id: number; name: string }[];
   movieId: string;
   movieTitle: string;
   episodeView: 'grid' | 'list';
@@ -24,8 +21,7 @@ interface EpisodeSheetProps {
 }
 
 export default function MobileEpisodeSheet({ 
-  episodes, currentEpisode, currentSeason, setCurrentSeason, 
-  seasons, movieId, movieTitle, episodeView, setEpisodeView 
+  episodes, currentEpisode, movieId, movieTitle, episodeView, setEpisodeView 
 }: EpisodeSheetProps) {
   return (
     <div className="sm:hidden absolute top-4 right-4 z-30">
@@ -43,29 +39,6 @@ export default function MobileEpisodeSheet({
           <SheetHeader className="p-4 border-b border-gray-800">
             <SheetTitle className="text-white flex items-center justify-between">
               <span>Danh sách tập</span>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    className="bg-white/10 border-white/20 text-white hover:bg-white/20"
-                  >
-                    <span>Phần {currentSeason}</span>
-                    <ChevronDown size={14} className="ml-1" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="bg-gray-800 border-gray-700 text-white">
-                  {seasons.map((season) => (
-                    <DropdownMenuItem 
-                      key={season.id}
-                      className={`cursor-pointer text-sm ${currentSeason === season.id ? 'bg-white/20 text-amber-400' : 'text-white hover:bg-white/10'}`}
-                      onClick={() => setCurrentSeason(season.id)}
-                    >
-                      {season.name}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
             </SheetTitle>
           </SheetHeader>
           <div className="p-3 border-b border-gray-800">

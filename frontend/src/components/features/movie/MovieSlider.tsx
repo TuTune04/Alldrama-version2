@@ -7,6 +7,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { mockMovies } from "@/mocks"
+import { generateMovieUrl } from "@/utils/url"
 
 interface MovieSliderProps {
   title: string
@@ -30,7 +31,7 @@ const MovieSlider = ({
   const [isDragging, setIsDragging] = useState(false)
   const [startX, setStartX] = useState(0)
   const [scrollLeft, setScrollLeft] = useState(0)
-  const [isMobile, setIsMobile] = useState(false)
+  const [useOverflowScroll, setUseOverflowScroll] = useState(window.innerWidth < 768)
 
   // // Determine color based on variant
   // const getAccentColor = () => {
@@ -59,8 +60,8 @@ const MovieSlider = ({
     const handleResize = () => {
       const width = window.innerWidth
       
-      // Set mobile state
-      setIsMobile(width < 768)
+      // Use overflow scroll for viewport width < 768px
+      setUseOverflowScroll(width < 768)
       
       let items = 4 // mặc định là 4
       if (width >= 1280) {
@@ -102,13 +103,11 @@ const MovieSlider = ({
 
   // Scroll handler for buttons
   const scroll = useCallback((direction: "left" | "right") => {
-    setScrollPosition(prev => {
-      if (direction === "left") {
-        return Math.max(0, prev - 1)
-      } else {
-        return Math.min(maxScrollPosition, prev + 1)
-      }
-    })
+    if (direction === "left") {
+      setScrollPosition(prev => Math.max(0, prev - 1))
+    } else {
+      setScrollPosition(prev => Math.min(maxScrollPosition, prev + 1))
+    }
   }, [maxScrollPosition])
 
   // Drag handlers
@@ -182,8 +181,10 @@ const MovieSlider = ({
     return null
   }
 
-  // Decide which scrolling method to use based on props or screen size
-  const useOverflowScroll = useSimpleScroll || isMobile
+  // Update scrolling method based on props
+  useEffect(() => {
+    setUseOverflowScroll(useSimpleScroll || window.innerWidth < 768)
+  }, [useSimpleScroll])
 
   return (
       
@@ -213,9 +214,9 @@ const MovieSlider = ({
                   canScrollLeft 
                     ? 'bg-gray-800/80 hover:bg-gray-700 border-gray-700' 
                     : 'bg-gray-800/50 cursor-not-allowed border-transparent opacity-50'
-                } hidden sm:flex`}
+                } flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10`}
               >
-                <ChevronLeft size={20} />
+                <ChevronLeft size={16} className="sm:w-5 sm:h-5" />
               </Button>
 
               <Button 
@@ -227,18 +228,18 @@ const MovieSlider = ({
                   canScrollRight 
                     ? 'bg-gray-800/80 hover:bg-gray-700 border-gray-700' 
                     : 'bg-gray-800/50 cursor-not-allowed border-transparent opacity-50'
-                } hidden sm:flex`}
+                } flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10`}
               >
-                <ChevronRight size={20} />
+                <ChevronRight size={16} className="sm:w-5 sm:h-5" />
               </Button>
             </>
           )}
 
           {useOverflowScroll ? (
-            // Simple overflow scroll method for mobile
+            // Overflow scroll method for small viewports (<768px)
             <div 
               ref={sliderRef}
-              className="flex overflow-x-auto gap-2 pr-2 snap-x snap-mandatory scrollbar-hide"
+              className="flex overflow-x-auto gap-2 pr-2 snap-x snap-mandatory scrollbar-hide pb-4"
             >
               {movies.map((movie) => (
                 <div 
@@ -246,15 +247,17 @@ const MovieSlider = ({
                   className="flex-shrink-0 snap-start"
                   style={{ width: `${100 / Math.min(2, visibleItems)}%`}}
                 >
-                  <MovieCard movie={movie} variant="slider" />
+                  <Link href={generateMovieUrl(movie.id, movie.title)} className="block">
+                    <MovieCard movie={movie} variant="slider" />
+                  </Link>
                 </div>
               ))}
             </div>
           ) : (
-            // Original slider with transform-based scrolling for desktop
+            // Transform-based scrolling for larger viewports (≥768px)
             <div
               ref={sliderRef}
-              className="flex gap-4 transition-transform duration-300 ease-out cursor-grab select-none"
+              className="flex gap-2 sm:gap-4 transition-transform duration-300 ease-out select-none"
               style={{
                 transform: `translateX(-${scrollPosition * (100 / visibleItems)}%)`,
                 width: `${(movies.length / visibleItems) * 100}%`
@@ -271,9 +274,11 @@ const MovieSlider = ({
                 <div 
                   key={movie.id}
                   className="flex-shrink-0"
-                  style={{ width: `${100 / (visibleItems * 2)}%` }}
+                  style={{ width: `${100 / (2* visibleItems)}%` }}
                 >
-                  <MovieCard movie={movie} variant="slider" />
+                  <Link href={generateMovieUrl(movie.id, movie.title)} className="block">
+                    <MovieCard movie={movie} variant="slider" />
+                  </Link>
                 </div>
               ))}
             </div>

@@ -263,7 +263,7 @@ const FeaturedContentSwitcher = ({
                     )}
                   </div>
                   <p className="text-sm text-white/80 line-clamp-2 md:line-clamp-3">
-                    {selectedItem.description}
+                    {selectedItem.summary}
                   </p>
                   <div className="flex items-center gap-2 mt-2">
                     <Button
@@ -272,7 +272,7 @@ const FeaturedContentSwitcher = ({
                       className="gap-1"
                       asChild
                     >
-                      <Link href={`/watch/${selectedItem.id}`}>
+                      <Link href={`/watch/${String(selectedItem.id)}`}>
                         <Play className="h-3 w-3" />
                         Xem ngay
                       </Link>
@@ -283,7 +283,7 @@ const FeaturedContentSwitcher = ({
                       className="gap-1 bg-white/10 hover:bg-white/20 text-sm text-white"
                       asChild
                     >
-                      <Link href={generateMovieUrl(selectedItem.id, selectedItem.title)}>
+                      <Link href={generateMovieUrl(String(selectedItem.id), selectedItem.title)}>
                         <Info className="h-3 w-3" />
                         Chi tiết
                       </Link>

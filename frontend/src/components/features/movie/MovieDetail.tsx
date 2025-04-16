@@ -8,7 +8,6 @@ import { generateMovieUrl, generateWatchUrl } from "@/utils/url"
 import { Star, Play, Film, Clock, Calendar, Eye, ChevronDown, ChevronUp, Info, Heart, Bookmark, TrendingUp, BarChart3, Layers, Share, ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import CommentSection from "./comment-section"
-import { Badge } from "@/components/ui/badge"
 import { mockMovies } from "@/mocks"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
@@ -35,12 +34,26 @@ const MovieDetail = ({ movie, episodes = [] }: MovieDetailProps) => {
   const [isWatchlist, setIsWatchlist] = useState(false)
   const [isLiked, setIsLiked] = useState(false)
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [visibleCards, setVisibleCards] = useState(2)
+  const [visibleCards, setVisibleCards] = useState(4)
+  const [useOverflowScroll, setUseOverflowScroll] = useState(window.innerWidth < 768)
   const carouselRef = useRef<HTMLDivElement>(null)
 
-  // Get top rated movies for sidebar and similar movies
-  const topRatedMovies = [...mockMovies]
-    .sort((a, b) => (b.rating || 0) - (a.rating || 0))
+  // Get related movies - comparing genres by their names to ensure type safety
+  const relatedMovies = mockMovies
+    .filter(m => {
+      // Don't include the current movie
+      if (m.id === movie.id) return false;
+      
+      // Check if any genres match
+      return m.genres.some(g1 => {
+        // Handle both string and object genres
+        const genre1 = typeof g1 === 'string' ? g1 : g1.name;
+        return movie.genres.some(g2 => {
+          const genre2 = typeof g2 === 'string' ? g2 : g2.name;
+          return genre1 === genre2;
+        });
+      });
+    })
     .slice(0, 5)
 
   const toggleDescription = () => {
@@ -54,35 +67,39 @@ const MovieDetail = ({ movie, episodes = [] }: MovieDetailProps) => {
 
   // Tính toán số lượng thẻ hiển thị dựa trên kích thước màn hình
   useEffect(() => {
-    const updateVisibleCards = () => {
-      if (window.innerWidth >= 1024) {
-        setVisibleCards(4) // Máy tính: 4 thẻ
-      } else if (window.innerWidth >= 640) {
-        setVisibleCards(4) // Tablet: 3 thẻ
+    // Update visible cards based on viewport width
+    const handleResize = () => {
+      // Use overflow scroll for viewport width < 768px
+      setUseOverflowScroll(window.innerWidth < 768)
+      
+      if (window.innerWidth < 768) {
+        setVisibleCards(2) // Show 2 cards for small viewports
+      } else if (window.innerWidth < 1024) {
+        setVisibleCards(3) // Show 3 cards for medium viewports
       } else {
-        setVisibleCards(2) // Điện thoại: 2 thẻ
+        setVisibleCards(4) // Show 4 cards for large viewports
       }
     }
-
-    updateVisibleCards()
-    window.addEventListener("resize", updateVisibleCards)
-    return () => window.removeEventListener("resize", updateVisibleCards)
+    
+    // Initial call
+    handleResize()
+    
+    // Add event listener
+    window.addEventListener("resize", handleResize)
+    
+    // Cleanup
+    return () => window.removeEventListener("resize", handleResize)
   }, [])
 
   // Điều hướng carousel
   const scrollCarousel = (direction: "left" | "right") => {
     if (direction === "left" && currentIndex > 0) {
       setCurrentIndex(currentIndex - 1)
-    } else if (direction === "right" && currentIndex < topRatedMovies.length - visibleCards) {
+    } else if (direction === "right" && currentIndex < relatedMovies.length - visibleCards) {
       setCurrentIndex(currentIndex + 1)
     }
-
-    if (carouselRef.current) {
-      const cardWidth = window.innerWidth < 640 ? 112 : 128 // w-28 (112px) hoặc w-32 (128px)
-      const gap = window.innerWidth < 640 ? 8 : 12 // gap-2 (8px) hoặc gap-3 (12px)
-      const scrollPosition = currentIndex * (cardWidth + gap)
-      carouselRef.current.style.transform = `translateX(-${scrollPosition}px)`
-    }
+    // Note: The transform is handled by the style attribute in the JSX
+    // which uses the currentIndex state value to calculate the translation
   }
 
   return (
@@ -329,7 +346,7 @@ const MovieDetail = ({ movie, episodes = [] }: MovieDetailProps) => {
                     </h2>
                     
                     <div className="text-gray-300 text-xs sm:text-sm leading-relaxed">
-                      {movie.description}
+                      {movie.summary}
                     </div>
                     
                     <button
@@ -393,48 +410,78 @@ const MovieDetail = ({ movie, episodes = [] }: MovieDetailProps) => {
                           Có thể bạn cũng thích
                         </span>
                       </h2>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => scrollCarousel("left")}
-                          className="p-1 rounded-full bg-gray-700/50 text-gray-300 hover:bg-gray-600/70 disabled:opacity-50 disabled:cursor-not-allowed"
-                          disabled={currentIndex === 0}
-                        >
-                          <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
-                        </button>
-                        <button
-                          onClick={() => scrollCarousel("right")}
-                          className="p-1 rounded-full bg-gray-700/50 text-gray-300 hover:bg-gray-600/70 disabled:opacity-50 disabled:cursor-not-allowed"
-                          disabled={currentIndex >= topRatedMovies.length - visibleCards}
-                        >
-                          <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
-                        </button>
-                      </div>
+                      {!useOverflowScroll && (
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => scrollCarousel("left")}
+                            className="p-1 rounded-full bg-gray-700/50 text-gray-300 hover:bg-gray-600/70 disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled={currentIndex === 0}
+                          >
+                            <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+                          </button>
+                          <button
+                            onClick={() => scrollCarousel("right")}
+                            className="p-1 rounded-full bg-gray-700/50 text-gray-300 hover:bg-gray-600/70 disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled={currentIndex >= relatedMovies.length - visibleCards}
+                          >
+                            <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     <div className="relative">
-                      <div
-                        ref={carouselRef}
-                        className="flex gap-2 sm:gap-4 transition-transform duration-300"
-                        style={{ 
-                          transform: `translateX(-${currentIndex * (100 / Math.max(1, visibleCards))}%)`,
-                          width: `${(topRatedMovies.length / Math.max(1, 1.75* visibleCards)) * 100}%`
-                        }}
-                      >
-                        {topRatedMovies.map((movie, idx) => (
-                          <div 
-                            key={movie.id} 
-                            className="flex-shrink-0" 
-                            style={{ width: `${100 / Math.max(1, visibleCards)}%` }}
-                          >
-                            <MovieCard
-                              movie={movie}
-                              index={idx}
-                              variant="slider"
-                              trapezoid={false}
-                            />
-                          </div>
-                        ))}
-                      </div>
+                      {useOverflowScroll ? (
+                        // Overflow scroll method for small viewports (<768px)
+                        <div 
+                          className="flex overflow-x-auto gap-2 pr-2 snap-x snap-mandatory scrollbar-hide pb-4"
+                        >
+                          {relatedMovies.map((movie, idx) => (
+                            <div 
+                              key={movie.id}
+                              className="flex-shrink-0 snap-start"
+                              style={{ width: `${100 / Math.min(2, visibleCards)}%`}}
+                            >
+                              <Link href={generateMovieUrl(movie.id, movie.title)} className="block">
+                                <MovieCard
+                                  movie={movie}
+                                  index={idx}
+                                  variant="slider"
+                                  trapezoid={false}
+                                />
+                              </Link>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        // Transform-based scrolling for larger viewports (≥768px)
+                        <div
+                          ref={carouselRef}
+                          className="flex sm transition-transform duration-300"
+                          style={{ 
+                            transform: `translateX(-${currentIndex * (100 / Math.max(1, visibleCards))}%)`,
+                            width: `${Math.max(visibleCards, relatedMovies.length) / visibleCards * 100}%`,
+                            transition: 'transform 0.4s ease'
+                          }}
+                        >
+                          {relatedMovies.map((movie, idx) => (
+                            <div 
+                              key={movie.id} 
+                              className="flex-shrink-0" 
+                              style={{ width: `${100 / Math.max(1, visibleCards)}%` }}
+                            >
+                              <Link href={generateMovieUrl(movie.id, movie.title)} className="block">
+                                <MovieCard
+                                  movie={movie}
+                                  index={idx}
+                                  variant="slider"
+                                  trapezoid={false}
+                                />
+                              </Link>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -458,26 +505,48 @@ const MovieDetail = ({ movie, episodes = [] }: MovieDetailProps) => {
                           <Link
                             key={episode.id}
                             href={generateWatchUrl(movie.id, movie.title, episode.id, episode.episodeNumber)}
-                            className="group p-4 bg-gray-800/50 rounded-xl hover:bg-gradient-to-r hover:from-indigo-900/40 hover:to-purple-900/40 transition-all flex items-center gap-3 border border-gray-700 hover:border-indigo-500/30 hover:shadow-lg hover:shadow-indigo-900/10"
-                            onMouseEnter={() => setActiveEpisode(episode.id)}
+                            className="group overflow-hidden rounded-xl hover:shadow-lg hover:shadow-indigo-900/10 border border-gray-700 hover:border-indigo-500/30 transition-all flex flex-col"
+                            onMouseEnter={() => setActiveEpisode(String(episode.id))}
                             onMouseLeave={() => setActiveEpisode(null)}
                           >
-                            <div className={`relative w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 transition-all ${
-                              activeEpisode === episode.id 
-                                ? "bg-gradient-to-r from-indigo-600 to-purple-600" 
-                                : "bg-gray-700 group-hover:bg-gradient-to-r group-hover:from-indigo-600/80 group-hover:to-purple-600/80"
-                            }`}>
-                              <span className="font-bold text-white">
-                                {episode.episodeNumber}
-                              </span>
-                            </div>
-                            <div className="overflow-hidden">
-                              <div className="font-medium line-clamp-1 group-hover:text-white transition-colors">
-                                {episode.title}
+                            {/* Episode thumbnail */}
+                            <div className="relative aspect-video overflow-hidden">
+                              <img 
+                                src={episode.thumbnailUrl} 
+                                alt={episode.title}
+                                className="w-full h-full object-cover"
+                              />
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <div className="w-12 h-12 rounded-full bg-indigo-600/80 flex items-center justify-center">
+                                  <Play className="h-6 w-6 text-white fill-current ml-1" />
+                                </div>
                               </div>
-                              <div className="text-sm text-gray-400 flex items-center mt-1">
-                                <Clock className="w-3 h-3 mr-1" />
-                                {Math.floor(episode.duration / 60)} phút
+                              <div className={`absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center ${activeEpisode === String(episode.id) ? "bg-indigo-600" : "bg-gray-800/80"}`}>
+                                <span className="text-xs font-bold text-white">{episode.episodeNumber}</span>
+                              </div>
+                              <div className="absolute bottom-0 left-0 right-0 px-3 py-2 bg-gradient-to-t from-black to-transparent">
+                                <div className="font-medium text-white line-clamp-1">{episode.title}</div>
+                              </div>
+                            </div>
+
+                            {/* Episode info */}
+                            <div className="p-3 bg-gray-800/50 hover:bg-gradient-to-r hover:from-indigo-900/40 hover:to-purple-900/40">
+                              <div className="flex justify-between items-center text-sm text-gray-400">
+                                <div className="flex items-center">
+                                  <Clock className="w-3 h-3 mr-1" />
+                                  {Math.floor(episode.duration / 60)} phút
+                                </div>
+                                {episode.isProcessed ? (
+                                  <div className="flex items-center text-green-400">
+                                    <span className="w-2 h-2 rounded-full bg-green-400 mr-1"></span>
+                                    Sẵn sàng
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center text-amber-400">
+                                    <span className="w-2 h-2 rounded-full bg-amber-400 mr-1"></span>
+                                    Đang xử lý
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </Link>
@@ -493,7 +562,7 @@ const MovieDetail = ({ movie, episodes = [] }: MovieDetailProps) => {
                 <Card className="bg-gradient-to-br from-gray-800/60 to-gray-900/60 border-gray-700 overflow-hidden">
                   <div className="absolute inset-0 bg-[url('/images/noise.png')] opacity-5 mix-blend-overlay pointer-events-none"></div>
                   <CardContent className="p-6 relative">
-                    <CommentSection movieId={movie.id} />
+                    <CommentSection movieId={movie.id.toString()} />
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -514,7 +583,7 @@ const MovieDetail = ({ movie, episodes = [] }: MovieDetailProps) => {
                 </h2>
                 
                 <div className="space-y-4">
-                  {topRatedMovies.map((movie, index) => (
+                  {relatedMovies.map((movie, index) => (
                     <Link
                       key={movie.id}
                       href={generateMovieUrl(movie.id, movie.title)}

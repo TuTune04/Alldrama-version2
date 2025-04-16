@@ -75,7 +75,7 @@ export default function ContentInfoCard({
             
             <div className="mt-4">
               <h2 className="text-sm font-medium text-gray-200 mb-1">Tóm tắt</h2>
-              <p className="text-gray-300 text-sm">{movie.description}</p>
+              <p className="text-gray-300 text-sm">{movie.summary || currentEpisode?.description}</p>
             </div>
             
             {/* Episode Navigation (only for TV shows) */}

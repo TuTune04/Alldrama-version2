@@ -59,10 +59,10 @@ export default function MovieListPage() {
   // Get the actual movies array from the mock data
   const movieItems: Movie[] = mockMovieListResponse.movies || [];
   
-  // Add movie type info for demo purposes
+  // Add movie type info for demo purposes (using totalEpisodes to determine if it's a series)
   const moviesWithType = movieItems.map(movie => ({
     ...movie,
-    type: movie.episodes && movie.episodes.length > 0 ? 'series' : 'movie'
+    type: movie.totalEpisodes > 0 ? 'series' : 'movie'
   }));
   
   // Filter movies based on type for different tabs
@@ -259,7 +259,7 @@ export default function MovieListPage() {
                   </div>
                 </div>
                 <CardContent className="p-4">
-                  <p className="text-gray-300 text-sm line-clamp-2">{movie.description}</p>
+                  <p className="text-gray-300 text-sm line-clamp-2">{movie.summary}</p>
                   <div className="flex flex-wrap gap-2 mt-3">
                     {movie.genres?.slice(0, 3).map((genre, index) => (
                       <Badge key={index} variant="outline" className="bg-gray-700/50 text-gray-300 border-gray-600">

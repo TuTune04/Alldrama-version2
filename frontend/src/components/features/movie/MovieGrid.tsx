@@ -85,7 +85,7 @@ const MovieGrid = ({
                     )}
                   </div>
                 </div>
-                <p className="text-gray-400 mt-3 line-clamp-3">{movie.description}</p>
+                <p className="text-gray-400 mt-3 line-clamp-3">{movie.summary}</p>
                 <div className="flex flex-wrap gap-2 mt-4">
                   {movie.genres?.slice(0, 5).map((genre, index) => (
                     <span key={index} className="bg-gray-700/50 text-gray-300 px-2 py-1 rounded-md text-xs">

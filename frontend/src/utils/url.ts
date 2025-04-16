@@ -62,16 +62,21 @@ export function getEpisodeIdFromSlug(slug: string): string {
   return slug;
 }
 
-export function generateMovieUrl(id: string, title: string): string {
+export function generateMovieUrl(id: string | number, title: string): string {
   // Đường dẫn /movie/ten-phim cho trang chi tiết phim
   return `/movie/${createSlug(title)}`;
 }
 
-export function generateWatchUrl(movieId: string, movieTitle: string, episodeId?: string, episodeNumber?: number): string {
+export function generateWatchUrl(
+  movieId: string | number, 
+  movieTitle: string, 
+  episodeId?: string | number, 
+  episodeNumber?: number
+): string {
   // Nếu có episodeId, đây là trang xem tập phim
-  if (episodeId && episodeNumber) {
+  if (episodeId !== undefined && episodeNumber) {
     // Đường dẫn đơn giản /watch/ten-phim?episode=123&ep=1
-    return `/watch/${createSlug(movieTitle)}?episode=${episodeId}&ep=${episodeNumber}`;
+    return `/watch/${createSlug(movieTitle)}?episode=${String(episodeId)}&ep=${episodeNumber}`;
   }
   
   // Nếu không có episodeId, đây là trang xem phim

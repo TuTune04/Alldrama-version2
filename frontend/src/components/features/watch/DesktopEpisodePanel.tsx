@@ -18,14 +18,11 @@ interface DesktopEpisodePanelProps {
   movieTitle: string;
   showEpisodeList: boolean;
   setShowEpisodeList: (show: boolean) => void;
-  currentSeason: number;
-  setCurrentSeason: (season: number) => void;
-  seasons: { id: number; name: string }[];
 }
 
 export default function DesktopEpisodePanel({ 
   episodes, currentEpisode, movieId, movieTitle, 
-  showEpisodeList, setShowEpisodeList, currentSeason, setCurrentSeason, seasons 
+  showEpisodeList, setShowEpisodeList
 }: DesktopEpisodePanelProps) {
   if (!showEpisodeList) return null;
   
@@ -46,30 +43,7 @@ export default function DesktopEpisodePanel({
           </Button>
         </div>
         
-        <div className="p-3 border-b border-gray-800">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button 
-                variant="outline" 
-                className="w-full justify-between bg-white/10 border-white/20 text-white hover:bg-white/20"
-              >
-                <span>Phần {currentSeason}</span>
-                <ChevronDown size={16} />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="bg-gray-800 border-gray-700 text-white">
-              {seasons.map((season) => (
-                <DropdownMenuItem 
-                  key={season.id}
-                  className={`cursor-pointer ${currentSeason === season.id ? 'bg-white/20 text-amber-400' : 'text-white hover:bg-white/10'}`}
-                  onClick={() => setCurrentSeason(season.id)}
-                >
-                  {season.name}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+
         
         <div className="p-3 border-b border-gray-800">
           <div className="relative">

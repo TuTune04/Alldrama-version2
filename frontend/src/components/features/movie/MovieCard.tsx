@@ -28,6 +28,7 @@ const MovieCard = ({ movie, index = 0, variant = "slider", trapezoid = false }: 
     isTablet: false,
     isMobile: false
   })
+  // Convert ID to string to ensure compatibility with URL utils
   const movieDetailUrl = generateMovieUrl(movie.id, movie.title)
   const [imageLoaded, setImageLoaded] = useState(false)
   const [imageError, setImageError] = useState(false)

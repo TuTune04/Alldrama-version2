@@ -34,7 +34,7 @@ const SearchPage = () => {
       if (query) {
         filtered = filtered.filter(movie => 
           movie.title.toLowerCase().includes(query) || 
-          movie.description.toLowerCase().includes(query)
+          movie.summary.toLowerCase().includes(query)
         );
       }
       
