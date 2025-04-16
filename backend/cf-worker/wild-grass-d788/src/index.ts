@@ -257,9 +257,11 @@ app.post("/api/hls-callback/:jobId", async (c) => {
 });
 
 // Endpoint để kiểm tra trạng thái job HLS
-app.get("/api/hls-status/:jobId", async (c) => {
+app.get("/api/hls-status/:jobId/:movieId/:episodeId", async (c) => {
   try {
     const jobId = c.req.param("jobId");
+    const movieId = c.req.param("movieId");
+    const episodeId = c.req.param("episodeId");
     
     if (!jobId) {
       return c.json({ success: false, error: "Thiếu job ID" }, 400);
@@ -267,7 +269,7 @@ app.get("/api/hls-status/:jobId", async (c) => {
     
     // Tìm metadata file cho job này trong bucket
     const jobFiles = await c.env.MEDIA_BUCKET.list({
-      prefix: "episodes/",
+      prefix: `episodes/${movieId}/${episodeId}/hls/`,
       delimiter: "/",
       include: ["customMetadata"]
     });
