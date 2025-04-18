@@ -3,7 +3,7 @@
 import type { Movie, Episode } from "@/types"
 import Link from "next/link"
 import Image from "next/image"
-import { useState, useEffect, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { generateMovieUrl, generateWatchUrl } from "@/utils/url"
 import { Star, Play, Film, Clock, Calendar, Eye, ChevronDown, ChevronUp, Info, Heart, Bookmark, TrendingUp, BarChart3, Layers, Share, ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -14,6 +14,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Separator } from "@/components/ui/separator"
 import { Card, CardContent } from "@/components/ui/card"
 import MovieCard from "./MovieCard" // Import MovieCard
+import { useMobile } from "@/hooks/use-mobile"
 
 // Mock movie versions
 const movieVersions = [
@@ -35,7 +36,7 @@ const MovieDetail = ({ movie, episodes = [] }: MovieDetailProps) => {
   const [isLiked, setIsLiked] = useState(false)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [visibleCards, setVisibleCards] = useState(4)
-  const [useOverflowScroll, setUseOverflowScroll] = useState(window.innerWidth < 768)
+  const isMobile = useMobile()
   const carouselRef = useRef<HTMLDivElement>(null)
 
   // Get related movies - comparing genres by their names to ensure type safety
@@ -65,31 +66,15 @@ const MovieDetail = ({ movie, episodes = [] }: MovieDetailProps) => {
     setShowFullDescription(false)
   }, [movie.id])
 
-  // Tính toán số lượng thẻ hiển thị dựa trên kích thước màn hình
   useEffect(() => {
-    // Update visible cards based on viewport width
-    const handleResize = () => {
-      // Use overflow scroll for viewport width < 768px
-      setUseOverflowScroll(window.innerWidth < 768)
-      
-      if (window.innerWidth < 768) {
-        setVisibleCards(2) // Show 2 cards for small viewports
-      } else if (window.innerWidth < 1024) {
-        setVisibleCards(3) // Show 3 cards for medium viewports
-      } else {
-        setVisibleCards(4) // Show 4 cards for large viewports
-      }
+    if (isMobile) {
+      setVisibleCards(2) // Show 2 cards for small viewports
+    } else if (window.innerWidth < 1024) {
+      setVisibleCards(3) // Show 3 cards for medium viewports
+    } else {
+      setVisibleCards(4) // Show 4 cards for large viewports
     }
-    
-    // Initial call
-    handleResize()
-    
-    // Add event listener
-    window.addEventListener("resize", handleResize)
-    
-    // Cleanup
-    return () => window.removeEventListener("resize", handleResize)
-  }, [])
+  }, [isMobile])
 
   // Điều hướng carousel
   const scrollCarousel = (direction: "left" | "right") => {
@@ -410,7 +395,7 @@ const MovieDetail = ({ movie, episodes = [] }: MovieDetailProps) => {
                           Có thể bạn cũng thích
                         </span>
                       </h2>
-                      {!useOverflowScroll && (
+                      {!isMobile && (
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => scrollCarousel("left")}
@@ -431,7 +416,7 @@ const MovieDetail = ({ movie, episodes = [] }: MovieDetailProps) => {
                     </div>
 
                     <div className="relative">
-                      {useOverflowScroll ? (
+                      {isMobile ? (
                         // Overflow scroll method for small viewports (<768px)
                         <div 
                           className="flex overflow-x-auto gap-2 pr-2 snap-x snap-mandatory scrollbar-hide pb-4"

@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation"
 import MoviePopover from "./MoviePopover"
 import { motion } from "framer-motion"
 import { AspectRatio } from "@/components/ui/aspect-ratio"
+import { useMobile } from "@/hooks/use-mobile"
 
 interface MovieCardProps {
   movie: Movie
@@ -28,37 +29,11 @@ const MovieCard = ({ movie, index = 0, variant = "slider", trapezoid = false }: 
     isTablet: false,
     isMobile: false
   })
+  const isMobile = useMobile()
   // Convert ID to string to ensure compatibility with URL utils
   const movieDetailUrl = generateMovieUrl(movie.id, movie.title)
   const [imageLoaded, setImageLoaded] = useState(false)
   const [imageError, setImageError] = useState(false)
-
-  const handleResize = useCallback(() => {
-    if (typeof window === 'undefined') return
-    
-    const width = window.innerWidth
-    setScreenSize({
-      width,
-      isDesktop: width >= 1024,
-      isTablet: width >= 768 && width < 1024,
-      isMobile: width < 768
-    })
-  }, [])
-
-  useEffect(() => {
-    handleResize()
-    let timeoutId: NodeJS.Timeout
-    const debouncedResize = () => {
-      clearTimeout(timeoutId)
-      timeoutId = setTimeout(handleResize, 200)
-    }
-
-    window.addEventListener('resize', debouncedResize)
-    return () => {
-      window.removeEventListener('resize', debouncedResize)
-      clearTimeout(timeoutId)
-    }
-  }, [handleResize])
 
   const handleImageLoad = () => setImageLoaded(true)
   const handleImageError = () => {
@@ -69,6 +44,28 @@ const MovieCard = ({ movie, index = 0, variant = "slider", trapezoid = false }: 
   const handleCardClick = () => {
     router.push(movieDetailUrl)
   }
+
+  useEffect(() => {
+    function updateDimension() {
+      if (cardRef.current) {
+        const { width, height } = cardRef.current.getBoundingClientRect()
+        setScreenSize({
+          width,
+          isDesktop: width >= 1024,
+          isTablet: width >= 768 && width < 1024,
+          isMobile: width < 768
+        })
+      }
+    }
+
+    updateDimension()
+    
+    window.addEventListener('resize', updateDimension)
+    
+    return () => {
+      window.removeEventListener('resize', updateDimension)
+    }
+  }, [])
 
   // Render compact variant (used in watch pages for related movies)
   if (variant === "compact") {

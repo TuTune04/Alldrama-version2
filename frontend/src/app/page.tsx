@@ -9,7 +9,7 @@ import FeaturedContentSwitcher from '@/components/features/movie/FeaturedContent
 export default function Home() {
   // Phim mới nhất (sắp xếp theo thời gian tạo)
   const newestMovies = [...mockMovies].sort((a, b) => 
-    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    new Date(b.createdAt || new Date()).getTime() - new Date(a.createdAt || new Date()).getTime()
   );
 
   // Phim được xem nhiều nhất

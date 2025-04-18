@@ -5,6 +5,7 @@ import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Settings, Subtitles,
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { useMobile } from '@/hooks/use-mobile'
 
 interface VideoPlayerProps {
   src: string
@@ -51,6 +52,7 @@ const VideoPlayer = ({
   const [showSettings, setShowSettings] = useState(false)
   const [showSubtitles, setShowSubtitles] = useState(true)
   const hideControlsTimer = useRef<NodeJS.Timeout>(null)
+  const isMobile = useMobile()
 
   // Initialize video player
   useEffect(() => {
@@ -232,10 +234,10 @@ const VideoPlayer = ({
       {/* Title bar */}
       {showControls && (
         <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/80 to-transparent px-4 py-3 z-10">
-          <div className="flex items-center justify-between">
-            <h2 className="text-white font-medium text-sm md:text-base truncate">{title}</h2>
-          </div>
+        <div className="flex items-center justify-between">
+          <h2 className="text-white font-medium text-sm md:text-base truncate">{title}</h2>
         </div>
+      </div>
       )}
 
       <video
@@ -359,8 +361,8 @@ const VideoPlayer = ({
                 </Tooltip>
               </TooltipProvider>
 
-              {/* Volume control */}
-              <div className="flex items-center space-x-1">
+              {/* Volume control + Time */}
+              <div className="flex items-center space-x-1 group relative">
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -368,7 +370,7 @@ const VideoPlayer = ({
                         variant="ghost"
                         size="icon"
                         onClick={toggleMute}
-                        className="text-white hover:text-amber-500 transition-colors"
+                        className="text-white hover:text-amber-500 transition-colors z-20"
                         aria-label={isMuted ? "Unmute" : "Mute"}
                       >
                         {isMuted || volume === 0 ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
@@ -386,19 +388,19 @@ const VideoPlayer = ({
                   step="0.01"
                   value={isMuted ? 0 : volume}
                   onChange={handleVolumeChange}
-                  className="video-player-volume"
+                  className={`absolute left-8 top-1/2 -translate-y-1/2 w-0 scale-x-0 opacity-0 group-hover:w-24 group-hover:scale-x-100 group-hover:opacity-100 transition-all duration-300 ease-in-out origin-left bg-amber-500 rounded-full appearance-none cursor-pointer h-1 ${isMobile ? 'hidden' : 'block'} z-10`}
                   style={{
-                    backgroundImage: `linear-gradient(to right, #f59e0b ${(isMuted ? 0 : volume) * 100}%, var(--secondary) ${(isMuted ? 0 : volume) * 100}%)`,
+                    backgroundImage: `linear-gradient(to right, #f59e0b ${(isMuted ? 0 : volume) * 100}%, #4b5563 ${(isMuted ? 0 : volume) * 100}%)`,
                   }}
                 />
+                <div className={`text-white text-sm transition-all duration-300 ease-in-out ${isMobile ? 'hidden' : 'flex'} group-hover:translate-x-28 min-w-[5rem]`}>
+                  <span>{formatTime(currentTime)}</span>
+                  <span className="mx-1">/</span>
+                  <span>{formatTime(duration || 0)}</span>
+                </div>
               </div>
 
               {/* Time */}
-              <div className="text-white text-sm">
-                <span>{formatTime(currentTime)}</span>
-                <span className="mx-1">/</span>
-                <span>{formatTime(duration || 0)}</span>
-              </div>
             </div>
 
             <div className="flex items-center gap-2">
@@ -502,4 +504,4 @@ const VideoPlayer = ({
   )
 }
 
-export default VideoPlayer 
+export default VideoPlayer

@@ -13,7 +13,8 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import { useEffect, useState, useRef } from "react"
+import { useState, useRef } from "react"
+import { useMobile } from '@/hooks/use-mobile'
 
 interface MoviePopoverProps {
   movie: Movie
@@ -29,7 +30,8 @@ const MoviePopover = ({
   variant = 'default'
 }: MoviePopoverProps) => {
   const [open, setOpen] = useState(false)
-  const [isDesktop, setIsDesktop] = useState(false)
+  const isMobile = useMobile(1024)
+  const isDesktop = !isMobile
   const triggerRef = useRef<HTMLDivElement>(null)
   const popoverRef = useRef<HTMLDivElement>(null)
   const movieDetailUrl = generateMovieUrl(movie.id, movie.title)
@@ -46,20 +48,6 @@ const MoviePopover = ({
   
   const imageUrl = movie.posterUrl || "/images/placeholder-poster.jpg"
 
-  // Kiểm tra xem có phải là desktop không
-  useEffect(() => {
-    const checkIfDesktop = () => {
-      setIsDesktop(window.innerWidth >= 1024);
-    };
-    
-    checkIfDesktop();
-    window.addEventListener('resize', checkIfDesktop);
-    
-    return () => {
-      window.removeEventListener('resize', checkIfDesktop);
-    };
-  }, []);
-  
   // Cấu hình kích thước dựa trên prop size
   const sizeConfig = {
     sm: {

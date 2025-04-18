@@ -8,6 +8,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { mockMovies } from "@/mocks"
 import { generateMovieUrl } from "@/utils/url"
+import { useMobile } from "@/hooks/use-mobile"
 
 interface MovieSliderProps {
   title: string
@@ -31,37 +32,12 @@ const MovieSlider = ({
   const [isDragging, setIsDragging] = useState(false)
   const [startX, setStartX] = useState(0)
   const [scrollLeft, setScrollLeft] = useState(0)
-  const [useOverflowScroll, setUseOverflowScroll] = useState(window.innerWidth < 768)
-
-  // // Determine color based on variant
-  // const getAccentColor = () => {
-  //   switch (variant) {
-  //     case "popular": return "bg-amber-600"
-  //     case "trending": return "bg-rose-600"
-  //     case "new": return "bg-emerald-600"
-  //     case "top": return "bg-sky-600"
-  //     default: return "bg-amber-600"
-  //   }
-  // }
+  const isMobile = useMobile()
   
-  // // Get gradient background based on variant
-  // const getGradientBg = () => {
-  //   switch (variant) {
-  //     case "popular": return "from-amber-600/10 to-transparent"
-  //     case "trending": return "from-rose-600/10 to-transparent"
-  //     case "new": return "from-emerald-600/10 to-transparent"
-  //     case "top": return "from-sky-600/10 to-transparent"
-  //     default: return "from-amber-600/10 to-transparent"
-  //   }
-  // }
-
   // Handle responsiveness
   useEffect(() => {
     const handleResize = () => {
       const width = window.innerWidth
-      
-      // Use overflow scroll for viewport width < 768px
-      setUseOverflowScroll(width < 768)
       
       let items = 4 // mặc định là 4
       if (width >= 1280) {
@@ -181,11 +157,6 @@ const MovieSlider = ({
     return null
   }
 
-  // Update scrolling method based on props
-  useEffect(() => {
-    setUseOverflowScroll(useSimpleScroll || window.innerWidth < 768)
-  }, [useSimpleScroll])
-
   return (
       
       <div className="py-4">
@@ -203,7 +174,7 @@ const MovieSlider = ({
         </div>
 
         <div ref={containerRef} className="relative overflow-hidden">
-          {!useOverflowScroll && (
+          {!isMobile && (
             <>
               <Button 
                 size="icon"
@@ -235,8 +206,8 @@ const MovieSlider = ({
             </>
           )}
 
-          {useOverflowScroll ? (
-            // Overflow scroll method for small viewports (<768px)
+          {isMobile ? (
+            // Overflow scroll method for small viewports
             <div 
               ref={sliderRef}
               className="flex overflow-x-auto gap-2 pr-2 snap-x snap-mandatory scrollbar-hide pb-4"
@@ -254,7 +225,7 @@ const MovieSlider = ({
               ))}
             </div>
           ) : (
-            // Transform-based scrolling for larger viewports (≥768px)
+            // Transform-based scrolling for larger viewports
             <div
               ref={sliderRef}
               className="flex gap-2 sm:gap-4 transition-transform duration-300 ease-out select-none"
