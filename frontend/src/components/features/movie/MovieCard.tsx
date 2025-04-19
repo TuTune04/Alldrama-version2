@@ -11,24 +11,28 @@ import MoviePopover from "./MoviePopover"
 import { motion } from "framer-motion"
 import { AspectRatio } from "@/components/ui/aspect-ratio"
 import { useMobile } from "@/hooks/use-mobile"
+import { cn } from "@/lib/utils"
 
 interface MovieCardProps {
   movie: Movie
   index?: number
   variant?: "slider" | "grid" | "featured" | "trending" | "compact"
   trapezoid?: boolean
+  className?: string
+  fullWidth?: boolean
 }
 
-const MovieCard = ({ movie, index = 0, variant = "slider", trapezoid = false }: MovieCardProps) => {
+const MovieCard = ({ 
+  movie, 
+  index = 0, 
+  variant = "slider", 
+  trapezoid = false,
+  className = "",
+  fullWidth = false
+}: MovieCardProps) => {
   const router = useRouter()
   const cardRef = useRef<HTMLDivElement>(null)
   const [imageUrl, setImageUrl] = useState(movie.posterUrl || "/images/placeholder-poster.jpg")
-  const [screenSize, setScreenSize] = useState({
-    width: typeof window !== 'undefined' ? window.innerWidth : 0,
-    isDesktop: false,
-    isTablet: false,
-    isMobile: false
-  })
   const isMobile = useMobile()
   // Convert ID to string to ensure compatibility with URL utils
   const movieDetailUrl = generateMovieUrl(movie.id, movie.title)
@@ -45,33 +49,11 @@ const MovieCard = ({ movie, index = 0, variant = "slider", trapezoid = false }: 
     router.push(movieDetailUrl)
   }
 
-  useEffect(() => {
-    function updateDimension() {
-      if (cardRef.current) {
-        const { width, height } = cardRef.current.getBoundingClientRect()
-        setScreenSize({
-          width,
-          isDesktop: width >= 1024,
-          isTablet: width >= 768 && width < 1024,
-          isMobile: width < 768
-        })
-      }
-    }
-
-    updateDimension()
-    
-    window.addEventListener('resize', updateDimension)
-    
-    return () => {
-      window.removeEventListener('resize', updateDimension)
-    }
-  }, [])
-
   // Render compact variant (used in watch pages for related movies)
   if (variant === "compact") {
     return (
       <Link href={movieDetailUrl} className="block">
-        <div className="group relative overflow-hidden rounded-lg transition-transform hover:scale-105">
+        <div className={cn("flex items-center gap-3 group cursor-pointer hover:bg-gray-800/50 p-2 rounded transition-colors", className)}>
           <div className="aspect-[2/3] overflow-hidden">
             <img
               src={imageUrl}
@@ -105,9 +87,14 @@ const MovieCard = ({ movie, index = 0, variant = "slider", trapezoid = false }: 
   return (
     <div 
       ref={cardRef} 
-      className={`group relative rounded-md overflow-hidden ${
-        variant === "featured" ? "w-full aspect-[16/9]" : "aspect-[2/3]"
-      }`}
+      className={cn(
+        "group overflow-hidden relative rounded-xl transition-all",
+        fullWidth ? "w-full" : "", 
+        variant === "featured" ? "aspect-[2/1]" : "aspect-[2/3]",
+        variant === "slider" ? "border border-gray-700 hover:border-indigo-500/30 hover:shadow-md hover:shadow-indigo-900/10" : "",
+        className
+      )}
+      onClick={handleCardClick}
     >
       <div className={`absolute inset-0 ${variant === "trending" ? "bg-gradient-to-t from-indigo-600 via-indigo-500/30 to-transparent" : ""}`}>
         <div 

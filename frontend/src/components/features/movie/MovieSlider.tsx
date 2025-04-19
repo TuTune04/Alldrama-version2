@@ -1,191 +1,105 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from "react"
+import Link from "next/link"
 import type { Movie } from "@/types"
 import MovieCard from "./MovieCard"
-import { ChevronLeft, ChevronRight } from "lucide-react"
-import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { mockMovies } from "@/mocks"
 import { generateMovieUrl } from "@/utils/url"
+import { cn } from "@/lib/utils"
+import { motion } from "framer-motion"
+import { ChevronLeft, ChevronRight, TrendingUp, Star, Clock } from "lucide-react"
+import MoviePopover from "./MoviePopover"
+import { useState } from "react"
 import { useMobile } from "@/hooks/use-mobile"
 
 interface MovieSliderProps {
   title: string
   movies?: Movie[]
-  viewAllHref?: string
   variant?: "default" | "popular" | "trending" | "new" | "top"
-  useSimpleScroll?: boolean // Add option to use simple scroll method
+  className?: string
+  maxItems?: number
+  size?: 'sm' | 'md' | 'lg'
+  showPopover?: boolean
 }
 
 const MovieSlider = ({ 
   title, 
   movies = mockMovies, 
-  viewAllHref = "/movie",
-  useSimpleScroll = false // Default to false to maintain existing behavior
+  variant = "default",
+  className = "",
+  maxItems = 5,
+  size = 'md',
+  showPopover = true
 }: MovieSliderProps) => {
-  const sliderRef = useRef<HTMLDivElement>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [visibleItems, setVisibleItems] = useState(4)
-  const [scrollPosition, setScrollPosition] = useState(0)
-  const [maxScrollPosition, setMaxScrollPosition] = useState(0)
-  const [isDragging, setIsDragging] = useState(false)
-  const [startX, setStartX] = useState(0)
-  const [scrollLeft, setScrollLeft] = useState(0)
-  const isMobile = useMobile()
+  const [currentPage, setCurrentPage] = useState(0);
+  const isMobileSmall = useMobile(768);
+  const isMobileLarge = useMobile(1024);
   
-  // Handle responsiveness
-  useEffect(() => {
-    const handleResize = () => {
-      const width = window.innerWidth
-      
-      let items = 4 // mặc định là 4
-      if (width >= 1280) {
-        items = 4
-      } else if (width >= 1024) {
-        items = 4
-      } else if (width >= 768) {
-        items = 3
-      } else {
-        items = 2
-      }
-
-      // Giới hạn tối đa không vượt quá 4
-      setVisibleItems(Math.min(items, 4))
-
-      if (containerRef.current) {
-        const totalItems = movies.length
-        const maxPosition = Math.max(0, totalItems - items)
-        setMaxScrollPosition(maxPosition)
-      }
-    }
-    
-    handleResize()
-    window.addEventListener("resize", handleResize)
-    return () => window.removeEventListener("resize", handleResize)
-  }, [movies.length, visibleItems])
-
-  // Update maxScrollPosition when movies or visibleItems change
-  useEffect(() => {
-    const totalItems = movies.length
-    const maxPosition = Math.max(0, totalItems - visibleItems)
-    setMaxScrollPosition(maxPosition)
-    
-    // Reset scroll position if it exceeds new max
-    if (scrollPosition > maxPosition) {
-      setScrollPosition(maxPosition)
-    }
-  }, [movies.length, visibleItems, scrollPosition])
-
-  // Scroll handler for buttons
-  const scroll = useCallback((direction: "left" | "right") => {
-    if (direction === "left") {
-      setScrollPosition(prev => Math.max(0, prev - 1))
-    } else {
-      setScrollPosition(prev => Math.min(maxScrollPosition, prev + 1))
-    }
-  }, [maxScrollPosition])
-
-  // Drag handlers
-  const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (!sliderRef.current) return;
-    
-    setIsDragging(true);
-    setStartX(e.pageX - sliderRef.current.offsetLeft);
-    setScrollLeft(sliderRef.current.scrollLeft);
-    sliderRef.current.style.cursor = 'grabbing';
-  }, []);
-
-  const handleMouseLeave = useCallback(() => {
-    setIsDragging(false);
-    if (sliderRef.current) {
-      sliderRef.current.style.cursor = 'grab';
-    }
-  }, []);
-
-  const handleMouseUp = useCallback(() => {
-    setIsDragging(false);
-    if (sliderRef.current) {
-      sliderRef.current.style.cursor = 'grab';
-      // Snap to nearest card
-      const cardWidth = sliderRef.current.scrollWidth / movies.length;
-      const newPosition = Math.round(sliderRef.current.scrollLeft / cardWidth);
-      setScrollPosition(Math.min(newPosition, maxScrollPosition));
-    }
-  }, [movies.length, maxScrollPosition]);
-
-  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (!isDragging || !sliderRef.current) return;
-    
-    e.preventDefault();
-    const x = e.pageX - sliderRef.current.offsetLeft;
-    const walk = (x - startX) * 1.5; // Adjust scroll speed
-    sliderRef.current.scrollLeft = scrollLeft - walk;
-  }, [isDragging, startX, scrollLeft]);
-
-  // Touch handlers
-  const handleTouchStart = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
-    if (!sliderRef.current) return;
-    
-    setIsDragging(true);
-    setStartX(e.touches[0].pageX - sliderRef.current.offsetLeft);
-    setScrollLeft(sliderRef.current.scrollLeft);
-  }, []);
-
-  const handleTouchMove = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
-    if (!isDragging || !sliderRef.current) return;
-    
-    const x = e.touches[0].pageX - sliderRef.current.offsetLeft;
-    const walk = (x - startX) * 1.5;
-    sliderRef.current.scrollLeft = scrollLeft - walk;
-  }, [isDragging, startX, scrollLeft]);
-
-  const handleTouchEnd = useCallback(() => {
-    setIsDragging(false);
-    if (sliderRef.current) {
-      // Snap to nearest card
-      const cardWidth = sliderRef.current.scrollWidth / movies.length;
-      const newPosition = Math.round(sliderRef.current.scrollLeft / cardWidth);
-      setScrollPosition(Math.min(newPosition, maxScrollPosition));
-    }
-  }, [movies.length, maxScrollPosition]);
-
-  const canScrollLeft = scrollPosition > 0
-  const canScrollRight = scrollPosition < maxScrollPosition && movies.length > visibleItems
-
-  if (!movies || movies.length === 0) {
-    return null
-  }
-
+  // Determine device type from breakpoints
+  const isMobile = isMobileSmall;
+  const isTablet = isMobileLarge && !isMobileSmall;
+  
+  if (!movies || movies.length === 0) return null;
+  
+  // Adjust maxItems based on screen size
+  const responsiveMaxItems = isTablet ? 4 : maxItems;
+  
+  // Limit the number of movies to maxItems and handle pagination
+  const totalPages = Math.ceil(movies.length / responsiveMaxItems);
+  const startIndex = currentPage * responsiveMaxItems;
+  const displayMovies = movies.slice(startIndex, startIndex + responsiveMaxItems);
+  
+  const handlePrevPage = () => {
+    setCurrentPage(prev => Math.max(0, prev - 1));
+  };
+  
+  const handleNextPage = () => {
+    setCurrentPage(prev => Math.min(totalPages - 1, prev + 1));
+  };
+  
+  // Handle touch events for mobile scrolling
+  const [touchStart, setTouchStart] = useState(0);
+  const [touchEnd, setTouchEnd] = useState(0);
+  
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+  
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+  
+  const handleTouchEnd = () => {
+    // No action needed - we're using native scroll behavior instead of pagination
+    // Reset values
+    setTouchStart(0);
+    setTouchEnd(0);
+  };
+  
   return (
-      
-      <div className="py-4">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <div className={`w-1 h-6 bg-gradient-to-r from-gray-950 to-amber-500 rounded-full`}></div>
-            <h2 className="text-lg sm:text-xl md:text-2xl font-bold bg-gradient-to-r from-amber-700 to-amber-900 bg-clip-text text-transparent">{title}</h2>
-          </div>
-          <Link 
-            href={viewAllHref}
-            className="text-sm text-gray-300 hover:text-white transition-colors"
-          >
-            Xem tất cả
-          </Link>
+    <div className={cn("w-full mb-8 md:mb-12", className)}>
+      <div className="flex justify-between items-center mb-4">
+        <div className="flex items-center gap-2">
+          <div className={`w-1 h-6 bg-gradient-to-r from-gray-950 to-indigo-500 rounded-full`}></div>
+          <h2 className="text-lg sm:text-xl md:text-2xl font-bold bg-gradient-to-r from-indigo-400 to-indigo-600 bg-clip-text text-transparent">
+            {title}
+          </h2>
         </div>
-
-        <div ref={containerRef} className="relative overflow-hidden">
-          {!isMobile && (
-            <>
+        
+        <div className="flex items-center gap-2">
+          {totalPages > 1 && !isMobile && (
+            <div className="flex items-center space-x-2">
               <Button 
                 size="icon"
                 variant="outline"
-                onClick={() => scroll("left")} 
-                disabled={!canScrollLeft}
-                className={`absolute left-0 top-1/2 -translate-y-1/2 z-10 rounded-full ${
-                  canScrollLeft 
+                onClick={handlePrevPage} 
+                disabled={currentPage === 0}
+                className={`rounded-full ${
+                  currentPage > 0 
                     ? 'bg-gray-800/80 hover:bg-gray-700 border-gray-700' 
                     : 'bg-gray-800/50 cursor-not-allowed border-transparent opacity-50'
-                } flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10`}
+                } flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9`}
               >
                 <ChevronLeft size={16} className="sm:w-5 sm:h-5" />
               </Button>
@@ -193,70 +107,112 @@ const MovieSlider = ({
               <Button 
                 size="icon"
                 variant="outline"
-                onClick={() => scroll("right")} 
-                disabled={!canScrollRight}
-                className={`absolute right-0 top-1/2 -translate-y-1/2 z-10 rounded-full ${
-                  canScrollRight 
+                onClick={handleNextPage} 
+                disabled={currentPage >= totalPages - 1}
+                className={`rounded-full ${
+                  currentPage < totalPages - 1 
                     ? 'bg-gray-800/80 hover:bg-gray-700 border-gray-700' 
                     : 'bg-gray-800/50 cursor-not-allowed border-transparent opacity-50'
-                } flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10`}
+                } flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9`}
               >
                 <ChevronRight size={16} className="sm:w-5 sm:h-5" />
               </Button>
-            </>
-          )}
-
-          {isMobile ? (
-            // Overflow scroll method for small viewports
-            <div 
-              ref={sliderRef}
-              className="flex overflow-x-auto gap-2 pr-2 snap-x snap-mandatory scrollbar-hide pb-4"
-            >
-              {movies.map((movie) => (
-                <div 
-                  key={movie.id}
-                  className="flex-shrink-0 snap-start"
-                  style={{ width: `${100 / Math.min(2, visibleItems)}%`}}
-                >
-                  <Link href={generateMovieUrl(movie.id, movie.title)} className="block">
-                    <MovieCard movie={movie} variant="slider" />
-                  </Link>
-                </div>
-              ))}
-            </div>
-          ) : (
-            // Transform-based scrolling for larger viewports
-            <div
-              ref={sliderRef}
-              className="flex gap-2 sm:gap-4 transition-transform duration-300 ease-out select-none"
-              style={{
-                transform: `translateX(-${scrollPosition * (100 / visibleItems)}%)`,
-                width: `${(movies.length / visibleItems) * 100}%`
-              }}
-              onMouseDown={handleMouseDown}
-              onMouseLeave={handleMouseLeave}
-              onMouseUp={handleMouseUp}
-              onMouseMove={handleMouseMove}
-              onTouchStart={handleTouchStart}
-              onTouchMove={handleTouchMove}
-              onTouchEnd={handleTouchEnd}
-            >
-              {movies.map((movie) => (
-                <div 
-                  key={movie.id}
-                  className="flex-shrink-0"
-                  style={{ width: `${100 / (2* visibleItems)}%` }}
-                >
-                  <Link href={generateMovieUrl(movie.id, movie.title)} className="block">
-                    <MovieCard movie={movie} variant="slider" />
-                  </Link>
-                </div>
-              ))}
             </div>
           )}
         </div>
       </div>
 
+      {isMobile ? (
+        // Mobile/tablet view with horizontal scrolling
+        <div 
+          className="overflow-x-auto flex gap-3 snap-x snap-mandatory scrollbar-hide pb-4"
+          style={{ 
+            scrollbarWidth: 'none', 
+            WebkitOverflowScrolling: 'touch',
+            scrollSnapType: 'x mandatory'
+          }}
+        >
+          {displayMovies.map((movie, index) => (
+            <div 
+              key={String(movie.id)}
+              className="flex-shrink-0 snap-start" 
+              style={{ 
+                width: isMobile ? 'calc(50% - 0.75rem)' : 'calc(33.333% - 1rem)',
+                scrollSnapAlign: 'start'
+              }}
+            >
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ 
+                  duration: 0.3,
+                  delay: index * 0.05,
+                  ease: "easeOut"
+                }}
+              >
+                <MoviePopover
+                  movie={movie}
+                  trigger={
+                    <Link 
+                      href={generateMovieUrl(movie.id, movie.title)} 
+                      className="transition-transform hover:scale-[1.03] duration-300 block w-full h-full"
+                    >
+                      <MovieCard
+                        movie={movie}
+                        index={index}
+                        variant={variant === "trending" ? "trending" : "slider"}
+                        trapezoid={false}
+                        fullWidth={true}
+                        className="h-full"
+                      />
+                    </Link>
+                  }
+                  size={size}
+                  showPopover={showPopover}
+                />
+              </motion.div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        // Desktop view with grid layout
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-5">
+          {displayMovies.map((movie, index) => (
+            <motion.div
+              key={String(movie.id)}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ 
+                duration: 0.3,
+                delay: index * 0.05,
+                ease: "easeOut"
+              }}
+            >
+              <MoviePopover
+                movie={movie}
+                trigger={
+                  <Link 
+                    href={generateMovieUrl(movie.id, movie.title)} 
+                    className="transition-transform hover:scale-[1.03] duration-300 block w-full h-full"
+                  >
+                    <MovieCard
+                      movie={movie}
+                      index={index}
+                      variant={variant === "trending" ? "trending" : "slider"}
+                      trapezoid={false}
+                      fullWidth={true}
+                      className="h-full"
+                    />
+                  </Link>
+                }
+                size={size}
+                showPopover={showPopover}
+              />
+            </motion.div>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 

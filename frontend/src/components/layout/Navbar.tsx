@@ -35,12 +35,15 @@ import {
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
+import { useMobile } from "@/hooks/use-mobile"
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false)
+  const [isNavbarVisible, setIsNavbarVisible] = useState(true)
+  const [lastScrollY, setLastScrollY] = useState(0)
   const [searchQuery, setSearchQuery] = useState("")
   const [mobileSearchVisible, setMobileSearchVisible] = useState(false)
-  const [isMobile, setIsMobile] = useState(false)
+  const isMobile = useMobile()
   const pathname = usePathname()
   const router = useRouter()
 
@@ -48,34 +51,39 @@ const Navbar = () => {
   const { isAuthenticated, user, logout } = useAuthStore()
 
   // Xử lý sự kiện scroll
-  // Kiểm tra thiết bị mobile và xử lý scroll
   useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth <= 768) // Breakpoint cho mobile
-    }
-
     const handleScroll = () => {
+      const currentScrollY = window.scrollY
+      
+      // Đối với trang watch
+      if (pathname.includes("/watch/")) {
+        if (currentScrollY > 50) {
+          // Cuộn xuống - ẩn navbar
+          setIsNavbarVisible(false)
+        } else {
+          setIsNavbarVisible(true)
+        }
+      }
+      
       if (isMobile) {
         // Các trang khác trên mobile: ẩn navbar khi cuộn xuống
-        setIsScrolled(window.scrollY > 0)
+        setIsScrolled(currentScrollY > 0)
       } else if (pathname === "/") {
         // Trang chính: luôn hiển thị navbar khi cuộn
-        setIsScrolled(window.scrollY > 50)
+        setIsScrolled(currentScrollY > 50)
       } else {
         // Các trang khác trên desktop: hiển thị navbar khi cuộn
-        setIsScrolled(window.scrollY > 50)
+        setIsScrolled(currentScrollY > 50)
       }
+      
+      setLastScrollY(currentScrollY)
     }
 
-    handleResize()
-    window.addEventListener("resize", handleResize)
     window.addEventListener("scroll", handleScroll)
-
     return () => {
-      window.removeEventListener("resize", handleResize)
       window.removeEventListener("scroll", handleScroll)
     }
-  }, [pathname, isMobile])
+  }, [pathname, isMobile, lastScrollY])
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -109,7 +117,9 @@ const Navbar = () => {
   ]
 
   // Ẩn navbar trên mobile ở các trang khác khi cuộn xuống
-  if (isMobile && pathname !== "/" && isScrolled) {
+  // Hoặc ẩn navbar khi đang ở trang watch và đang cuộn xuống
+  if ((isMobile && pathname !== "/" && isScrolled) || 
+      (pathname.includes("/watch/") && !isNavbarVisible)) {
     return null
   }
 
@@ -121,9 +131,9 @@ const Navbar = () => {
           ? isScrolled
             ? "bg-black/80 backdrop-blur-md shadow-md py-2 border-b border-gray-800/50"
             : "bg-gray-950 py-3" // Nền đen ở trang chính khi chưa cuộn
-          : !isScrolled && !isMobile
+          : !isScrolled 
           ? "bg-black/80 backdrop-blur-md shadow-md py-2 border-b border-gray-800/50"
-          : "bg-gradient-to-b from-black/90 via-black/70 to-transparent py-3", // Nền đen ở các trang khác khi chưa cuộn
+          : "bg-black/80", // Nền đen ở các trang khác khi chưa cuộn
       )}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -593,4 +603,3 @@ const NavButton = ({
 }
 
 export default Navbar
-

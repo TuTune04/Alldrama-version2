@@ -13,8 +13,11 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Separator } from "@/components/ui/separator"
 import { Card, CardContent } from "@/components/ui/card"
-import MovieCard from "./MovieCard" // Import MovieCard
 import { useMobile } from "@/hooks/use-mobile"
+import { cn } from "@/lib/utils"
+import MovieGrid from "./MovieGrid"
+import MovieSlider from "./MovieSlider"
+
 
 // Mock movie versions
 const movieVersions = [
@@ -34,10 +37,7 @@ const MovieDetail = ({ movie, episodes = [] }: MovieDetailProps) => {
   const [selectedVersion, setSelectedVersion] = useState(movieVersions[0].id)
   const [isWatchlist, setIsWatchlist] = useState(false)
   const [isLiked, setIsLiked] = useState(false)
-  const [currentIndex, setCurrentIndex] = useState(0)
-  const [visibleCards, setVisibleCards] = useState(4)
   const isMobile = useMobile()
-  const carouselRef = useRef<HTMLDivElement>(null)
 
   // Get related movies - comparing genres by their names to ensure type safety
   const relatedMovies = mockMovies
@@ -66,35 +66,14 @@ const MovieDetail = ({ movie, episodes = [] }: MovieDetailProps) => {
     setShowFullDescription(false)
   }, [movie.id])
 
-  useEffect(() => {
-    if (isMobile) {
-      setVisibleCards(2) // Show 2 cards for small viewports
-    } else if (window.innerWidth < 1024) {
-      setVisibleCards(3) // Show 3 cards for medium viewports
-    } else {
-      setVisibleCards(4) // Show 4 cards for large viewports
-    }
-  }, [isMobile])
-
-  // Điều hướng carousel
-  const scrollCarousel = (direction: "left" | "right") => {
-    if (direction === "left" && currentIndex > 0) {
-      setCurrentIndex(currentIndex - 1)
-    } else if (direction === "right" && currentIndex < relatedMovies.length - visibleCards) {
-      setCurrentIndex(currentIndex + 1)
-    }
-    // Note: The transform is handled by the style attribute in the JSX
-    // which uses the currentIndex state value to calculate the translation
-  }
-
   return (
     <div className="text-foreground">
       {/* Hero Banner with parallax effect */}
       <div className="relative w-full h-[50vh] md:h-[75vh] overflow-hidden">
         {/* Background Image with Overlay */}
         <div className="absolute inset-0 w-full h-full">
-          <div className="absolute inset-0 bg-gradient-to-r from-gray-800/40 to-gray-900/40 mix-blend-multiply z-20" />
-          <div className="absolute inset-0 bg-[url('/images/noise.png')] opacity-[0.02] mix-blend-overlay pointer-events-none z-20" />
+          <div className="absolute inset-0 bg-gradient-to-r from-gray-800/40 to-gray-900/40 mix-blend-multiply z-5" />
+          <div className="absolute inset-0 bg-[url('/images/noise.png')] opacity-[0.02] mix-blend-overlay pointer-events-none z-5" />
           <div className="absolute inset-0 bg-gradient-to-t from-background via-background/90 to-background/30" />
         </div>
 
@@ -323,7 +302,7 @@ const MovieDetail = ({ movie, episodes = [] }: MovieDetailProps) => {
                 <Card className="bg-gradient-to-br from-gray-800/60 to-gray-900/60 border-gray-700 overflow-hidden">
                   <div className="absolute inset-0 bg-[url('/images/noise.png')] opacity-5 mix-blend-overlay pointer-events-none"></div>
                   <CardContent className="p-6 relative">
-                    <h2 className="text-xl font-bold mb-4 flex items-center text-white">
+                    <h2 className="text-sm sm:text-xl font-bold flex items-center text-white mb-2">
                       <Info className="w-5 h-5 mr-2 text-indigo-400" />
                       <span className="bg-gradient-to-r from-indigo-300 to-purple-300 bg-clip-text text-transparent">
                         Nội dung phim
@@ -367,7 +346,7 @@ const MovieDetail = ({ movie, episodes = [] }: MovieDetailProps) => {
                         <Clock className="h-3 w-3 sm:h-5 sm:w-5 mr-1 sm:mr-2 text-indigo-400" />
                         <div>
                           <p className="text-gray-400 text-[10px] sm:text-sm">Thời lượng</p>
-                          <p className="text-white text-[10px] sm:text-sm">{movie.duration || "120"} phút</p>
+                          <p className="text-white text-[10px] sm:text-sm">{movie.duration} phút</p>
                         </div>
                       </div>
                       <div className="flex items-center">
@@ -376,7 +355,7 @@ const MovieDetail = ({ movie, episodes = [] }: MovieDetailProps) => {
                           <p className="text-gray-400 text-[10px] sm:text-sm">Đánh giá</p>
                           <p className="text-white text-[10px] sm:text-sm flex items-center">
                             <Star className="h-3 w-3 sm:h-5 sm:w-5 mr-0.5 sm:mr-1 text-yellow-400 fill-yellow-400" />
-                            {movie.rating || "8.5"}/10
+                            {movie.rating}/10
                           </p>
                         </div>
                       </div>
@@ -387,87 +366,16 @@ const MovieDetail = ({ movie, episodes = [] }: MovieDetailProps) => {
                 {/* Có thể bạn cũng thích */}
                 <Card className="bg-gradient-to-br from-gray-800/60 to-gray-900/60 border-gray-700 overflow-hidden">
                   <div className="absolute inset-0 bg-[url('/images/noise.png')] opacity-5 mix-blend-overlay pointer-events-none"></div>
-                  <CardContent className="p-3 sm:p-6 relative">
-                    <div className="flex items-center justify-between mb-2 sm:mb-4">
-                      <h2 className="text-sm sm:text-xl font-bold flex items-center text-white">
-                        <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-indigo-400" />
-                        <span className="bg-gradient-to-r from-indigo-300 to-purple-300 bg-clip-text text-transparent">
-                          Có thể bạn cũng thích
-                        </span>
-                      </h2>
-                      {!isMobile && (
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => scrollCarousel("left")}
-                            className="p-1 rounded-full bg-gray-700/50 text-gray-300 hover:bg-gray-600/70 disabled:opacity-50 disabled:cursor-not-allowed"
-                            disabled={currentIndex === 0}
-                          >
-                            <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
-                          </button>
-                          <button
-                            onClick={() => scrollCarousel("right")}
-                            className="p-1 rounded-full bg-gray-700/50 text-gray-300 hover:bg-gray-600/70 disabled:opacity-50 disabled:cursor-not-allowed"
-                            disabled={currentIndex >= relatedMovies.length - visibleCards}
-                          >
-                            <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="relative">
-                      {isMobile ? (
-                        // Overflow scroll method for small viewports (<768px)
-                        <div 
-                          className="flex overflow-x-auto gap-2 pr-2 snap-x snap-mandatory scrollbar-hide pb-4"
-                        >
-                          {relatedMovies.map((movie, idx) => (
-                            <div 
-                              key={movie.id}
-                              className="flex-shrink-0 snap-start"
-                              style={{ width: `${100 / Math.min(2, visibleCards)}%`}}
-                            >
-                              <Link href={generateMovieUrl(movie.id, movie.title)} className="block">
-                                <MovieCard
-                                  movie={movie}
-                                  index={idx}
-                                  variant="slider"
-                                  trapezoid={false}
-                                />
-                              </Link>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        // Transform-based scrolling for larger viewports (≥768px)
-                        <div
-                          ref={carouselRef}
-                          className="flex sm transition-transform duration-300"
-                          style={{ 
-                            transform: `translateX(-${currentIndex * (100 / Math.max(1, visibleCards))}%)`,
-                            width: `${Math.max(visibleCards, relatedMovies.length) / visibleCards * 100}%`,
-                            transition: 'transform 0.4s ease'
-                          }}
-                        >
-                          {relatedMovies.map((movie, idx) => (
-                            <div 
-                              key={movie.id} 
-                              className="flex-shrink-0" 
-                              style={{ width: `${100 / Math.max(1, visibleCards)}%` }}
-                            >
-                              <Link href={generateMovieUrl(movie.id, movie.title)} className="block">
-                                <MovieCard
-                                  movie={movie}
-                                  index={idx}
-                                  variant="slider"
-                                  trapezoid={false}
-                                />
-                              </Link>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                  <CardContent className="px-4 relative">
+                    <MovieSlider
+                      title="Có thể bạn cũng thích"
+                      movies={relatedMovies}
+                      variant="trending"
+                      maxItems={5}
+                      className="mb-0"
+                      size="sm" 
+                      showPopover={false}
+                    />
                   </CardContent>
                 </Card>
               </TabsContent>  
@@ -494,46 +402,84 @@ const MovieDetail = ({ movie, episodes = [] }: MovieDetailProps) => {
                             onMouseEnter={() => setActiveEpisode(String(episode.id))}
                             onMouseLeave={() => setActiveEpisode(null)}
                           >
-                            {/* Episode thumbnail */}
-                            <div className="relative aspect-video overflow-hidden">
-                              <img 
-                                src={episode.thumbnailUrl} 
-                                alt={episode.title}
-                                className="w-full h-full object-cover"
-                              />
-                              <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                <div className="w-12 h-12 rounded-full bg-indigo-600/80 flex items-center justify-center">
-                                  <Play className="h-6 w-6 text-white fill-current ml-1" />
+                            {/* Episode presentation - different for mobile and desktop */}
+                            {isMobile ? (
+                              // Simple mobile view - just episode info without thumbnails
+                              <div className="p-3 bg-gray-800/70 hover:bg-gradient-to-r hover:from-indigo-900/40 hover:to-purple-900/40">
+                                <div className="flex justify-between items-center">
+                                  <div className="flex items-center space-x-2">
+                                    <div className={`w-7 h-7 rounded-full flex items-center justify-center ${activeEpisode === String(episode.id) ? "bg-indigo-600" : "bg-gray-800/80"}`}>
+                                      <span className="text-xs font-bold text-white">{episode.episodeNumber}</span>
+                                    </div>
+                                    <div className="font-medium text-white line-clamp-1">{episode.title}</div>
+                                  </div>
+                                  <div className="ml-2">
+                                    <Play className="h-4 w-4 text-indigo-400" />
+                                  </div>
+                                </div>
+                                
+                                <div className="flex justify-between items-center text-sm text-gray-400 mt-2">
+                                  <div className="flex items-center">
+                                    <Clock className="w-3 h-3 mr-1" />
+                                    {Math.floor(episode.duration / 60)} phút
+                                  </div>
+                                  {episode.isProcessed ? (
+                                    <div className="flex items-center text-green-400">
+                                      <span className="w-2 h-2 rounded-full bg-green-400 mr-1"></span>
+                                      Sẵn sàng
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center text-amber-400">
+                                      <span className="w-2 h-2 rounded-full bg-amber-400 mr-1"></span>
+                                      Đang xử lý
+                                    </div>
+                                  )}
                                 </div>
                               </div>
-                              <div className={`absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center ${activeEpisode === String(episode.id) ? "bg-indigo-600" : "bg-gray-800/80"}`}>
-                                <span className="text-xs font-bold text-white">{episode.episodeNumber}</span>
-                              </div>
-                              <div className="absolute bottom-0 left-0 right-0 px-3 py-2 bg-gradient-to-t from-black to-transparent">
-                                <div className="font-medium text-white line-clamp-1">{episode.title}</div>
-                              </div>
-                            </div>
+                            ) : (
+                              // Desktop view with thumbnails
+                              <>
+                                <div className="relative aspect-video overflow-hidden">
+                                  {/* <img 
+                                    src={episode.thumbnailUrl} 
+                                    alt={episode.title}
+                                    className="w-full h-full object-cover"
+                                  /> */}
+                                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                    <div className="w-12 h-12 rounded-full bg-indigo-600/80 flex items-center justify-center">
+                                      <Play className="h-6 w-6 text-white fill-current ml-1" />
+                                    </div>
+                                  </div>
+                                  <div className={`absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center ${activeEpisode === String(episode.id) ? "bg-indigo-600" : "bg-gray-800/80"}`}>
+                                    <span className="text-xs font-bold text-white">{episode.episodeNumber}</span>
+                                  </div>
+                                  <div className="absolute bottom-0 left-0 right-0 px-3 py-2 bg-gradient-to-t from-black to-transparent">
+                                    <div className="font-medium text-white line-clamp-1">{episode.title}</div>
+                                  </div>
+                                </div>
 
-                            {/* Episode info */}
-                            <div className="p-3 bg-gray-800/50 hover:bg-gradient-to-r hover:from-indigo-900/40 hover:to-purple-900/40">
-                              <div className="flex justify-between items-center text-sm text-gray-400">
-                                <div className="flex items-center">
-                                  <Clock className="w-3 h-3 mr-1" />
-                                  {Math.floor(episode.duration / 60)} phút
+                                {/* Episode info */}
+                                <div className="p-3 bg-gray-800/50 hover:bg-gradient-to-r hover:from-indigo-900/40 hover:to-purple-900/40">
+                                  <div className="flex justify-between items-center text-sm text-gray-400">
+                                    <div className="flex items-center">
+                                      <Clock className="w-3 h-3 mr-1" />
+                                      {Math.floor(episode.duration / 60)} phút
+                                    </div>
+                                    {episode.isProcessed ? (
+                                      <div className="flex items-center text-green-400">
+                                        <span className="w-2 h-2 rounded-full bg-green-400 mr-1"></span>
+                                        Sẵn sàng
+                                      </div>
+                                    ) : (
+                                      <div className="flex items-center text-amber-400">
+                                        <span className="w-2 h-2 rounded-full bg-amber-400 mr-1"></span>
+                                        Đang xử lý
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
-                                {episode.isProcessed ? (
-                                  <div className="flex items-center text-green-400">
-                                    <span className="w-2 h-2 rounded-full bg-green-400 mr-1"></span>
-                                    Sẵn sàng
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center text-amber-400">
-                                    <span className="w-2 h-2 rounded-full bg-amber-400 mr-1"></span>
-                                    Đang xử lý
-                                  </div>
-                                )}
-                              </div>
-                            </div>
+                              </>
+                            )}
                           </Link>
                         ))}
                       </div>

@@ -9,7 +9,7 @@ export const mockMovies: Movie[] = [
     duration: 148,
     totalEpisodes: 1,
     releaseYear: 2021,
-    posterUrl: 'https://via.placeholder.com/350x500?text=Spider-Man',
+    posterUrl: '/images/test.jpg',
     trailerUrl: 'https://www.youtube.com/watch?v=JfVOs4VSpmA',
     playlistUrl: 'https://example.com/playlist.m3u8',
     genres: [mockGenres[0], mockGenres[4]], // Hành động, Viễn tưởng
@@ -25,7 +25,7 @@ export const mockMovies: Movie[] = [
     duration: 45,
     totalEpisodes: 16,
     releaseYear: 2020,
-    posterUrl: 'https://via.placeholder.com/350x500?text=Love+and+Ambition',
+    posterUrl: '/images/test.jpg',
     trailerUrl: 'https://www.youtube.com/watch?v=example1',
     playlistUrl: 'https://example.com/playlist2.m3u8',
     genres: [mockGenres[1], mockGenres[6]], // Tình cảm, Tâm lý
@@ -41,7 +41,7 @@ export const mockMovies: Movie[] = [
     duration: 42,
     totalEpisodes: 20,
     releaseYear: 2019,
-    posterUrl: 'https://via.placeholder.com/350x500?text=Prison+Break',
+    posterUrl: '/images/test.jpg',
     trailerUrl: 'https://www.youtube.com/watch?v=example2',
     playlistUrl: 'https://example.com/playlist3.m3u8',
     genres: [mockGenres[0], mockGenres[5], mockGenres[6]], // Hành động, Phiêu lưu, Tâm lý
@@ -57,7 +57,7 @@ export const mockMovies: Movie[] = [
     duration: 40,
     totalEpisodes: 24,
     releaseYear: 2022,
-    posterUrl: 'https://via.placeholder.com/350x500?text=Happy+Family',
+    posterUrl: '/images/test.jpg',
     trailerUrl: 'https://www.youtube.com/watch?v=example3',
     playlistUrl: 'https://example.com/playlist4.m3u8',
     genres: [mockGenres[2], mockGenres[7]], // Hài hước, Gia đình
@@ -73,7 +73,7 @@ export const mockMovies: Movie[] = [
     duration: 110,
     totalEpisodes: 1,
     releaseYear: 2020,
-    posterUrl: 'https://via.placeholder.com/350x500?text=The+Curse',
+    posterUrl: '/images/test.jpg',
     trailerUrl: 'https://www.youtube.com/watch?v=example4',
     playlistUrl: 'https://example.com/playlist5.m3u8',
     genres: [mockGenres[3], mockGenres[6]], // Kinh dị, Tâm lý
@@ -89,7 +89,7 @@ export const mockMovies: Movie[] = [
     duration: 125,
     totalEpisodes: 1,
     releaseYear: 2021,
-    posterUrl: 'https://via.placeholder.com/350x500?text=Superhuman',
+    posterUrl: '/images/test.jpg',
     trailerUrl: 'https://www.youtube.com/watch?v=example5',
     playlistUrl: 'https://example.com/playlist6.m3u8',
     genres: [mockGenres[0], mockGenres[4]], // Hành động, Viễn tưởng

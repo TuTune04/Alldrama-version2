@@ -77,6 +77,7 @@ const TopMoviesSection = ({ movies, title = "Top 10 Phim Xem Nhiều", limit = 1
                   movie={movie} 
                   size="sm"
                   variant="simple"
+                  showPopover={false}
                   trigger={
                     <div className="relative transition-all duration-300 hover:z-50">
                       <Link href={generateMovieUrl(movie.id, movie.title)}>
@@ -115,7 +116,7 @@ const TopMoviesSection = ({ movies, title = "Top 10 Phim Xem Nhiều", limit = 1
                           <div className="p-2.5 text-white">
                             <h3 className="font-bold text-sm line-clamp-1">{movie.title}</h3>
                             <p className="text-[10px] text-gray-400 line-clamp-1 mb-1">
-                              {movie.description ? movie.description.substring(0, 50) + '...' : 'Đang cập nhật thông tin'}
+                              {movie.summary ? movie.summary.substring(0, 50) + '...' : 'Đang cập nhật thông tin'}
                             </p>
                             
                             <div className="flex items-center justify-between">
