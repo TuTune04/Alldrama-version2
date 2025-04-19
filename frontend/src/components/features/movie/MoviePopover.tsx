@@ -93,7 +93,7 @@ const MoviePopover = ({
             }}
           >
             {/* Overlay */}
-            <div className="w-full h-full bg-gray-900/80 backdrop-blur-sm">
+            <div className="w-full h-full bg-black/80">
               <div className="p-4">
                 {/* Rating badge */}
                 <Badge className="bg-amber-600/90 text-white mb-3 inline-flex items-center">

@@ -31,7 +31,7 @@ const MovieGrid = ({
         {Array.from({ length: 10 }).map((_, index) => (
           <div 
             key={index} 
-            className="bg-gray-800/50 rounded-md h-64 sm:h-80 animate-pulse"
+            className="bg-black/50 rounded-md h-64 sm:h-80 animate-pulse"
           ></div>
         ))}
       </div>
@@ -42,7 +42,7 @@ const MovieGrid = ({
   if (isEmpty) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
-        <div className="bg-gray-800/60 p-5 rounded-full mb-4">
+        <div className="bg-black/60 p-5 rounded-full mb-4">
           <FileQuestion size={48} className="text-gray-400" />
         </div>
         <h3 className="text-xl font-medium text-white mb-2">Không tìm thấy phim</h3>
@@ -58,7 +58,7 @@ const MovieGrid = ({
     return (
       <div className="grid grid-cols-1 gap-4 md:gap-6">
         {movies.map((movie) => (
-          <div key={movie.id} className="bg-gray-800/40 border border-gray-700 rounded-lg overflow-hidden hover:border-gray-500 transition-colors">
+          <div key={movie.id} className="bg-black/40 border border-gray-700 rounded-lg overflow-hidden hover:border-gray-500 transition-colors">
             <div className="flex flex-col sm:flex-row">
               <div className="w-full sm:w-1/4 md:w-1/5 h-48 sm:h-auto relative">
                 <Link href={generateMovieUrl(movie.id, movie.title)} className="text-white hover:text-amber-400 transition-colors">

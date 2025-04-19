@@ -124,7 +124,7 @@ const MovieCard = ({
         className={`
           absolute inset-0 flex flex-col justify-end
           ${variant === "featured" ? "p-6" : "p-3"}
-          ${variant === "trending" ? "" : "bg-gradient-to-t from-gray-900 to-transparent"}
+          ${variant === "trending" ? "" : "bg-gradient-to-t from-black/90 via-black/70 to-black/0"}
         `}
       >
         {/* Rating badge - top right */}

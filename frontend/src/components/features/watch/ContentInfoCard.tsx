@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import IconButton from './IconButton';
 import { generateWatchUrl } from '@/utils/url';
+import { useMobile } from "@/hooks/use-mobile";
 
 interface ContentInfoCardProps {
   movie: any;
@@ -26,24 +27,27 @@ export default function ContentInfoCard({
   episodeListResponse,
   setShowEpisodeList
 }: ContentInfoCardProps) {
+  const isMobile = useMobile(768);
   // Define the common glass background style
   const GLASS_BG = "bg-gradient-to-br from-gray-800/70 to-gray-900/80 border-gray-700/60 backdrop-blur-sm shadow-lg";
   
   return (
-    <Card className={`${GLASS_BG} overflow-hidden border-t-4 border-t-amber-500/60`}>
+    <Card className={`${GLASS_BG} overflow-hidden`}>
       <CardContent className="p-0">
         <div className="flex flex-col sm:flex-row p-4 gap-4">
-          {/* Movie Poster */}
-          <div className="flex-shrink-0 w-full sm:w-[150px]">
-            <div className="aspect-[2/3] rounded-md overflow-hidden bg-gray-900">
-              <img 
-                src={movie.posterUrl} 
-                alt={movie.title} 
-                className="w-full h-full object-cover"
-                loading="lazy"
-              />
+          {/* Movie Poster - Hidden on mobile */}
+          {!isMobile && (
+            <div className="flex-shrink-0 w-full sm:w-[150px]">
+              <div className="aspect-[2/3] rounded-md overflow-hidden bg-gray-900">
+                <img 
+                  src={movie.posterUrl} 
+                  alt={movie.title} 
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                />
+              </div>
             </div>
-          </div>
+          )}
           
           {/* Movie Details */}
           <div className="flex-1 min-w-0 flex flex-col">

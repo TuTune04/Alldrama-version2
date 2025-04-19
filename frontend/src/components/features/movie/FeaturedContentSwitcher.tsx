@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Play, Star, Calendar, Clock, ChevronLeft, ChevronRight, Info } from 'lucide-react'
@@ -11,6 +11,8 @@ import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
 import { Movie } from '@/types'
 import { generateMovieUrl } from '@/utils/url'
+import { useMobile } from '@/hooks/use-mobile'
+import { motion, AnimatePresence } from 'framer-motion'
 
 export interface FeaturedContentSwitcherProps {
   items: Movie[]
@@ -49,8 +51,46 @@ const FeaturedContentSwitcher = ({
 }: FeaturedContentSwitcherProps) => {
   const [selectedIndex, setSelectedIndex] = useState(defaultIndex)
   const selectedItem = items[selectedIndex]
-  
   const totalItems = items.length
+  const isMobile = useMobile()
+  
+  // Touch handling for mobile
+  const [touchStart, setTouchStart] = useState(0)
+  const [touchEnd, setTouchEnd] = useState(0)
+  const mainRef = useRef<HTMLDivElement>(null)
+  
+  // Minimum swipe distance (in px)
+  const minSwipeDistance = 50
+  
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStart(e.targetTouches[0].clientX)
+  }
+  
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX)
+  }
+  
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return
+    
+    const distance = touchStart - touchEnd
+    const isLeftSwipe = distance > minSwipeDistance
+    const isRightSwipe = distance < -minSwipeDistance
+    
+    if (isLeftSwipe) {
+      // Handle left swipe - go to next item
+      handleItemSelect((selectedIndex + 1) % totalItems)
+    }
+    
+    if (isRightSwipe) {
+      // Handle right swipe - go to previous item
+      handleItemSelect(selectedIndex === 0 ? totalItems - 1 : selectedIndex - 1)
+    }
+    
+    // Reset values
+    setTouchStart(0)
+    setTouchEnd(0)
+  }
   
   // Get viewport size
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 })
@@ -164,60 +204,19 @@ const FeaturedContentSwitcher = ({
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [totalItems])
   
-  // Default render function for detail content if none provided
-  // const defaultRenderDetailContent = (movie: Movie, index: number) => {
-  //   return (
-  //     <div className="flex flex-col md:flex-row gap-6">
-  //       <div className="aspect-[2/3] w-full max-w-[200px] rounded-lg overflow-hidden shadow-lg">
-  //         <img 
-  //           src={movie.posterUrl} 
-  //           alt={movie.title}
-  //           className="w-full h-full object-cover"
-  //         />
-  //       </div>
-        
-  //       <div className="flex-1">
-  //         <h3 className={`text-2xl font-bold mb-2 bg-gradient-to-r ${styles.titleGradient} bg-clip-text text-transparent`}>
-  //           {movie.title}
-  //         </h3>
-  //         <div className="flex items-center gap-2 mb-4">
-  //           <Badge>{movie.releaseYear}</Badge>
-  //           {movie.rating && (
-  //             <Badge variant="outline" className="flex items-center gap-1">
-  //               <Star className="h-3.5 w-3.5" />
-  //               {movie.rating.toFixed(1)}
-  //             </Badge>
-  //           )}
-  //         </div>
-  //         <p className="text-sm text-muted-foreground mb-4 line-clamp-3">
-  //           {movie.description}
-  //         </p>
-  //         <div className="flex items-center gap-2">
-  //           <Button asChild>
-  //             <Link href={`/watch/${movie.id}`}>
-  //               <Play className="mr-2 h-4 w-4" />
-  //               Xem ngay
-  //             </Link>
-  //           </Button>
-  //           <Button variant="outline" asChild>
-  //             <Link href={generateMovieUrl(movie.id, movie.title)}>
-  //               <Info className="mr-2 h-4 w-4" />
-  //               Chi tiết
-  //             </Link>
-  //           </Button>
-  //         </div>
-  //       </div>
-  //     </div>
-  //   )
-  // }
-  
   if (!items || items.length === 0) return null
   
   // Calculate the number of thumbnails to show based on viewport size
   const visibleThumbs = Math.min(items.length, 8)
   
   const content = (
-    <div className={cn('space-y-4 py-12', className)}>
+    <div 
+      ref={mainRef} 
+      onTouchStart={handleTouchStart} 
+      onTouchMove={handleTouchMove} 
+      onTouchEnd={handleTouchEnd} 
+      className={cn('space-y-4 py-12', className)}
+    >
       {title && (
         <h2 className="text-2xl font-bold mb-6 flex items-center">
           <span className={`bg-gradient-to-r ${styles.titleGradient} bg-clip-text text-transparent`}>
@@ -233,16 +232,26 @@ const FeaturedContentSwitcher = ({
           variant === 'dark' ? 'bg-black/60 text-white' : 'bg-card'
         )}>
           <CardContent className="p-0">
-            <div className="relative w-full aspect-[21/9]">
-              <Image
-                src={selectedItem.posterUrl}
-                alt={selectedItem.title}
-                fill
-                priority
-                className="object-cover"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
-              
+            <div className="relative w-full aspect-[21/9] overflow-hidden">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={selectedIndex}
+                  initial={{ opacity: 0, scale: 1.05 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.4, ease: "easeInOut" }}
+                  className="absolute inset-0"
+                >
+                  <Image
+                    src={selectedItem.posterUrl}
+                    alt={selectedItem.title}
+                    fill
+                    priority
+                    className="object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
+                </motion.div>
+              </AnimatePresence>
               <div className={cn(
                 "absolute bottom-0 left-0 w-full p-2",
                 viewportSize.width < 640 ? "" : "p-6 pb-16"

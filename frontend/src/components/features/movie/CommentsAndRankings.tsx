@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { useMobile } from '@/hooks/use-mobile'
 import { 
   mockComments, 
   mockPopularMovies, 
@@ -314,6 +315,7 @@ const CommentsAndRankings = ({
   const commentsContainerRef = useRef<HTMLDivElement>(null)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(true)
+  const isMobile = useMobile()
 
   // Update scroll buttons state
   const updateScrollButtons = () => {
@@ -341,6 +343,10 @@ const CommentsAndRankings = ({
       const scrollAmount = direction === 'left' ? -340 : 340
       commentsContainerRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' })
     }
+  }
+
+  if (isMobile) {
+    return null
   }
 
   return (

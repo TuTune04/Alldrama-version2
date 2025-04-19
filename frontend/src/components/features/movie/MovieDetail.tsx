@@ -72,9 +72,9 @@ const MovieDetail = ({ movie, episodes = [] }: MovieDetailProps) => {
       <div className="relative w-full h-[50vh] md:h-[75vh] overflow-hidden">
         {/* Background Image with Overlay */}
         <div className="absolute inset-0 w-full h-full">
-          <div className="absolute inset-0 bg-gradient-to-r from-gray-800/40 to-gray-900/40 mix-blend-multiply z-5" />
-          <div className="absolute inset-0 bg-[url('/images/noise.png')] opacity-[0.02] mix-blend-overlay pointer-events-none z-5" />
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/90 to-background/30" />
+          <div className="absolute inset-0 bg-gradient-to-r from-gray-800/70 to-gray-900/50" />
+          <div className="absolute inset-0 bg-[url('/images/noise.png')] opacity-[0.02] pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-t from-gray-800/70 via-gray-900/80 to-black/10" />
         </div>
 
         {/* Poster for mobile */}
@@ -364,8 +364,8 @@ const MovieDetail = ({ movie, episodes = [] }: MovieDetailProps) => {
                 </Card>
 
                 {/* Có thể bạn cũng thích */}
-                <Card className="bg-gradient-to-br from-gray-800/60 to-gray-900/60 border-gray-700 overflow-hidden">
-                  <div className="absolute inset-0 bg-[url('/images/noise.png')] opacity-5 mix-blend-overlay pointer-events-none"></div>
+                <Card className="bg-gradient-to-br from-gray-800/70 to-gray-900/50 border-gray-700 overflow-hidden">
+                  <div className="absolute inset-0 bg-[url('/images/noise.png')] opacity-5 pointer-events-none"></div>
                   <CardContent className="px-4 relative">
                     <MovieSlider
                       title="Có thể bạn cũng thích"

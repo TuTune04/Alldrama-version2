@@ -81,8 +81,8 @@ const MovieSlider = ({
     <div className={cn("w-full mb-8 md:mb-12", className)}>
       <div className="flex justify-between items-center mb-4">
         <div className="flex items-center gap-2">
-          <div className={`w-1 h-6 bg-gradient-to-r from-gray-950 to-indigo-500 rounded-full`}></div>
-          <h2 className="text-lg sm:text-xl md:text-2xl font-bold bg-gradient-to-r from-indigo-400 to-indigo-600 bg-clip-text text-transparent">
+          <div className={`w-1 h-6 bg-indigo-500 rounded-full`}></div>
+          <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-indigo-400">
             {title}
           </h2>
         </div>
@@ -97,8 +97,8 @@ const MovieSlider = ({
                 disabled={currentPage === 0}
                 className={`rounded-full ${
                   currentPage > 0 
-                    ? 'bg-gray-800/80 hover:bg-gray-700 border-gray-700' 
-                    : 'bg-gray-800/50 cursor-not-allowed border-transparent opacity-50'
+                    ? 'bg-black/80 hover:bg-black/60 border-gray-700' 
+                    : 'bg-black/50 cursor-not-allowed border-transparent opacity-50'
                 } flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9`}
               >
                 <ChevronLeft size={16} className="sm:w-5 sm:h-5" />
@@ -111,8 +111,8 @@ const MovieSlider = ({
                 disabled={currentPage >= totalPages - 1}
                 className={`rounded-full ${
                   currentPage < totalPages - 1 
-                    ? 'bg-gray-800/80 hover:bg-gray-700 border-gray-700' 
-                    : 'bg-gray-800/50 cursor-not-allowed border-transparent opacity-50'
+                    ? 'bg-black/80 hover:bg-black/60 border-gray-700' 
+                    : 'bg-black/50 cursor-not-allowed border-transparent opacity-50'
                 } flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9`}
               >
                 <ChevronRight size={16} className="sm:w-5 sm:h-5" />
