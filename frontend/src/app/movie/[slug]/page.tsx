@@ -1,23 +1,21 @@
 import { Suspense } from 'react';
 import MovieDetail from '@/components/features/movie/MovieDetail';
 import { mockMovies } from '@/mocks';
-import { getEpisodeListResponse } from '@/mocks/episodes';
-import { createSlug } from '@/utils/url';
+import { createSlug, getIdFromSlug } from '@/utils/url';
 
 interface MovieDetailPageProps {
   params: {
-    slug: string // Slug của phim như "ten-phim"
+    slug: string // Slug của phim như "ten-phim-123" - final number is the ID
   };
 }
 
 export default async function MovieDetailPage({ params }: MovieDetailPageProps) {
   console.log("Slug received:", params.slug);
   
-  // Tìm phim dựa trên slug
-  const movie = mockMovies.find(m => createSlug(m.title) === params.slug);
-  console.log("Found movie:", movie ? `${movie.id} - ${movie.title}` : "Not found");
+  // Extract the movie ID from the slug (assuming slug format is "movie-name-ID")
+  const movieId = getIdFromSlug(params.slug);
   
-  if (!movie) {
+  if (!movieId) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
         <h1 className="text-2xl text-white font-bold">Không tìm thấy phim</h1>
@@ -26,13 +24,10 @@ export default async function MovieDetailPage({ params }: MovieDetailPageProps) 
     );
   }
   
-  const episodes = getEpisodeListResponse(movie.id);
-  console.log("Episodes fetched for movie", movie.id, ":", episodes.length, "episodes");
-  
   return (
     <div>
       <Suspense fallback={<div className="h-[70vh] bg-gray-800 animate-pulse"></div>}>
-        <MovieDetail movie={movie} episodes={episodes} />
+        <MovieDetail movieId={movieId} />
       </Suspense>
     </div>
   );

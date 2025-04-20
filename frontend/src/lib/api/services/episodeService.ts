@@ -6,123 +6,85 @@ export const episodeService = {
   /**
    * Lấy danh sách tập phim theo Movie ID
    * @param movieId ID của phim
-   * @param page Số trang (không dùng trong API hiện tại)
-   * @param limit Số lượng mỗi trang (không dùng trong API hiện tại)
+   * @param page Số trang (tùy chọn)
+   * @param limit Số lượng mỗi trang (tùy chọn)
    */
   async getEpisodesByMovieId(
     movieId: string | number,
     page?: number,
     limit?: number
   ): Promise<EpisodeListResponse> {
-    // API returns array directly, not paginated
-    return apiClient.get<EpisodeListResponse>(API_ENDPOINTS.EPISODES.LIST_BY_MOVIE(String(movieId)));
+    const params = new URLSearchParams();
+    if (page) params.append('page', String(page));
+    if (limit) params.append('limit', String(limit));
+    
+    const queryString = params.toString();
+    const url = `${API_ENDPOINTS.EPISODES.LIST(movieId)}${queryString ? `?${queryString}` : ''}`;
+    
+    return apiClient.get<EpisodeListResponse>(url);
   },
   
   /**
-   * Lấy danh sách tập phim theo Movie ID với phân trang (tùy chỉnh cho frontend)
-   * @param movieId ID của phim
-   * @param page Số trang
-   * @param limit Số lượng mỗi trang
-   */
-  async getPaginatedEpisodesByMovieId(
-    movieId: string | number,
-    page: number = 1,
-    limit: number = 20
-  ): Promise<PaginatedEpisodeResponse> {
-    const episodes = await this.getEpisodesByMovieId(movieId);
-    // Client-side pagination 
-    const startIndex = (page - 1) * limit;
-    const endIndex = startIndex + limit;
-    const paginatedEpisodes = episodes.slice(startIndex, endIndex);
-    
-    return {
-      episodes: paginatedEpisodes,
-      pagination: {
-        total: episodes.length,
-        totalPages: Math.ceil(episodes.length / limit),
-        currentPage: page,
-        limit
-      }
-    };
-  },
-
-  /**
    * Lấy chi tiết tập phim theo ID
-   * @param id ID của tập phim
+   * @param episodeId ID của tập phim
    */
-  async getEpisodeById(id: string | number): Promise<Episode> {
-    // ID in API is number, but we accept string | number for flexibility
-    return apiClient.get<Episode>(API_ENDPOINTS.EPISODES.DETAIL(String(id)));
+  async getEpisodeById(episodeId: string | number): Promise<Episode> {
+    return apiClient.get<Episode>(API_ENDPOINTS.EPISODES.DETAIL(episodeId));
   },
-
+  
   /**
-   * Tạo tập phim mới (Admin)
-   * @param data Dữ liệu tập phim
+   * Lấy tập phim tiếp theo
+   * @param episodeId ID của tập phim hiện tại
    */
-  async createEpisode(data: {
-    title: string;
-    episodeNumber: number;
-    movieId: string | number;
-    playlistUrl: string;
-    thumbnailUrl: string;
-    description: string;
-    duration: number;
-  }): Promise<Episode> {
-    // Convert movieId to number if string is provided
-    const payload = {
-      ...data,
-      movieId: typeof data.movieId === 'string' ? parseInt(data.movieId, 10) : data.movieId
-    };
-    
-    return apiClient.post<Episode>(API_ENDPOINTS.EPISODES.CREATE, payload);
+  async getNextEpisode(episodeId: string | number): Promise<Episode | null> {
+    try {
+      return await apiClient.get<Episode>(API_ENDPOINTS.EPISODES.NEXT(episodeId));
+    } catch (error: any) {
+      // If 404, there is no next episode
+      if (error.response && error.response.status === 404) {
+        return null;
+      }
+      throw error;
+    }
   },
-
+  
   /**
-   * Cập nhật tập phim (Admin)
-   * @param id ID của tập phim
-   * @param data Dữ liệu cập nhật
+   * Lấy tập phim trước đó
+   * @param episodeId ID của tập phim hiện tại
    */
-  async updateEpisode(
-    id: string | number,
-    data: Partial<{
-      title: string;
-      playlistUrl: string;
-      thumbnailUrl: string;
-      description: string;
-      duration: number;
-    }>
-  ): Promise<Episode> {
-    return apiClient.put<Episode>(API_ENDPOINTS.EPISODES.UPDATE(String(id)), data);
+  async getPreviousEpisode(episodeId: string | number): Promise<Episode | null> {
+    try {
+      return await apiClient.get<Episode>(API_ENDPOINTS.EPISODES.PREVIOUS(episodeId));
+    } catch (error: any) {
+      // If 404, there is no previous episode
+      if (error.response && error.response.status === 404) {
+        return null;
+      }
+      throw error;
+    }
   },
-
-  /**
-   * Xóa tập phim (Admin)
-   * @param id ID của tập phim
-   */
-  async deleteEpisode(id: string | number): Promise<{ message: string }> {
-    return apiClient.delete<{ message: string }>(API_ENDPOINTS.EPISODES.DELETE(String(id)));
-  },
-
+  
   /**
    * Tăng lượt xem cho tập phim
    * @param episodeId ID của tập phim
    */
   async incrementView(episodeId: string | number): Promise<{ message: string; views: number }> {
-    return apiClient.post<{ message: string; views: number }>(
-      API_ENDPOINTS.VIEWS.INCREMENT_EPISODE(String(episodeId))
-    );
+    return apiClient.post<{ message: string; views: number }>(`/api/views/episode/${episodeId}`);
   },
-
+  
   /**
    * Kiểm tra trạng thái xử lý video của tập phim
    * @param episodeId ID của tập phim
    */
   async getProcessingStatus(episodeId: string | number): Promise<{
-    episodeId: string | number;
-    status: 'completed' | 'processing' | 'failed';
-    progress: number;
-    message: string;
+    status: 'processing' | 'completed' | 'failed';
+    error?: string;
+    progress?: number;
   }> {
-    return apiClient.get(API_ENDPOINTS.MEDIA.PROCESSING_STATUS(String(episodeId)));
+    return apiClient.get<{
+      status: 'processing' | 'completed' | 'failed';
+      error?: string;
+      progress?: number;
+    }>(`/api/episodes/${episodeId}/processing-status`);
   }
 };

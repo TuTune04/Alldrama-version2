@@ -20,10 +20,17 @@ export interface Episode {
   };
 }
 
-// Note: API returns array directly, not paginated object
-export type EpisodeListResponse = Episode[];
+// Updated to match backend response structure
+export interface EpisodeListResponse {
+  episodes: Episode[];
+  totalItems: number;
+  currentPage: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrevious: boolean;
+}
 
-// For internal use with pagination
+// For internal use with pagination if needed
 export interface PaginatedEpisodeResponse {
   episodes: Episode[];
   pagination: {
@@ -44,4 +51,4 @@ export interface CreateEpisodeDto {
   duration: number;
 }
 
-export interface UpdateEpisodeDto extends Partial<CreateEpisodeDto> {}
+export interface UpdateEpisodeDto extends Partial<Omit<CreateEpisodeDto, 'movieId'>> {}

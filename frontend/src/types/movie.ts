@@ -1,4 +1,5 @@
 import { Genre } from './genre';
+import { PaginatedData } from './api';
 
 export interface Movie {
   id: string | number;
@@ -10,6 +11,7 @@ export interface Movie {
   posterUrl: string;
   trailerUrl: string;
   playlistUrl: string;
+  backdropUrl?: string;
   genres: Genre[];
   rating?: number;
   views?: number;
@@ -33,7 +35,7 @@ export interface MovieSearchParams {
   year?: number;
   page?: number;
   limit?: number;
-  sort?: string;
+  sort?: 'title' | 'rating' | 'views' | 'releaseYear' | 'createdAt';
   order?: 'ASC' | 'DESC';
 }
 
@@ -49,4 +51,4 @@ export interface CreateMovieDto {
   genreIds: number[];
 }
 
-export interface UpdateMovieDto extends Partial<CreateMovieDto> {} 
+export interface UpdateMovieDto extends Partial<CreateMovieDto> {}

@@ -1,40 +1,45 @@
 import { useState, useCallback } from 'react';
 import useSWR from 'swr';
 import { Episode, EpisodeListResponse } from '@/types';
-import { episodeService } from '@/lib/api';
 import { toast } from 'react-hot-toast';
+import { API_ENDPOINTS } from '@/lib/api/endpoints';
 
-export const useEpisodes = (movieId: string, initialPage: number = 1, initialLimit: number = 20) => {
-  const [page, setPage] = useState(initialPage);
-  const [limit, setLimit] = useState(initialLimit);
+export const useEpisodes = (movieId: string | number) => {
+  // SWR key - note that the backend returns all episodes for a movie, not paginated
+  const key = movieId ? API_ENDPOINTS.EPISODES.LIST(movieId) : null;
 
-  // SWR key
-  const key = movieId ? `episodes?movieId=${movieId}&page=${page}&limit=${limit}` : null;
-
-  // Fetcher function cho SWR
+  // Fetcher function for SWR
   const fetcher = useCallback(
-    async (key: string) => {
-      const url = new URL(key, 'http://example.com');
-      const movieId = url.searchParams.get('movieId') as string;
-      const page = parseInt(url.searchParams.get('page') || '1');
-      const limit = parseInt(url.searchParams.get('limit') || '20');
-
-      return await episodeService.getEpisodesByMovieId(movieId, page, limit);
+    async (url: string) => {
+      try {
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error('Failed to fetch episodes');
+        }
+        return await response.json();
+      } catch (error) {
+        console.error('Error fetching episodes:', error);
+        throw error;
+      }
     },
     []
   );
 
-  // Sử dụng SWR hook
+  // Using SWR hook
   const { data, error, isLoading, isValidating, mutate } = useSWR<EpisodeListResponse>(
     key,
     fetcher
   );
 
-  // Lấy chi tiết tập phim
+  // Get episode details
   const getEpisode = useCallback(
-    async (episodeId: string): Promise<Episode | null> => {
+    async (episodeId: string | number): Promise<Episode | null> => {
       try {
-        return await episodeService.getEpisodeById(episodeId);
+        const response = await fetch(API_ENDPOINTS.EPISODES.DETAIL(episodeId));
+        if (!response.ok) {
+          throw new Error('Failed to fetch episode');
+        }
+        return await response.json();
       } catch (err) {
         toast.error('Không thể tải thông tin tập phim');
         return null;
@@ -43,14 +48,64 @@ export const useEpisodes = (movieId: string, initialPage: number = 1, initialLim
     []
   );
 
-  // Tăng lượt xem
-  const incrementView = useCallback(
-    async (episodeId: string) => {
+  // Get next episode
+  const getNextEpisode = useCallback(
+    async (episodeId: string | number): Promise<Episode | null> => {
       try {
-        const result = await episodeService.incrementView(episodeId);
-        return result.views;
+        const response = await fetch(API_ENDPOINTS.EPISODES.NEXT(episodeId));
+        if (!response.ok) {
+          if (response.status === 404) {
+            // No next episode is available
+            return null;
+          }
+          throw new Error('Failed to fetch next episode');
+        }
+        return await response.json();
       } catch (err) {
-        // Lỗi tăng lượt xem không quá nghiêm trọng, chỉ log
+        console.error('Error fetching next episode:', err);
+        return null;
+      }
+    },
+    []
+  );
+
+  // Get previous episode
+  const getPreviousEpisode = useCallback(
+    async (episodeId: string | number): Promise<Episode | null> => {
+      try {
+        const response = await fetch(API_ENDPOINTS.EPISODES.PREVIOUS(episodeId));
+        if (!response.ok) {
+          if (response.status === 404) {
+            // No previous episode is available
+            return null;
+          }
+          throw new Error('Failed to fetch previous episode');
+        }
+        return await response.json();
+      } catch (err) {
+        console.error('Error fetching previous episode:', err);
+        return null;
+      }
+    },
+    []
+  );
+
+  // Increment view count
+  const incrementView = useCallback(
+    async (episodeId: string | number) => {
+      try {
+        const response = await fetch(`/api/views/episode/${episodeId}`, {
+          method: 'POST',
+          credentials: 'include',
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to increment view count');
+        }
+        
+        return await response.json();
+      } catch (err) {
+        // View count increment errors are not critical, just log them
         console.error('Không thể tăng lượt xem:', err);
         return null;
       }
@@ -58,26 +113,16 @@ export const useEpisodes = (movieId: string, initialPage: number = 1, initialLim
     []
   );
 
-  // Phân trang
-  const goToPage = useCallback(
-    (newPage: number) => {
-      setPage(newPage);
-    },
-    []
-  );
-
   return {
     episodes: data?.episodes || [],
-    totalPages: data?.totalPages || 0,
-    currentPage: data?.currentPage || page,
-    totalEpisodes: data?.totalEpisodes || 0,
+    totalEpisodes: data?.totalItems || 0,
     loading: isLoading,
     isValidating,
     error,
     getEpisode,
+    getNextEpisode,
+    getPreviousEpisode,
     incrementView,
-    goToPage,
-    setLimit,
-    mutate,
+    refreshEpisodes: mutate,
   };
-}; 
+};

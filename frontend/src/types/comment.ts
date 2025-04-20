@@ -1,10 +1,11 @@
 export interface Comment {
   id: string;
-  content: string;
+  comment: string;
   userId: string;
+  userName?: string;
   user?: {
     id: string;
-    name: string;
+    full_name: string;
   };
   movieId: string;
   parentId: string | null;
@@ -21,11 +22,11 @@ export interface CommentListResponse {
 }
 
 export interface AddCommentDto {
-  content: string;
+  comment: string;
   movieId: string;
   parentId?: string | null;
 }
 
 export interface UpdateCommentDto {
-  content: string;
-} 
+  comment: string;
+}

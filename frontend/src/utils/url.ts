@@ -62,9 +62,21 @@ export function getEpisodeIdFromSlug(slug: string): string {
   return slug;
 }
 
-export function generateMovieUrl(id: string | number, title: string): string {
-  // Đường dẫn /movie/ten-phim cho trang chi tiết phim
-  return `/movie/${createSlug(title)}`;
+export function generateMovieUrl(movie: { id: string | number; title: string } | string | number, title?: string): string {
+  // Nếu tham số đầu tiên là object Movie
+  if (typeof movie === 'object' && movie !== null) {
+    // Đường dẫn /movie/ten-phim-123 cho trang chi tiết phim (thêm ID vào slug)
+    return `/movie/${createSlug(movie.title)}-${movie.id}`;
+  }
+  
+  // Nếu truyền riêng id và title
+  if (movie !== undefined && title) {
+    return `/movie/${createSlug(title)}-${movie}`;
+  }
+  
+  // Fallback case
+  console.error('Invalid arguments for generateMovieUrl');
+  return '/';
 }
 
 export function generateWatchUrl(

@@ -10,7 +10,7 @@ import {
 } from './authHelper';
 
 // Cấu hình môi trường
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 // Mở rộng InternalAxiosRequestConfig để hỗ trợ _retry property
 interface ExtendedAxiosRequestConfig extends InternalAxiosRequestConfig {

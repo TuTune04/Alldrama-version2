@@ -5,10 +5,9 @@ import Link from "next/link"
 import Image from "next/image"
 import { useState, useRef, useEffect } from "react"
 import { generateMovieUrl, generateWatchUrl } from "@/utils/url"
-import { Star, Play, Film, Clock, Calendar, Eye, ChevronDown, ChevronUp, Info, Heart, Bookmark, TrendingUp, BarChart3, Layers, Share, ChevronLeft, ChevronRight } from "lucide-react"
+import { Star, Play, Film, Clock, Calendar, Eye, ChevronDown, ChevronUp, Info, Heart, Bookmark, TrendingUp, BarChart3, Layers, Share, ChevronLeft, ChevronRight, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import CommentSection from "./comment-section"
-import { mockMovies } from "@/mocks"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Separator } from "@/components/ui/separator"
@@ -17,54 +16,125 @@ import { useMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
 import MovieGrid from "./MovieGrid"
 import MovieSlider from "./MovieSlider"
+import { useMovies } from "@/hooks/api/useMovies"
+import { useEpisodes } from "@/hooks/api/useEpisodes"
+import { useGenres } from "@/hooks/api/useGenres"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Alert, AlertDescription } from "@/components/ui/alert" // Fix the import for the Alert component
 
+// Movie versions types
+interface MovieVersion {
+  id: string;
+  name: string;
+  type: 'SUB' | 'DUB' | 'CINEMA';
+  isDefault: boolean;
+}
 
-// Mock movie versions
-const movieVersions = [
+// Mock movie versions (to be moved to API eventually)
+const movieVersions: MovieVersion[] = [
   { id: '1', name: 'Bản Việt Sub', type: 'SUB', isDefault: true },
   { id: '2', name: 'Bản Thuyết Minh', type: 'DUB', isDefault: false },
   { id: '3', name: 'Bản Chiếu Rạp', type: 'CINEMA', isDefault: false },
 ]
 
 interface MovieDetailProps {
-  movie: Movie
-  episodes?: Episode[]
+  movieId: string | number;
 }
 
-const MovieDetail = ({ movie, episodes = [] }: MovieDetailProps) => {
+const MovieDetail = ({ movieId }: MovieDetailProps) => {
   const [showFullDescription, setShowFullDescription] = useState(false)
   const [activeEpisode, setActiveEpisode] = useState<string | null>(null)
   const [selectedVersion, setSelectedVersion] = useState(movieVersions[0].id)
   const [isWatchlist, setIsWatchlist] = useState(false)
   const [isLiked, setIsLiked] = useState(false)
+  const [isLoadingRelated, setIsLoadingRelated] = useState(false)
+  const [relatedMovies, setRelatedMovies] = useState<Movie[]>([])
+  const [error, setError] = useState<string | null>(null)
   const isMobile = useMobile()
-
-  // Get related movies - comparing genres by their names to ensure type safety
-  const relatedMovies = mockMovies
-    .filter(m => {
-      // Don't include the current movie
-      if (m.id === movie.id) return false;
+  
+  // Fetch movie data from API
+  const { getMovie, loading: loadingMovie } = useMovies()
+  const { episodes, loading: loadingEpisodes } = useEpisodes(movieId)
+  const { genres, loading: loadingGenres } = useGenres()
+  
+  const [movie, setMovie] = useState<Movie | null>(null)
+  
+  // Fetch movie details
+  useEffect(() => {
+    const fetchMovieDetails = async () => {
+      try {
+        const movieData = await getMovie(String(movieId))
+        if (movieData) {
+          setMovie(movieData)
+          setError(null)
+          // After getting movie data, fetch related movies
+          fetchRelatedMovies(movieData)
+        }
+      } catch (err) {
+        console.error('Error fetching movie details:', err)
+        setError('Không thể tải thông tin phim. Vui lòng thử lại sau.')
+      }
+    }
+    
+    fetchMovieDetails()
+  }, [movieId, getMovie])
+  
+  // Fetch related movies based on genres
+  const fetchRelatedMovies = async (currentMovie: Movie) => {
+    if (!currentMovie || !currentMovie.genres || currentMovie.genres.length === 0) return
+    
+    setIsLoadingRelated(true)
+    try {
+      // Get genre IDs from current movie
+      const genreIds = currentMovie.genres.map(genre => String(genre.id))
       
-      // Check if any genres match
-      return m.genres.some(g1 => {
-        // Handle both string and object genres
-        const genre1 = typeof g1 === 'string' ? g1 : g1.name;
-        return movie.genres.some(g2 => {
-          const genre2 = typeof g2 === 'string' ? g2 : g2.name;
-          return genre1 === genre2;
-        });
-      });
-    })
-    .slice(0, 5)
+      if (genreIds.length > 0) {
+        // Use the first genre to find related movies
+        const response = await fetch(`/api/movies/search?genre=${genreIds[0]}&limit=10`)
+        const data = await response.json()
+        
+        // Filter out the current movie and limit to 5 movies
+        const filtered = data.movies.filter((m: Movie) => String(m.id) !== String(currentMovie.id)).slice(0, 5)
+        setRelatedMovies(filtered)
+      }
+    } catch (err) {
+      console.error('Error fetching related movies:', err)
+    } finally {
+      setIsLoadingRelated(false)
+    }
+  }
 
   const toggleDescription = () => {
     setShowFullDescription(!showFullDescription)
   }
 
-  useEffect(() => {
-    // Reset description state when movie changes
-    setShowFullDescription(false)
-  }, [movie.id])
+  // If loading, show skeleton UI
+  if (loadingMovie && !movie) {
+    return <MovieDetailSkeleton />
+  }
+  
+  // If error, show error message
+  if (error) {
+    return (
+      <Alert variant="destructive" className="max-w-3xl mx-auto my-8">
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>{error}</AlertDescription>
+      </Alert>
+    )
+  }
+  
+  // If no movie data, show empty state
+  if (!movie) {
+    return (
+      <div className="text-center py-20">
+        <h2 className="text-2xl font-bold mb-2">Không tìm thấy phim</h2>
+        <p className="text-muted-foreground mb-4">Phim bạn đang tìm không tồn tại hoặc đã bị xóa.</p>
+        <Button asChild>
+          <Link href="/">Quay về trang chủ</Link>
+        </Button>
+      </div>
+    )
+  }
 
   return (
     <div className="text-foreground">
@@ -545,6 +615,43 @@ const MovieDetail = ({ movie, episodes = [] }: MovieDetailProps) => {
                 </div>
               </CardContent>
             </Card>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Skeleton component for loading state
+const MovieDetailSkeleton = () => {
+  return (
+    <div className="animate-pulse">
+      <div className="relative w-full h-[50vh] md:h-[75vh] bg-gray-800/50">
+        <div className="absolute inset-0 flex items-end">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full pb-6 md:pb-12">
+            <div className="flex flex-col md:flex-row md:items-end gap-4 md:gap-6">
+              <div className="hidden md:block w-64 h-96 flex-shrink-0 bg-gray-700 rounded-xl"></div>
+              <div className="w-full">
+                <Skeleton className="w-3/4 h-10 mb-2" />
+                <Skeleton className="w-1/2 h-5 mb-4" />
+                <div className="flex gap-2 mb-4">
+                  <Skeleton className="w-20 h-8 rounded-full" />
+                  <Skeleton className="w-20 h-8 rounded-full" />
+                </div>
+                <Skeleton className="w-full h-20" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
+        <div className="grid grid-cols-1 md:grid-cols-[300px_1fr] gap-8">
+          <Skeleton className="w-full h-96 rounded-xl" />
+          <div>
+            <Skeleton className="w-full h-10 mb-4" />
+            <Skeleton className="w-full h-40 mb-4" />
+            <Skeleton className="w-full h-60" />
           </div>
         </div>
       </div>

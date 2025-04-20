@@ -1,73 +1,23 @@
-import { MediaUploadResponse } from '@/types';
 import { apiClient } from '../apiClient';
 import { API_ENDPOINTS } from '../endpoints';
 
 export const mediaService = {
   /**
-   * Tải lên ảnh poster cho phim
+   * Upload hình ảnh poster cho phim
    * @param movieId ID của phim
-   * @param file File ảnh cần tải lên
+   * @param file File hình ảnh
    */
-  async uploadPoster(movieId: string, file: File): Promise<{ posterUrl: string }> {
-    const formData = new FormData();
-    formData.append('poster', file);
-
-    return apiClient.post<{ posterUrl: string }>(API_ENDPOINTS.MEDIA.UPLOAD_POSTER(movieId), formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-  },
-
-  /**
-   * Tải lên ảnh backdrop cho phim
-   * @param movieId ID của phim
-   * @param file File ảnh cần tải lên
-   */
-  async uploadBackdrop(movieId: string, file: File): Promise<{ backdropUrl: string }> {
-    const formData = new FormData();
-    formData.append('backdrop', file);
-
-    return apiClient.post<{ backdropUrl: string }>(API_ENDPOINTS.MEDIA.UPLOAD_BACKDROP(movieId), formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-  },
-
-  /**
-   * Tải lên trailer cho phim
-   * @param movieId ID của phim
-   * @param file File video trailer
-   */
-  async uploadTrailer(movieId: string, file: File): Promise<{ trailerUrl: string }> {
-    const formData = new FormData();
-    formData.append('trailer', file);
-
-    return apiClient.post<{ trailerUrl: string }>(API_ENDPOINTS.MEDIA.UPLOAD_TRAILER(movieId), formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-  },
-
-  /**
-   * Tải lên video cho tập phim
-   * @param movieId ID của phim
-   * @param episodeId ID của tập phim
-   * @param file File video
-   */
-  async uploadEpisodeVideo(
-    movieId: string, 
-    episodeId: string, 
+  async uploadPoster(
+    movieId: string | number,
     file: File
-  ): Promise<{ videoUrl: string }> {
+  ): Promise<{ url: string; message: string }> {
     const formData = new FormData();
-    formData.append('video', file);
+    formData.append('file', file);
+    formData.append('movieId', String(movieId));
 
-    return apiClient.post<{ videoUrl: string }>(
-      API_ENDPOINTS.MEDIA.UPLOAD_EPISODE_VIDEO(movieId, episodeId), 
-      formData, 
+    return apiClient.post<{ url: string; message: string }>(
+      API_ENDPOINTS.MEDIA.POSTER,
+      formData,
       {
         headers: {
           'Content-Type': 'multipart/form-data',
@@ -77,79 +27,116 @@ export const mediaService = {
   },
 
   /**
-   * Tạo Presigned URL để upload trực tiếp
-   * @param fileName Tên file
-   * @param contentType Loại nội dung
-   * @param folder Thư mục
+   * Upload hình nền (backdrop) cho phim
+   * @param movieId ID của phim
+   * @param file File hình ảnh
    */
-  async getPresignedUrl(
-    fileName: string, 
-    contentType: string, 
-    folder: string
+  async uploadBackdrop(
+    movieId: string | number,
+    file: File
+  ): Promise<{ url: string; message: string }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('movieId', String(movieId));
+
+    return apiClient.post<{ url: string; message: string }>(
+      API_ENDPOINTS.MEDIA.BACKDROP,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
+  },
+
+  /**
+   * Upload video cho tập phim
+   * @param movieId ID của phim
+   * @param episodeId ID của tập phim
+   * @param file File video
+   */
+  async uploadEpisodeVideo(
+    movieId: string | number,
+    episodeId: string | number,
+    file: File
   ): Promise<{
-    url: string;
-    fields: Record<string, string>;
+    originalUrl: string;
+    thumbnailUrl: string;
+    processingStatus: string;
+    message: string;
   }> {
-    return apiClient.post(API_ENDPOINTS.MEDIA.PRESIGNED_URL, {
-      fileName,
-      contentType,
-      folder
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('movieId', String(movieId));
+    formData.append('episodeId', String(episodeId));
+
+    return apiClient.post<{
+      originalUrl: string;
+      thumbnailUrl: string;
+      processingStatus: string;
+      message: string;
+    }>(API_ENDPOINTS.MEDIA.VIDEO, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
     });
   },
 
   /**
-   * Xóa media của phim
-   * @param movieId ID của phim
-   * @param mediaType Loại media (poster, backdrop, trailer)
-   */
-  async deleteMedia(
-    movieId: string, 
-    mediaType: 'poster' | 'backdrop' | 'trailer'
-  ): Promise<{ message: string }> {
-    return apiClient.delete<{ message: string }>(
-      API_ENDPOINTS.MEDIA.DELETE_MEDIA(movieId, mediaType)
-    );
-  },
-
-  /**
-   * Xóa tập phim và media liên quan
-   * @param movieId ID của phim
+   * Upload hình thumbnail cho tập phim
    * @param episodeId ID của tập phim
+   * @param file File hình ảnh
    */
-  async deleteEpisodeWithMedia(
-    movieId: string, 
-    episodeId: string
-  ): Promise<{ message: string }> {
-    return apiClient.delete<{ message: string }>(
-      API_ENDPOINTS.MEDIA.DELETE_EPISODE(movieId, episodeId)
+  async uploadThumbnail(
+    episodeId: string | number,
+    file: File
+  ): Promise<{ url: string; message: string }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('episodeId', String(episodeId));
+
+    return apiClient.post<{ url: string; message: string }>(
+      API_ENDPOINTS.MEDIA.THUMBNAIL,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
     );
   },
 
   /**
-   * Xóa phim và tất cả media liên quan
-   * @param movieId ID của phim
-   */
-  async deleteMovieWithMedia(movieId: string): Promise<{ message: string }> {
-    return apiClient.delete<{ message: string }>(
-      API_ENDPOINTS.MEDIA.DELETE_MOVIE(movieId)
-    );
-  },
-
-  /**
-   * Tạo URL ảnh đầy đủ từ đường dẫn tương đối
-   * @param path Đường dẫn tương đối của ảnh
+   * Lấy URL đầy đủ cho tài nguyên media
+   * @param path Đường dẫn tương đối của tài nguyên
    */
   getImageUrl(path?: string): string {
-    if (!path) {
-      return '/images/placeholder.jpg'; // Ảnh mặc định
+    if (!path) return '';
+    
+    // Nếu đã là URL đầy đủ, trả về nguyên bản
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+      return path;
     }
-
-    if (path.startsWith('http')) {
-      return path; // Đã là URL đầy đủ
-    }
-
-    // URL base của CDN hoặc API
-    const baseUrl = process.env.NEXT_PUBLIC_CDN_URL || process.env.NEXT_PUBLIC_API_URL;
+    
+    // Dùng API base URL từ biến môi trường hoặc giá trị mặc định
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
     return `${baseUrl}${path.startsWith('/') ? '' : '/'}${path}`;
   },
-}; 
+
+  /**
+   * Kiểm tra trạng thái xử lý video của tập phim
+   * @param episodeId ID của tập phim
+   */
+  async getProcessingStatus(episodeId: string | number): Promise<{
+    status: 'processing' | 'completed' | 'failed';
+    error?: string;
+    progress?: number;
+  }> {
+    return apiClient.get<{
+      status: 'processing' | 'completed' | 'failed';
+      error?: string;
+      progress?: number;
+    }>(`/api/episodes/${episodeId}/processing-status`);
+  }
+};

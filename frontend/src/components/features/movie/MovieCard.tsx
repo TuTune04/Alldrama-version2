@@ -7,8 +7,6 @@ import { generateMovieUrl } from "@/utils/url"
 import { Star, Play } from "lucide-react"
 import { useEffect, useState, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
-import MoviePopover from "./MoviePopover"
-import { motion } from "framer-motion"
 import { AspectRatio } from "@/components/ui/aspect-ratio"
 import { useMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
@@ -32,7 +30,7 @@ const MovieCard = ({
 }: MovieCardProps) => {
   const router = useRouter()
   const cardRef = useRef<HTMLDivElement>(null)
-  const [imageUrl, setImageUrl] = useState(movie.posterUrl || "/images/placeholder-poster.jpg")
+  const [imageUrl, setImageUrl] = useState(movie.posterUrl || "/images/test.jpg")
   const isMobile = useMobile()
   // Convert ID to string to ensure compatibility with URL utils
   const movieDetailUrl = generateMovieUrl(movie.id, movie.title)

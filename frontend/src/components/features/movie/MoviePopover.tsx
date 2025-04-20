@@ -13,7 +13,8 @@ import { useMobile } from '@/hooks/use-mobile'
 
 interface MoviePopoverProps {
   movie: Movie
-  trigger: React.ReactNode
+  trigger?: React.ReactNode
+  children?: React.ReactNode
   size?: 'sm' | 'md' | 'lg'
   variant?: 'default' | 'simple'
   showPopover?: boolean
@@ -22,6 +23,7 @@ interface MoviePopoverProps {
 const MoviePopover = ({ 
   movie, 
   trigger, 
+  children,
   size = 'md',
   variant = 'default',
   showPopover = true
@@ -62,8 +64,16 @@ const MoviePopover = ({
     }
   }[size]
 
-  if (!isDesktop || !showPopover) {
-    return <>{trigger}</>
+  // If children are provided, use them as the trigger
+  const triggerElement = children || trigger
+
+  // On mobile or if showPopover is false, just render the trigger without popover functionality
+  if (isMobile || !showPopover) {
+    return (
+      <Link href={generateMovieUrl(movie)}>
+        {triggerElement}
+      </Link>
+    )
   }
 
   return (
@@ -75,7 +85,7 @@ const MoviePopover = ({
         ref={triggerRef}
       >
         <div className={`${open ? 'opacity-90 scale-[1.05]' : 'opacity-100'} transition-all duration-300`}>
-          {trigger}
+          {triggerElement}
         </div>
 
         {open && (
