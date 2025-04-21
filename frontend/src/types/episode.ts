@@ -8,7 +8,6 @@ export interface Episode {
   thumbnailUrl: string;
   duration: number;
   isProcessed: boolean;
-  processingError: null | string;
   views: number;
   createdAt: string;
   updatedAt: string;
@@ -20,24 +19,25 @@ export interface Episode {
   };
 }
 
-// Updated to match backend response structure
 export interface EpisodeListResponse {
-  episodes: Episode[];
-  totalItems: number;
-  currentPage: number;
-  totalPages: number;
-  hasNext: boolean;
-  hasPrevious: boolean;
-}
-
-// For internal use with pagination if needed
-export interface PaginatedEpisodeResponse {
   episodes: Episode[];
   pagination: {
     total: number;
     totalPages: number;
     currentPage: number;
     limit: number;
+  }
+}
+
+// Keep for backward compatibility with existing code
+export interface PaginatedEpisodeResponse {
+  data: Episode[];
+  episodes: Episode[];
+  meta: {
+    totalItems: number;
+    itemsPerPage: number;
+    totalPages: number;
+    currentPage: number;
   };
 }
 
@@ -46,9 +46,39 @@ export interface CreateEpisodeDto {
   episodeNumber: number;
   title: string;
   description: string;
-  playlistUrl: string;
-  thumbnailUrl: string;
+  playlistUrl?: string;
+  thumbnailUrl?: string;
+  duration?: number;
+}
+
+export interface UpdateEpisodeDto {
+  episodeNumber?: number;
+  title?: string;
+  description?: string;
+  playlistUrl?: string;
+  thumbnailUrl?: string;
+  duration?: number;
+}
+
+// Keep for backward compatibility with existing code
+export interface EpisodeViewRequest {
+  movieId: number;
+  progress: number;
   duration: number;
 }
 
-export interface UpdateEpisodeDto extends Partial<Omit<CreateEpisodeDto, 'movieId'>> {}
+// Keep for backward compatibility with existing code
+export interface ViewResponse {
+  success: boolean;
+  message: string;
+}
+
+// Renamed but keeping the alias for backward compatibility
+export interface ProcessingStatusResponse {
+  status: 'processing' | 'completed' | 'failed';
+  error?: string;
+  progress?: number;
+}
+
+// New name for ProcessingStatusResponse
+export interface EpisodeProcessingStatus extends ProcessingStatusResponse {}

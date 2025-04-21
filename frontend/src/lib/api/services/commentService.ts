@@ -1,6 +1,21 @@
-import { Comment, CommentListResponse, AddCommentDto, UpdateCommentDto } from '@/types';
+import { Comment } from '@/types';
 import { apiClient } from '../apiClient';
 import { API_ENDPOINTS } from '../endpoints';
+
+export interface CreateCommentRequest {
+  movieId: string | number;
+  comment: string;
+  parentId?: string | number | null;
+}
+
+export interface UpdateCommentRequest {
+  comment: string;
+}
+
+export interface CommentResponse {
+  message: string;
+  comment: Comment;
+}
 
 export const commentService = {
   /**
@@ -17,7 +32,7 @@ export const commentService = {
     limit: number = 10,
     sort: string = 'createdAt',
     order: 'ASC' | 'DESC' = 'DESC'
-  ): Promise<CommentListResponse> {
+  ): Promise<Comment[]> {
     const params = new URLSearchParams();
     params.append('page', String(page));
     params.append('limit', String(limit));
@@ -25,7 +40,7 @@ export const commentService = {
     params.append('order', order);
     
     const url = `${API_ENDPOINTS.COMMENTS.BY_MOVIE(movieId)}?${params.toString()}`;
-    return apiClient.get<CommentListResponse>(url);
+    return apiClient.get<Comment[]>(url);
   },
 
   /**
@@ -40,26 +55,8 @@ export const commentService = {
    * Thêm bình luận mới
    * @param data Dữ liệu bình luận mới
    */
-  async addComment(data: AddCommentDto): Promise<Comment> {
-    return apiClient.post<Comment>(API_ENDPOINTS.COMMENTS.CREATE, data);
-  },
-
-  /**
-   * Thêm phản hồi cho bình luận
-   * @param parentId ID của bình luận cha
-   * @param movieId ID của phim
-   * @param comment Nội dung phản hồi
-   */
-  async addReply(
-    parentId: string | number,
-    movieId: string | number,
-    comment: string
-  ): Promise<Comment> {
-    return apiClient.post<Comment>(API_ENDPOINTS.COMMENTS.CREATE, {
-      parentId: String(parentId),
-      movieId: String(movieId),
-      comment
-    });
+  async createComment(data: CreateCommentRequest): Promise<CommentResponse> {
+    return apiClient.post<CommentResponse>(API_ENDPOINTS.COMMENTS.CREATE, data);
   },
 
   /**
@@ -69,9 +66,9 @@ export const commentService = {
    */
   async updateComment(
     commentId: string | number,
-    data: UpdateCommentDto
-  ): Promise<Comment> {
-    return apiClient.put<Comment>(API_ENDPOINTS.COMMENTS.UPDATE(commentId), data);
+    data: UpdateCommentRequest
+  ): Promise<CommentResponse> {
+    return apiClient.put<CommentResponse>(API_ENDPOINTS.COMMENTS.UPDATE(commentId), data);
   },
 
   /**

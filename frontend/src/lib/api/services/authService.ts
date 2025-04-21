@@ -1,4 +1,4 @@
-import { AuthResponse, LoginCredentials, RegisterCredentials, User } from '@/types';
+import { AuthResponse, LoginCredentials, RegisterCredentials, User, UpdateUserDto } from '@/types';
 import { apiClient } from '../apiClient';
 import { API_ENDPOINTS } from '../endpoints';
 import { refreshTokenEndpoint, refreshAccessToken } from '../authHelper';
@@ -47,6 +47,72 @@ export const authService = {
   },
 
   /**
+   * Lấy danh sách người dùng (chỉ admin)
+   */
+  async getAllUsers(): Promise<User[]> {
+    return apiClient.get<User[]>(API_ENDPOINTS.USERS.LIST);
+  },
+
+  /**
+   * Lấy thông tin người dùng theo ID
+   * @param userId ID của người dùng
+   */
+  async getUserById(userId: string | number): Promise<User> {
+    return apiClient.get<User>(API_ENDPOINTS.USERS.DETAIL(userId));
+  },
+
+  /**
+   * Cập nhật thông tin người dùng
+   * @param userId ID của người dùng
+   * @param userData Dữ liệu cập nhật
+   */
+  async updateUser(userId: string | number, userData: UpdateUserDto): Promise<{ message: string; user: User }> {
+    return apiClient.put<{ message: string; user: User }>(
+      API_ENDPOINTS.USERS.UPDATE(userId),
+      userData
+    );
+  },
+
+  /**
+   * Xóa người dùng (chỉ admin)
+   * @param userId ID của người dùng
+   */
+  async deleteUser(userId: string | number): Promise<{ message: string }> {
+    return apiClient.delete<{ message: string }>(API_ENDPOINTS.USERS.DELETE(userId));
+  },
+
+  /**
+   * Thay đổi mật khẩu người dùng
+   * @param userId ID của người dùng
+   * @param data Dữ liệu đổi mật khẩu
+   */
+  async changePassword(
+    userId: string | number, 
+    data: { currentPassword: string; newPassword: string }
+  ): Promise<{ message: string }> {
+    return apiClient.post<{ message: string }>(
+      API_ENDPOINTS.USERS.CHANGE_PASSWORD(userId), 
+      data
+    );
+  },
+
+  /**
+   * Lấy danh sách phim yêu thích của người dùng
+   * @param userId ID của người dùng
+   */
+  async getUserFavorites(userId: string | number): Promise<any[]> {
+    return apiClient.get<any[]>(API_ENDPOINTS.USERS.FAVORITES(userId));
+  },
+
+  /**
+   * Lấy lịch sử xem phim của người dùng
+   * @param userId ID của người dùng
+   */
+  async getUserWatchHistory(userId: string | number): Promise<any[]> {
+    return apiClient.get<any[]>(API_ENDPOINTS.USERS.WATCH_HISTORY(userId));
+  },
+
+  /**
    * Lưu token vào localStorage
    * @param token JWT token
    */
@@ -84,10 +150,10 @@ export const authService = {
   },
 
   /**
-   * Gửi email xác thực đăng nhập
-   * @param data Dữ liệu chứa email cần xác thực
+   * Gửi email xác thực đăng nhập/đăng ký
+   * @param data Dữ liệu chứa email và loại xác thực
    */
-  async emailAuth(data: { email: string }): Promise<{ message: string }> {
+  async emailAuth(data: { email: string; isSignUp?: boolean }): Promise<{ message: string }> {
     return apiClient.post<{ message: string }>(
       API_ENDPOINTS.AUTH.EMAIL_AUTH, 
       data
@@ -100,4 +166,4 @@ export const authService = {
   async getCsrfToken(): Promise<{ csrfToken: string }> {
     return apiClient.get<{ csrfToken: string }>(API_ENDPOINTS.AUTH.CSRF_TOKEN);
   }
-}; 
+};

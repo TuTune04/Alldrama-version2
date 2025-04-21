@@ -1,32 +1,34 @@
 export interface Comment {
-  id: string;
+  id: number;
   comment: string;
-  userId: string;
-  userName?: string;
-  user?: {
-    id: string;
-    full_name: string;
-  };
-  movieId: string;
-  parentId: string | null;
-  replies?: Comment[];
+  movieId: number;
+  userId: number;
+  userName: string;
   createdAt: string;
   updatedAt: string;
+  user?: {
+    id: number;
+    full_name: string;
+  };
+  movie?: {
+    id: number;
+    title: string;
+  };
+  parentId?: number | null;
+  replies?: Comment[];
 }
 
-export interface CommentListResponse {
-  comments: Comment[];
-  totalPages: number;
-  currentPage: number;
-  totalComments: number;
-}
-
-export interface AddCommentDto {
+export interface CommentRequest {
+  movieId: string | number;
   comment: string;
-  movieId: string;
-  parentId?: string | null;
+  parentId?: string | number | null;
 }
 
-export interface UpdateCommentDto {
+export interface UpdateCommentRequest {
   comment: string;
+}
+
+export interface CommentResponse {
+  message: string;
+  comment: Comment;
 }

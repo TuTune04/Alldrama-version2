@@ -1,10 +1,18 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import useSWR from 'swr';
 import { Genre } from '@/types';
 import { toast } from 'react-hot-toast';
 import { API_ENDPOINTS } from '@/lib/api/endpoints';
+import { genreService } from '@/lib/api/services/genreService';
+import { useAuth } from './useAuth';
 
 export const useGenres = () => {
+  const { user } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Check if user is admin
+  const isAdmin = !!user && user.role === 'admin';
+
   // SWR key
   const key = API_ENDPOINTS.GENRES.LIST;
 
@@ -23,7 +31,7 @@ export const useGenres = () => {
   }, []);
 
   // Using SWR hook with long-term caching config
-  const { data, error, isLoading, isValidating, mutate } = useSWR<Genre[]>(key, fetcher, {
+  const { data, error, isValidating, mutate } = useSWR<Genre[]>(key, fetcher, {
     revalidateOnFocus: false,
     revalidateOnReconnect: false,
     revalidateIfStale: false,
@@ -47,45 +55,102 @@ export const useGenres = () => {
   );
 
   // Get genre details by ID
-  const getGenreById = useCallback(
-    async (genreId: number | string) => {
-      try {
-        const response = await fetch(API_ENDPOINTS.GENRES.DETAIL(genreId));
-        if (!response.ok) {
-          throw new Error('Failed to fetch genre details');
-        }
-        return await response.json();
-      } catch (err) {
-        toast.error('Không thể tải thông tin thể loại');
-        return null;
-      }
-    },
-    []
-  );
+  const getGenreById = useCallback(async (genreId: number | string) => {
+    try {
+      return await genreService.getGenreById(genreId);
+    } catch (err) {
+      toast.error('Không thể tải thông tin thể loại');
+      return null;
+    }
+  }, []);
 
   // Get movies by genre
   const getMoviesByGenre = useCallback(async (genreId: number | string) => {
     try {
-      const response = await fetch(API_ENDPOINTS.MOVIES.BY_GENRE(genreId));
-      if (!response.ok) {
-        throw new Error('Failed to fetch movies by genre');
-      }
-      return await response.json();
+      return await genreService.getMoviesByGenreId(genreId);
     } catch (err) {
       toast.error('Không thể tải danh sách phim theo thể loại');
       return null;
     }
   }, []);
 
+  // Create new genre (admin only)
+  const createGenre = useCallback(async (name: string) => {
+    if (!isAdmin) {
+      toast.error('Bạn không có quyền thực hiện chức năng này');
+      return null;
+    }
+
+    setIsLoading(true);
+    try {
+      const result = await genreService.createGenre(name);
+      toast.success('Đã tạo thể loại mới thành công');
+      await mutate(); // Refresh genres list
+      return result;
+    } catch (err) {
+      toast.error('Không thể tạo thể loại mới');
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isAdmin, mutate]);
+
+  // Update genre (admin only)
+  const updateGenre = useCallback(async (genreId: number | string, name: string) => {
+    if (!isAdmin) {
+      toast.error('Bạn không có quyền thực hiện chức năng này');
+      return null;
+    }
+
+    setIsLoading(true);
+    try {
+      const result = await genreService.updateGenre(genreId, name);
+      toast.success('Đã cập nhật thể loại thành công');
+      await mutate(); // Refresh genres list
+      return result;
+    } catch (err) {
+      toast.error('Không thể cập nhật thể loại');
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isAdmin, mutate]);
+
+  // Delete genre (admin only)
+  const deleteGenre = useCallback(async (genreId: number | string) => {
+    if (!isAdmin) {
+      toast.error('Bạn không có quyền thực hiện chức năng này');
+      return null;
+    }
+
+    setIsLoading(true);
+    try {
+      const result = await genreService.deleteGenre(genreId);
+      toast.success('Đã xóa thể loại thành công');
+      await mutate(); // Refresh genres list
+      return result;
+    } catch (err: any) {
+      // Display specific error message if available
+      const errorMessage = err.response?.data?.message || 'Không thể xóa thể loại';
+      toast.error(errorMessage);
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isAdmin, mutate]);
+
   return {
     genres: data || [],
-    loading: isLoading,
+    loading: isLoading || !data && !error,
     isValidating,
     error,
     findGenreById,
     findGenreByName,
     getGenreById,
     getMoviesByGenre,
+    createGenre,
+    updateGenre,
+    deleteGenre,
     refreshGenres: mutate,
   };
 };

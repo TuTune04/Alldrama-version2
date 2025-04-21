@@ -2,7 +2,7 @@ import { Genre } from './genre';
 import { PaginatedData } from './api';
 
 export interface Movie {
-  id: string | number;
+  id: number;
   title: string;
   summary: string;
   duration: number;
@@ -13,8 +13,8 @@ export interface Movie {
   playlistUrl: string;
   backdropUrl?: string;
   genres: Genre[];
-  rating?: number;
-  views?: number;
+  rating: number;
+  views: number;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -45,10 +45,21 @@ export interface CreateMovieDto {
   duration: number;
   totalEpisodes: number;
   releaseYear: number;
-  posterUrl: string;
-  trailerUrl: string;
-  playlistUrl: string;
+  posterUrl?: string;
+  trailerUrl?: string;
+  playlistUrl?: string;
   genreIds: number[];
 }
 
-export interface UpdateMovieDto extends Partial<CreateMovieDto> {}
+export interface UpdateMovieDto {
+  title?: string;
+  summary?: string;
+  duration?: number;
+  totalEpisodes?: number;
+  releaseYear?: number;
+  posterUrl?: string;
+  trailerUrl?: string;
+  playlistUrl?: string;
+  backdropUrl?: string;
+  genreIds?: number[];
+}

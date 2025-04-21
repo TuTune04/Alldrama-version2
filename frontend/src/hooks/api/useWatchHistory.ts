@@ -1,101 +1,107 @@
 import { useState, useCallback } from 'react';
 import useSWR from 'swr';
-import { WatchHistoryListResponse, AddWatchHistoryDto } from '@/types';
-import { watchHistoryService } from '@/lib/api';
+import { WatchHistory } from '@/types';
+import { 
+  watchHistoryService, 
+  WatchHistoryRequest, 
+  WatchHistoryResponse 
+} from '@/lib/api/services/watchHistoryService';
 import { toast } from 'react-hot-toast';
 import { useApiCache } from './useApiCache';
 
-export const useWatchHistory = (initialPage: number = 1, initialLimit: number = 10) => {
-  const [page, setPage] = useState(initialPage);
-  const [limit, setLimit] = useState(initialLimit);
+export const useWatchHistory = () => {
   const { clearWatchHistoryCache } = useApiCache();
 
   // SWR key
-  const key = `watch-history?page=${page}&limit=${limit}`;
+  const key = 'watch-history';
 
-  // Fetcher function cho SWR
+  // Fetcher function for SWR
   const fetcher = useCallback(
-    async (key: string) => {
-      const url = new URL(key, 'http://example.com');
-      const page = parseInt(url.searchParams.get('page') || '1');
-      const limit = parseInt(url.searchParams.get('limit') || '10');
-
-      return await watchHistoryService.getWatchHistory(page, limit);
+    async () => {
+      return await watchHistoryService.getWatchHistory();
     },
     []
   );
 
-  // Sử dụng SWR hook
-  const { data, error, isLoading, isValidating, mutate } = useSWR<WatchHistoryListResponse>(
+  // Use SWR hook
+  const { data, error, isLoading, isValidating, mutate } = useSWR<WatchHistory[]>(
     key,
     fetcher
   );
 
-  // Thêm vào lịch sử xem
-  const addToWatchHistory = useCallback(
-    async (data: AddWatchHistoryDto) => {
+  // Add or update watch history
+  const addOrUpdateWatchHistory = useCallback(
+    async (data: WatchHistoryRequest) => {
       try {
-        await watchHistoryService.addToWatchHistory(data);
-        // Refresh lịch sử xem
+        const response = await watchHistoryService.addOrUpdateWatchHistory(data);
+        // Refresh watch history
         await mutate();
-        return true;
+        return response.watchHistory;
       } catch (err) {
         console.error('Không thể cập nhật lịch sử xem:', err);
+        return null;
+      }
+    },
+    [mutate]
+  );
+
+  // Delete watch history entry
+  const deleteWatchHistory = useCallback(
+    async (historyId: string | number) => {
+      try {
+        const response = await watchHistoryService.deleteWatchHistory(historyId);
+        // Refresh watch history
+        await mutate();
+        toast.success(response.message);
+        return true;
+      } catch (err) {
+        toast.error('Không thể xóa lịch sử xem');
         return false;
       }
     },
     [mutate]
   );
 
-  // Cập nhật tiến độ xem
-  const updateProgress = useCallback(
-    async (episodeId: string, progress: number, completed: boolean = false) => {
-      return addToWatchHistory({ episodeId, progress, completed });
-    },
-    [addToWatchHistory]
-  );
-
-  // Đánh dấu đã xem xong
-  const markAsCompleted = useCallback(
-    async (episodeId: string) => {
-      return addToWatchHistory({ episodeId, progress: 0, completed: true });
-    },
-    [addToWatchHistory]
-  );
-
-  // Tìm lịch sử xem của một tập phim
-  const findWatchProgress = useCallback(
-    (episodeId: string) => {
-      if (!data?.history) return null;
-      
-      const watchRecord = data.history.find((item) => item.episodeId === episodeId);
-      return watchRecord ? { progress: watchRecord.progress, completed: watchRecord.completed } : null;
-    },
-    [data?.history]
-  );
-
-  // Phân trang
-  const goToPage = useCallback(
-    (newPage: number) => {
-      setPage(newPage);
+  // Get episode progress
+  const getEpisodeProgress = useCallback(
+    async (episodeId: string | number) => {
+      return watchHistoryService.getEpisodeProgress(episodeId);
     },
     []
   );
 
+  // Get latest progress for a movie
+  const getLatestProgressForMovie = useCallback(
+    async (movieId: string | number) => {
+      return watchHistoryService.getLatestProgressForMovie(movieId);
+    },
+    []
+  );
+
+  // Update progress for an episode
+  const updateProgress = useCallback(
+    async (movieId: string | number, episodeId: string | number, progress: number, duration: number) => {
+      const data: WatchHistoryRequest = {
+        movieId,
+        episodeId,
+        progress,
+        duration
+      };
+      return addOrUpdateWatchHistory(data);
+    },
+    [addOrUpdateWatchHistory]
+  );
+
   return {
-    history: data?.history || [],
-    totalPages: data?.totalPages || 0,
-    currentPage: data?.currentPage || page,
-    totalItems: data?.totalItems || 0,
+    watchHistory: data || [],
     loading: isLoading,
     isValidating,
     error,
-    addToWatchHistory,
+    addOrUpdateWatchHistory,
+    deleteWatchHistory,
+    getEpisodeProgress,
+    getLatestProgressForMovie,
     updateProgress,
-    markAsCompleted,
-    findWatchProgress,
-    goToPage,
-    setLimit,
-    refreshHistory: mutate,
+    refreshWatchHistory: mutate
   };
-}; 
+};

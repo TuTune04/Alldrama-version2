@@ -32,8 +32,7 @@ const MovieCard = ({
   const cardRef = useRef<HTMLDivElement>(null)
   const [imageUrl, setImageUrl] = useState(movie.posterUrl || "/images/test.jpg")
   const isMobile = useMobile()
-  // Convert ID to string to ensure compatibility with URL utils
-  const movieDetailUrl = generateMovieUrl(movie.id, movie.title)
+  const movieDetailUrl = generateMovieUrl(movie.id.toString(), movie.title)
   const [imageLoaded, setImageLoaded] = useState(false)
   const [imageError, setImageError] = useState(false)
 
@@ -66,7 +65,7 @@ const MovieCard = ({
             <h3 className="text-sm font-medium text-white truncate">{movie.title}</h3>
             <div className="flex items-center mt-1 text-xs text-gray-300">
               <span>{movie.releaseYear}</span>
-              {movie.rating && (
+              {movie.rating !== undefined && (
                 <>
                   <span className="mx-1">•</span>
                   <span className="flex items-center text-amber-400">
@@ -126,7 +125,7 @@ const MovieCard = ({
         `}
       >
         {/* Rating badge - top right */}
-        {variant !== "trending" && movie.rating && (
+        {variant !== "trending" && movie.rating !== undefined && (
           <div className="absolute top-2 right-2 flex items-center bg-black/60 px-1.5 py-0.5 rounded text-xs font-medium">
             <Star size={12} className="text-amber-400 fill-current mr-0.5" /> 
             <span className="text-white">{movie.rating}</span>
@@ -148,23 +147,27 @@ const MovieCard = ({
         </h3>
         
         <div className="flex items-center text-xs text-gray-300">
-          <span>{movie.releaseYear}</span>
-          
-          {variant === "trending" && movie.rating && (
-            <>
-              <span className="mx-1">•</span>
-              <span className="flex items-center">
-                <Star size={10} className="text-amber-400 fill-current mr-0.5" /> 
-                {movie.rating}
-              </span>
-            </>
+          {movie.rating !== undefined && (
+            <div className="flex items-center text-amber-400">
+              <Star size={12} className="fill-current mr-1" /> {movie.rating}
+            </div>
           )}
+          <span>{movie.releaseYear}</span>
           
           {(variant === "featured" || variant === "trending") && movie.genres && movie.genres[0] && (
             <>
               <span className="mx-1">•</span>
               <span>
                 {typeof movie.genres[0] === "string" ? movie.genres[0] : movie.genres[0].name}
+              </span>
+            </>
+          )}
+          {variant === "trending" && movie.rating !== undefined && (
+            <>
+              <span className="mx-1">•</span>
+              <span className="flex items-center">
+                <Star size={10} className="text-amber-400 fill-current mr-0.5" /> 
+                {movie.rating}
               </span>
             </>
           )}

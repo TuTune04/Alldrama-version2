@@ -1,6 +1,6 @@
 'use client'
 
-import { FileQuestion } from "lucide-react"
+import { FileQuestion, ChevronLeft, ChevronRight } from "lucide-react"
 import MovieCard from "./MovieCard"
 import type { Movie, MovieSearchParams } from "@/types"
 import { motion } from "framer-motion"
@@ -8,6 +8,7 @@ import MoviePopover from "./MoviePopover"
 import Link from "next/link"
 import { generateMovieUrl } from "@/utils/url"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Button } from "@/components/ui/button"
 import { useState, useEffect, useCallback } from "react"
 import { useMovies } from "@/hooks/api/useMovies"
 import React from "react"
@@ -23,6 +24,11 @@ interface MovieGridProps {
   genreId?: string | number
   searchQuery?: string
   limit?: number
+  // Thêm props hỗ trợ phân trang
+  showPagination?: boolean
+  totalPages?: number
+  currentPage?: number
+  onPageChange?: (page: number) => void
 }
 
 const MovieGrid = ({
@@ -35,6 +41,10 @@ const MovieGrid = ({
   genreId,
   searchQuery,
   limit = 20,
+  showPagination = false,
+  totalPages = 1,
+  currentPage = 1,
+  onPageChange,
 }: MovieGridProps) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,7 +71,10 @@ const MovieGrid = ({
     
     try {
       // Chuẩn bị search params theo props
-      const params: MovieSearchParams = { limit: limit || 20 };
+      const params: MovieSearchParams = { 
+        limit: limit || 20,
+        page: currentPage
+      };
       
       if (searchQuery) {
         params.q = searchQuery;
@@ -114,12 +127,20 @@ const MovieGrid = ({
     genreId, 
     searchQuery,
     limit,
+    currentPage,
     searchMovies
   ]);
   
   useEffect(() => {
     fetchMovies();
   }, [fetchMovies]);
+  
+  // Xử lý chuyển trang
+  const handlePageChange = useCallback((newPage: number) => {
+    if (onPageChange) {
+      onPageChange(newPage);
+    }
+  }, [onPageChange]);
   
   // Sử dụng dữ liệu từ API hoặc props
   const displayMovies = movies || swrMovies || [];
@@ -140,14 +161,26 @@ const MovieGrid = ({
   // Render loading skeleton
   if (isLoadingState) {
     return (
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
-        {Array.from({ length: 10 }).map((_, index) => (
-          <div key={index} className="flex flex-col gap-2">
-            <Skeleton className="w-full aspect-[2/3] rounded-md h-64 sm:h-80" />
-            <Skeleton className="h-4 w-3/4" />
-            <Skeleton className="h-3 w-1/2" />
+      <div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
+          {Array.from({ length: 10 }).map((_, index) => (
+            <div key={index} className="flex flex-col gap-2">
+              <Skeleton className="w-full aspect-[2/3] rounded-md h-64 sm:h-80" />
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-3 w-1/2" />
+            </div>
+          ))}
+        </div>
+        
+        {showPagination && (
+          <div className="flex justify-center mt-8">
+            <div className="flex items-center gap-2">
+              <Skeleton className="w-10 h-10 rounded-full" />
+              <Skeleton className="w-10 h-10 rounded-full" />
+              <Skeleton className="w-10 h-10 rounded-full" />
+            </div>
           </div>
-        ))}
+        )}
       </div>
     )
   }
@@ -165,35 +198,88 @@ const MovieGrid = ({
     )
   }
 
+  // Render pagination controls
+  const renderPagination = () => {
+    if (!showPagination || totalPages <= 1) return null;
+
+    return (
+      <div className="flex justify-center mt-8">
+        <div className="flex items-center gap-2">
+          <Button 
+            size="icon"
+            variant="outline"
+            onClick={() => handlePageChange(currentPage - 1)} 
+            disabled={currentPage <= 1}
+            className={`rounded-full ${
+              currentPage > 1 
+                ? 'bg-black/80 hover:bg-black/60 border-gray-700' 
+                : 'bg-black/50 cursor-not-allowed border-transparent opacity-50'
+            } flex items-center justify-center w-10 h-10`}
+          >
+            <ChevronLeft size={18} />
+          </Button>
+          
+          <div className="px-4 py-2 rounded-md bg-gray-800/50 border border-gray-700">
+            <span className="text-gray-300">
+              Trang {currentPage} / {totalPages}
+            </span>
+          </div>
+
+          <Button 
+            size="icon"
+            variant="outline"
+            onClick={() => handlePageChange(currentPage + 1)} 
+            disabled={currentPage >= totalPages}
+            className={`rounded-full ${
+              currentPage < totalPages 
+                ? 'bg-black/80 hover:bg-black/60 border-gray-700' 
+                : 'bg-black/50 cursor-not-allowed border-transparent opacity-50'
+            } flex items-center justify-center w-10 h-10`}
+          >
+            <ChevronRight size={18} />
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
   // Render grid layout
   if (layout === 'grid') {
     return (
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
-        {displayMovies.map((movie) => (
-          <motion.div
-            key={movie.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-            onMouseEnter={() => onHover && onHover(movie)}
-          >
-            <Link href={generateMovieUrl(movie)}>
-              <MovieCard movie={movie} />
-            </Link>
-          </motion.div>
-        ))}
+      <div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
+          {displayMovies.map((movie) => (
+            <motion.div
+              key={movie.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              onMouseEnter={() => onHover && onHover(movie)}
+            >
+              <Link href={generateMovieUrl(movie.id, movie.title)}>
+                <MovieCard movie={movie} />
+              </Link>
+            </motion.div>
+          ))}
+        </div>
+        
+        {renderPagination()}
       </div>
     )
   }
 
   // Render classic layout (with popover)
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
-      {displayMovies.map((movie) => (
-        <MoviePopover key={movie.id} movie={movie}>
-          <MovieCard movie={movie} />
-        </MoviePopover>
-      ))}
+    <div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
+        {displayMovies.map((movie) => (
+          <MoviePopover key={movie.id} movie={movie}>
+            <MovieCard movie={movie} />
+          </MoviePopover>
+        ))}
+      </div>
+      
+      {renderPagination()}
     </div>
   )
 }

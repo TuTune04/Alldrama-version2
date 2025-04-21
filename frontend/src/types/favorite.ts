@@ -1,20 +1,27 @@
 import { Movie } from './movie';
 
 export interface Favorite {
-  id: string;
-  userId: string;
-  movieId: string;
-  movie?: Movie;
-  createdAt: string;
+  id: number;
+  userId: number;
+  movieId: number;
+  favoritedAt: string;
+  movie?: {
+    id: number;
+    title: string;
+    rating: number;
+    posterUrl: string;
+    genres: Array<{
+      id: number;
+      name: string;
+    }>;
+  };
 }
 
-export interface FavoriteListResponse {
-  favorites: Favorite[];
-  totalPages: number;
-  currentPage: number;
-  totalFavorites: number;
+export interface FavoriteRequest {
+  movieId: string | number;
 }
 
-export interface AddFavoriteDto {
-  movieId: string;
-} 
+export interface FavoriteResponse {
+  message: string;
+  favorited: boolean;
+}

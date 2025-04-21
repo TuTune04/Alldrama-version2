@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { toast } from 'react-hot-toast';
-import { API_ENDPOINTS } from '@/lib/api/endpoints';
+import { mediaService, PresignedUrlRequest, ProcessingStatusResponse } from '@/lib/api/services/mediaService';
 
 export const useMedia = () => {
   const [uploading, setUploading] = useState(false);
@@ -36,12 +36,7 @@ export const useMedia = () => {
     setError(null);
 
     try {
-      // Create form data
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('movieId', String(movieId));
-
-      // Simulate upload progress
+      // Simulate upload progress (since we don't have real progress events)
       const progressInterval = setInterval(() => {
         setProgress((prevProgress) => {
           if (prevProgress >= 90) {
@@ -52,24 +47,14 @@ export const useMedia = () => {
         });
       }, 300);
 
-      const response = await fetch(API_ENDPOINTS.MEDIA.POSTER, {
-        method: 'POST',
-        body: formData,
-        credentials: 'include',
-      });
+      const response = await mediaService.uploadPoster(movieId, file);
       
       clearInterval(progressInterval);
-      
-      if (!response.ok) {
-        throw new Error('Failed to upload poster');
-      }
-      
-      const data = await response.json();
       setProgress(100);
       setUploading(false);
       
       toast.success('Đã tải poster lên thành công');
-      return data.url;
+      return response.url;
     } catch (err) {
       setError('Không thể tải poster lên');
       toast.error('Không thể tải poster lên');
@@ -99,11 +84,6 @@ export const useMedia = () => {
     setError(null);
 
     try {
-      // Create form data
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('movieId', String(movieId));
-
       // Simulate upload progress
       const progressInterval = setInterval(() => {
         setProgress((prevProgress) => {
@@ -115,27 +95,65 @@ export const useMedia = () => {
         });
       }, 300);
 
-      const response = await fetch(API_ENDPOINTS.MEDIA.BACKDROP, {
-        method: 'POST',
-        body: formData,
-        credentials: 'include',
-      });
+      const response = await mediaService.uploadBackdrop(movieId, file);
       
       clearInterval(progressInterval);
-      
-      if (!response.ok) {
-        throw new Error('Failed to upload backdrop');
-      }
-      
-      const data = await response.json();
       setProgress(100);
       setUploading(false);
       
       toast.success('Đã tải backdrop lên thành công');
-      return data.url;
+      return response.url;
     } catch (err) {
       setError('Không thể tải backdrop lên');
       toast.error('Không thể tải backdrop lên');
+      setUploading(false);
+      setProgress(0);
+      return null;
+    }
+  }, []);
+
+  // Upload trailer for movie
+  const uploadTrailer = useCallback(async (movieId: string | number, file: File): Promise<string | null> => {
+    if (!file) {
+      setError('Không có file được chọn');
+      return null;
+    }
+
+    // Validate file type
+    const validTypes = ['video/mp4', 'video/webm'];
+    if (!validTypes.includes(file.type)) {
+      setError('Chỉ hỗ trợ file video MP4, WebM');
+      toast.error('Chỉ hỗ trợ file video MP4, WebM');
+      return null;
+    }
+
+    setUploading(true);
+    setProgress(0);
+    setError(null);
+
+    try {
+      // Simulate upload progress
+      const progressInterval = setInterval(() => {
+        setProgress((prevProgress) => {
+          if (prevProgress >= 90) {
+            clearInterval(progressInterval);
+            return 90;
+          }
+          return prevProgress + 10;
+        });
+      }, 300);
+
+      const response = await mediaService.uploadTrailer(movieId, file);
+      
+      clearInterval(progressInterval);
+      setProgress(100);
+      setUploading(false);
+      
+      toast.success('Đã tải trailer lên thành công');
+      return response.trailerUrl;
+    } catch (err) {
+      setError('Không thể tải trailer lên');
+      toast.error('Không thể tải trailer lên');
       setUploading(false);
       setProgress(0);
       return null;
@@ -171,12 +189,6 @@ export const useMedia = () => {
     setProcessingStatus('processing');
 
     try {
-      // Create form data
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('movieId', String(movieId));
-      formData.append('episodeId', String(episodeId));
-
       // Simulate upload progress
       const progressInterval = setInterval(() => {
         setProgress((prevProgress) => {
@@ -188,28 +200,18 @@ export const useMedia = () => {
         });
       }, 500);
 
-      const response = await fetch(API_ENDPOINTS.MEDIA.VIDEO, {
-        method: 'POST',
-        body: formData,
-        credentials: 'include',
-      });
+      const response = await mediaService.uploadEpisodeVideo(movieId, episodeId, file);
       
       clearInterval(progressInterval);
-      
-      if (!response.ok) {
-        throw new Error('Failed to upload video');
-      }
-      
-      const data = await response.json();
       setProgress(100);
+      setUploading(false);
       
-      // Video uploaded but still processing HLS
-      toast.success('Đã tải video lên, đang xử lý...');
+      toast.success('Đã tải video lên thành công, đang xử lý');
       
       return {
-        originalUrl: data.originalUrl,
-        thumbnailUrl: data.thumbnailUrl,
-        processingStatus: data.processingStatus
+        originalUrl: response.originalUrl,
+        thumbnailUrl: response.thumbnailUrl,
+        processingStatus: response.processingStatus
       };
     } catch (err) {
       setError('Không thể tải video lên');
@@ -221,123 +223,99 @@ export const useMedia = () => {
     }
   }, []);
 
+  // Get presigned URL for direct upload
+  const getPresignedUrl = useCallback(async (
+    data: PresignedUrlRequest
+  ): Promise<{ presignedUrl: string; cdnUrl: string } | null> => {
+    try {
+      const response = await mediaService.getPresignedUrl(data);
+      return {
+        presignedUrl: response.presignedUrl,
+        cdnUrl: response.cdnUrl
+      };
+    } catch (err) {
+      setError('Không thể lấy presigned URL');
+      toast.error('Không thể lấy presigned URL');
+      return null;
+    }
+  }, []);
+
+  // Delete media
+  const deleteMedia = useCallback(async (
+    movieId: string | number,
+    mediaType: 'poster' | 'backdrop' | 'trailer'
+  ): Promise<boolean> => {
+    try {
+      await mediaService.deleteMedia(movieId, mediaType);
+      toast.success(`Đã xóa ${mediaType} thành công`);
+      return true;
+    } catch (err) {
+      toast.error(`Không thể xóa ${mediaType}`);
+      return false;
+    }
+  }, []);
+
+  // Delete episode
+  const deleteEpisode = useCallback(async (
+    movieId: string | number,
+    episodeId: string | number
+  ): Promise<boolean> => {
+    try {
+      await mediaService.deleteEpisode(movieId, episodeId);
+      toast.success('Đã xóa tập phim thành công');
+      return true;
+    } catch (err) {
+      toast.error('Không thể xóa tập phim');
+      return false;
+    }
+  }, []);
+
+  // Delete movie
+  const deleteMovie = useCallback(async (
+    movieId: string | number
+  ): Promise<boolean> => {
+    try {
+      await mediaService.deleteMovie(movieId);
+      toast.success('Đã xóa phim thành công');
+      return true;
+    } catch (err) {
+      toast.error('Không thể xóa phim');
+      return false;
+    }
+  }, []);
+
   // Check video processing status
-  const checkProcessingStatus = useCallback(async (episodeId: string | number) => {
+  const checkProcessingStatus = useCallback(async (
+    episodeId: string | number
+  ): Promise<ProcessingStatusResponse | null> => {
     try {
-      const response = await fetch(`/api/episodes/${episodeId}/processing-status`, {
-        credentials: 'include',
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to check processing status');
-      }
-      
-      const status = await response.json();
-      
-      setProcessingStatus(status.status);
-      
-      if (status.status === 'completed') {
-        toast.success('Video đã xử lý xong và sẵn sàng phát');
-      } else if (status.status === 'failed') {
-        setError(status.error || 'Xử lý video thất bại');
-        toast.error('Xử lý video thất bại');
-      }
-      
-      return status;
+      return await mediaService.getProcessingStatus(episodeId);
     } catch (err) {
-      console.error('Không thể kiểm tra trạng thái xử lý:', err);
+      console.error('Không thể kiểm tra trạng thái xử lý video', err);
       return null;
     }
   }, []);
 
-  // Get full URL for image
+  // Get image URL helper
   const getImageUrl = useCallback((path?: string): string => {
-    if (!path) return '';
-    
-    // If it's already a full URL, return it
-    if (path.startsWith('http://') || path.startsWith('https://')) {
-      return path;
-    }
-    
-    // Otherwise, assume it's a relative path and prepend the API base URL
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-    return `${baseUrl}${path.startsWith('/') ? '' : '/'}${path}`;
-  }, []);
-
-  // Upload thumbnail for episode
-  const uploadThumbnail = useCallback(async (episodeId: string | number, file: File): Promise<string | null> => {
-    if (!file) {
-      setError('Không có file được chọn');
-      return null;
-    }
-
-    // Validate file type
-    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-    if (!validTypes.includes(file.type)) {
-      setError('Chỉ hỗ trợ file ảnh (jpeg, jpg, png, webp)');
-      toast.error('Chỉ hỗ trợ file ảnh (jpeg, jpg, png, webp)');
-      return null;
-    }
-
-    setUploading(true);
-    setProgress(0);
-    setError(null);
-
-    try {
-      // Create form data
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('episodeId', String(episodeId));
-
-      // Simulate upload progress
-      const progressInterval = setInterval(() => {
-        setProgress((prevProgress) => {
-          if (prevProgress >= 90) {
-            clearInterval(progressInterval);
-            return 90;
-          }
-          return prevProgress + 10;
-        });
-      }, 300);
-
-      const response = await fetch(API_ENDPOINTS.MEDIA.THUMBNAIL, {
-        method: 'POST',
-        body: formData,
-        credentials: 'include',
-      });
-      
-      clearInterval(progressInterval);
-      
-      if (!response.ok) {
-        throw new Error('Failed to upload thumbnail');
-      }
-      
-      const data = await response.json();
-      setProgress(100);
-      setUploading(false);
-      
-      toast.success('Đã tải thumbnail lên thành công');
-      return data.url;
-    } catch (err) {
-      setError('Không thể tải thumbnail lên');
-      toast.error('Không thể tải thumbnail lên');
-      setUploading(false);
-      setProgress(0);
-      return null;
-    }
+    return mediaService.getImageUrl(path);
   }, []);
 
   return {
-    uploadPoster,
-    uploadBackdrop,
-    uploadEpisodeVideo,
-    uploadThumbnail,
-    checkProcessingStatus,
-    getImageUrl,
     uploading,
     progress,
     error,
     processingStatus,
+    uploadPoster,
+    uploadBackdrop,
+    uploadTrailer,
+    uploadEpisodeVideo,
+    getPresignedUrl,
+    deleteMedia,
+    deleteEpisode,
+    deleteMovie,
+    checkProcessingStatus,
+    getImageUrl,
     reset: () => {
       setUploading(false);
       setProgress(0);

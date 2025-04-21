@@ -1,7 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-import { mockMovieListResponse } from '@/mocks';
+import { useState, useEffect } from 'react';
 import { Movie } from '@/types/movie';
 import MovieGrid from '@/components/features/movie/MovieGrid';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -26,59 +25,117 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import MoviePopover from '@/components/features/movie/MoviePopover';
 import Link from 'next/link';
 import { generateMovieUrl } from '@/utils/url';
+import { useMovies } from '@/hooks/api/useMovies';
+import { useGenres } from '@/hooks/api/useGenres';
 
-// Genre data for filter badges
-const GENRES = [
-  { id: 'all', name: 'Tất cả' },
-  { id: 'action', name: 'Hành động' },
-  { id: 'comedy', name: 'Hài hước' },
-  { id: 'drama', name: 'Chính kịch' },
-  { id: 'romance', name: 'Lãng mạn' },
-  { id: 'scifi', name: 'Khoa học viễn tưởng' },
-  { id: 'horror', name: 'Kinh dị' },
-  { id: 'fantasy', name: 'Thần thoại' },
-  { id: 'mystery', name: 'Bí ẩn' },
-  { id: 'thriller', name: 'Giật gân' },
-  { id: 'animation', name: 'Hoạt hình' },
-];
-
-// URL generation is now handled by the imported generateMovieUrl function from utils/url
+// Use genres from API
+const ALL_GENRE_OPTION = { id: 'all', name: 'Tất cả' };
 
 export default function MovieListPage() {
   const [activeGenre, setActiveGenre] = useState('all');
-  const [isLoading, setIsLoading] = useState(false);
   const [sortOption, setSortOption] = useState('popular');
+  const [activeTab, setActiveTab] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  
+  // Use the movies hook
+  const { 
+    movies, 
+    loading: isLoading, 
+    pagination,
+    searchMovies,
+    error
+  } = useMovies({ limit: 20 });
+
+  // Fetch genres from API
+  const { genres, loading: genresLoading } = useGenres();
+
+  // State for filtered movies
+  const [allMovies, setAllMovies] = useState<Movie[]>([]);
+  const [moviesOnly, setMoviesOnly] = useState<Movie[]>([]);
+  const [seriesOnly, setSeriesOnly] = useState<Movie[]>([]);
+
+  // Load movies when genre, sort, or page changes
+  useEffect(() => {
+    const fetchMovies = async () => {
+      // Determine sort options based on sortOption state
+      let sort = 'createdAt';
+      let order = 'DESC';
+      
+      switch (sortOption) {
+        case 'popular':
+          sort = 'views';
+          order = 'DESC';
+          break;
+        case 'trending':
+          sort = 'rating';
+          order = 'DESC';
+          break;
+        case 'newest':
+          sort = 'createdAt';
+          order = 'DESC';
+          break;
+        case 'topRated':
+          sort = 'rating';
+          order = 'DESC';
+          break;
+      }
+      // Prepare search parameters compatible with MovieSearchParams
+      // Restrict sort to allowed values
+      const allowedSorts = ['title', 'rating', 'views', 'releaseYear', 'createdAt'] as const;
+      const sortValue = allowedSorts.includes(sort as any) ? sort : 'createdAt';
+      const params = {
+        limit: 20,
+        sort: sortValue,
+        order,
+        page: currentPage,
+        genre: activeGenre !== 'all' ? Number(activeGenre) : undefined,
+      };
+      await searchMovies(params);
+    };
+    fetchMovies();
+  }, [activeGenre, sortOption, currentPage, searchMovies]);
+  
+  // Separate movies into categories based on totalEpisodes
+  useEffect(() => {
+    if (movies) {
+      // Add movie type info (using totalEpisodes to determine if it's a series)
+      const processedMovies = movies.map(movie => ({
+        ...movie,
+        type: movie.totalEpisodes > 0 ? 'series' : 'movie'
+      }));
+      
+      setAllMovies(processedMovies);
+      setMoviesOnly(processedMovies.filter(movie => movie.type === 'movie'));
+      setSeriesOnly(processedMovies.filter(movie => movie.type === 'series'));
+    }
+  }, [movies]);
 
   const handleGenreChange = (genre: string) => {
+    // Reset to page 1 when changing genre
+    setCurrentPage(1);
     setActiveGenre(genre);
-    setIsLoading(true);
-    // Simulate loading
-    setTimeout(() => setIsLoading(false), 800);
+  };
+  
+  // Handle page change
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    // Scroll to top
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
   };
 
-  // Get the actual movies array from the mock data
-  const movieItems: Movie[] = mockMovieListResponse.movies || [];
-  
-  // Add movie type info for demo purposes (using totalEpisodes to determine if it's a series)
-  const moviesWithType = movieItems.map(movie => ({
-    ...movie,
-    type: movie.totalEpisodes > 0 ? 'series' : 'movie'
-  }));
-  
-  // Filter movies based on type for different tabs
-  const movieData = {
-    ...mockMovieListResponse,
-    movies: moviesWithType
-  };
-  
-  const moviesOnly = {
-    ...movieData,
-    movies: moviesWithType.filter(movie => movie.type === 'movie')
-  };
-  
-  const seriesOnly = {
-    ...movieData,
-    movies: moviesWithType.filter(movie => movie.type === 'series')
+  // Get current movie list based on active tab
+  const getCurrentMovies = () => {
+    switch (activeTab) {
+      case 'movies':
+        return moviesOnly;
+      case 'series':
+        return seriesOnly;
+      default:
+        return allMovies;
+    }
   };
 
   return (
@@ -99,34 +156,46 @@ export default function MovieListPage() {
         {/* Filters Bar */}
         <div className="mb-8 bg-gray-800/30 backdrop-blur-sm rounded-lg p-4 border border-gray-700/50 top-0 z-10">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div className="flex flex-wrap gap-2 overflow-x-auto pb-2 md:pb-0">
-              {GENRES.slice(0, 7).map((genre) => (
-                <Badge 
-                  key={genre.id}
-                  variant={activeGenre === genre.id ? "default" : "outline"}
-                  className={`cursor-pointer px-3 py-1 text-sm font-medium ${
-                    activeGenre === genre.id 
-                      ? 'bg-amber-500 text-gray-900 hover:bg-amber-600' 
-                      : 'bg-transparent text-gray-300 border-gray-600 hover:bg-gray-700 hover:text-white'
-                  }`}
-                  onClick={() => handleGenreChange(genre.id)}
-                >
-                  {genre.name}
-                </Badge>
-              ))}
-              
+            {/* Genre Filter */}
+            <div className="flex-1 grid grid-cols-3 sm:grid-cols-4 md:flex gap-2 overflow-x-auto pb-2 md:pb-0">
+              <button
+                className={`px-4 py-2 rounded-full border ${activeGenre === 'all' ? 'bg-amber-600 text-white' : 'bg-gray-800 text-gray-300 border-gray-700'} transition`}
+                onClick={() => setActiveGenre('all')}
+              >
+                Tất cả
+              </button>
+              {genresLoading ? (
+                <span className="text-gray-400 ml-2">Đang tải thể loại...</span>
+              ) : (
+                genres?.map((genre) => (
+                  <button
+                    key={genre.id}
+                    className={`px-4 py-2 rounded-full border ${activeGenre === String(genre.id) ? 'bg-amber-600 text-white' : 'bg-gray-800 text-gray-300 border-gray-700'} transition`}
+                    onClick={() => setActiveGenre(String(genre.id))}
+                  >
+                    {genre.name}
+                  </button>
+                ))
+              )}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="bg-transparent border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white">
-                    Thêm <ChevronDown size={16} className="ml-1" />
-                  </Button>
+                  <Badge
+                    variant="outline"
+                    className="cursor-pointer bg-transparent hover:bg-gray-800 text-gray-300 border-gray-600 text-xs md:text-sm px-3 py-1 rounded-md shrink-0"
+                  >
+                    <span className="flex items-center gap-1">
+                      Thêm <ChevronDown size={14} />
+                    </span>
+                  </Badge>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="bg-gray-800 border-gray-700 text-white">
-                  {GENRES.slice(7).map((genre) => (
-                    <DropdownMenuItem 
+                <DropdownMenuContent className="bg-gray-800 border-gray-700">
+                  {genres?.slice(6).map((genre) => (
+                    <DropdownMenuItem
                       key={genre.id}
-                      className="cursor-pointer hover:bg-gray-700"
-                      onClick={() => handleGenreChange(genre.id)}
+                      className={`cursor-pointer ${
+                        activeGenre === String(genre.id) ? "bg-indigo-600 text-white" : "text-gray-200 hover:bg-gray-700"
+                      }`}
+                      onClick={() => setActiveGenre(String(genre.id))}
                     >
                       {genre.name}
                     </DropdownMenuItem>
@@ -134,32 +203,45 @@ export default function MovieListPage() {
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
-            
+          
+            {/* Right-side controls */}
             <div className="flex items-center gap-2">
+              {/* Sort Options */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="bg-transparent border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white">
-                    <SlidersHorizontal size={16} className="mr-2" /> Sắp xếp
+                  <Button variant="outline" className="border-gray-700 bg-gray-800/50 text-gray-300 hover:bg-gray-700 flex gap-1.5 items-center">
+                    <SlidersHorizontal size={16} />
+                    <span className="hidden sm:inline">Sắp xếp</span>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="bg-gray-800 border-gray-700 text-white">
+                <DropdownMenuContent className="bg-gray-800 border-gray-700">
                   <DropdownMenuItem 
-                    className={`cursor-pointer flex items-center ${sortOption === 'popular' ? 'bg-amber-500/20 text-amber-400' : 'hover:bg-gray-700'}`}
+                    className={`flex items-center gap-2 cursor-pointer ${sortOption === 'popular' ? 'text-indigo-500' : 'text-gray-300'} hover:bg-gray-700`}
                     onClick={() => setSortOption('popular')}
                   >
-                    <TrendingUp size={16} className="mr-2" /> Phổ biến
+                    <Heart size={16} />
+                    <span>Phổ biến nhất</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem 
-                    className={`cursor-pointer flex items-center ${sortOption === 'newest' ? 'bg-amber-500/20 text-amber-400' : 'hover:bg-gray-700'}`}
+                    className={`flex items-center gap-2 cursor-pointer ${sortOption === 'trending' ? 'text-indigo-500' : 'text-gray-300'} hover:bg-gray-700`}
+                    onClick={() => setSortOption('trending')}
+                  >
+                    <TrendingUp size={16} /> 
+                    <span>Xu hướng</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    className={`flex items-center gap-2 cursor-pointer ${sortOption === 'newest' ? 'text-indigo-500' : 'text-gray-300'} hover:bg-gray-700`}
                     onClick={() => setSortOption('newest')}
                   >
-                    <Clock size={16} className="mr-2" /> Mới nhất
+                    <Clock size={16} />
+                    <span>Mới nhất</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem 
-                    className={`cursor-pointer flex items-center ${sortOption === 'rating' ? 'bg-amber-500/20 text-amber-400' : 'hover:bg-gray-700'}`}
-                    onClick={() => setSortOption('rating')}
+                    className={`flex items-center gap-2 cursor-pointer ${sortOption === 'topRated' ? 'text-indigo-500' : 'text-gray-300'} hover:bg-gray-700`}
+                    onClick={() => setSortOption('topRated')}
                   >
-                    <Star size={16} className="mr-2" /> Đánh giá
+                    <Star size={16} />
+                    <span>Đánh giá cao</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -167,118 +249,53 @@ export default function MovieListPage() {
           </div>
         </div>
         
-        {/* Content Tabs */}
-        <Tabs defaultValue="all" className="mb-6">
-          <TabsList className="bg-gray-800/30 border border-gray-700/50">
-            <TabsTrigger 
-              value="all" 
-              className="data-[state=active]:bg-amber-500 data-[state=active]:text-gray-900"
-            >
-              Tất cả
-            </TabsTrigger>
-            <TabsTrigger 
-              value="movies" 
-              className="data-[state=active]:bg-amber-500 data-[state=active]:text-gray-900"
-            >
-              Phim lẻ
-            </TabsTrigger>
-            <TabsTrigger 
-              value="series" 
-              className="data-[state=active]:bg-amber-500 data-[state=active]:text-gray-900"
-            >
-              Phim bộ
-            </TabsTrigger>
-            <TabsTrigger 
-              value="favorites" 
-              className="data-[state=active]:bg-amber-500 data-[state=active]:text-gray-900"
-            >
-              <Heart size={16} className="mr-1" /> Yêu thích
-            </TabsTrigger>
+        {/* Tabs for movies/series/all */}
+        <Tabs defaultValue="all" className="mb-8" onValueChange={setActiveTab}>
+          <TabsList className="mb-5 bg-gray-800/30 border border-gray-700/50">
+            <TabsTrigger value="all" className="data-[state=active]:bg-indigo-600">Tất cả</TabsTrigger>
+            <TabsTrigger value="movies" className="data-[state=active]:bg-indigo-600">Phim lẻ</TabsTrigger>
+            <TabsTrigger value="series" className="data-[state=active]:bg-indigo-600">Phim bộ</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="all" className="mt-6">
-            <MovieGrid 
-              movies={movieData.movies}
-              isLoading={isLoading}
-            />
+          <TabsContent value="all">
+            <div className="grid grid-cols-1 gap-8">
+              <MovieGrid
+                isLoading={isLoading}
+                movies={allMovies}
+                showPagination={true}
+                totalPages={pagination?.totalPages || 1}
+                currentPage={currentPage}
+                onPageChange={handlePageChange}
+              />
+            </div>
           </TabsContent>
           
-          <TabsContent value="movies" className="mt-6">
-            <MovieGrid 
-              movies={moviesOnly.movies}
-              isLoading={isLoading}
-            />
+          <TabsContent value="movies">
+            <div className="grid grid-cols-1 gap-8">
+              <MovieGrid
+                isLoading={isLoading}
+                movies={moviesOnly}
+                showPagination={true}
+                totalPages={pagination?.totalPages || 1}
+                currentPage={currentPage}
+                onPageChange={handlePageChange}
+              />
+            </div>
           </TabsContent>
           
-          <TabsContent value="series" className="mt-6">
-            <MovieGrid 
-              movies={seriesOnly.movies}
-              isLoading={isLoading}
-            />
-          </TabsContent>
-          
-          <TabsContent value="favorites" className="mt-6">
-            <div className="text-center py-12">
-              <h3 className="text-gray-400 mb-4">Bạn chưa có phim yêu thích nào</h3>
-              <Button className="bg-amber-500 hover:bg-amber-600 text-gray-900">
-                Khám phá phim
-              </Button>
+          <TabsContent value="series">
+            <div className="grid grid-cols-1 gap-8">
+              <MovieGrid
+                isLoading={isLoading}
+                movies={seriesOnly}
+                showPagination={true}
+                totalPages={pagination?.totalPages || 1}
+                currentPage={currentPage}
+                onPageChange={handlePageChange}
+              />
             </div>
           </TabsContent>
         </Tabs>
-        
-        {/* Featured Section */}
-        <div className="my-12">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-white">Phim đề xuất cho bạn</h2>
-            <Button variant="link" className="text-amber-400 hover:text-amber-300">
-              Xem tất cả
-            </Button>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {movieItems.slice(0, 3).map((movie) => (
-              <Card key={movie.id} className="bg-gray-800/40 border-gray-700 overflow-hidden hover:border-gray-500 transition-all">
-                <div className="aspect-video relative overflow-hidden">
-                  <img 
-                    src={movie.posterUrl} 
-                    alt={movie.title}
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-gray-900 to-transparent opacity-80"></div>
-                  <div className="absolute bottom-0 left-0 right-0 p-4">
-                    <h3 className="text-lg font-bold text-white line-clamp-1">{movie.title}</h3>
-                    <div className="flex items-center mt-1 text-sm text-gray-300">
-                      <span>{movie.releaseYear}</span>
-                      <Separator orientation="vertical" className="mx-2 h-3 bg-gray-600" />
-                      <span className="flex items-center">
-                        <Star className="text-amber-400 mr-1" size={14} fill="currentColor" /> 
-                        {movie.rating || "8.5"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <CardContent className="p-4">
-                  <p className="text-gray-300 text-sm line-clamp-2">{movie.summary}</p>
-                  <div className="flex flex-wrap gap-2 mt-3">
-                    {movie.genres?.slice(0, 3).map((genre, index) => (
-                      <Badge key={index} variant="outline" className="bg-gray-700/50 text-gray-300 border-gray-600">
-                        {typeof genre === 'string' ? genre : genre.name}
-                      </Badge>
-                    ))}
-                  </div>
-                  <div className="mt-4">
-                    <Link href={generateMovieUrl(movie.id, movie.title)}>
-                      <Button className="w-full bg-amber-500 hover:bg-amber-600 text-gray-900">
-                        Xem chi tiết
-                      </Button>
-                    </Link>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
       </div>
     </div>
   );

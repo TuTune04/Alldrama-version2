@@ -3,6 +3,7 @@ import useSWR from 'swr';
 import { MovieSearchParams, MovieListResponse, Movie } from '@/types';
 import { toast } from 'react-hot-toast';
 import { API_ENDPOINTS } from '@/lib/api/endpoints';
+import { movieService } from '@/lib/api/services/movieService';
 
 export const useMovies = (initialParams?: MovieSearchParams) => {
   const [searchParams, setSearchParams] = useState<MovieSearchParams>(initialParams || {});
@@ -24,16 +25,17 @@ export const useMovies = (initialParams?: MovieSearchParams) => {
       
       return queryString ? `${searchPath}?${queryString}` : searchPath;
     } else if (params.genre) {
-      // If genre is specified, use the genre-specific endpoint
-      const genrePath = API_ENDPOINTS.MOVIES.BY_GENRE(params.genre);
+      // If genre is specified, use the search endpoint with genre parameter
+      const searchPath = API_ENDPOINTS.MOVIES.SEARCH;
       let queryString = new URLSearchParams({
+        ...(params.genre ? { genre: String(params.genre) } : {}),
         ...(params.page ? { page: params.page.toString() } : {}),
         ...(params.limit ? { limit: params.limit.toString() } : {}),
         ...(params.sort ? { sort: params.sort } : {}),
         ...(params.order ? { order: params.order } : {})
       }).toString();
       
-      return queryString ? `${genrePath}?${queryString}` : genrePath;
+      return queryString ? `${searchPath}?${queryString}` : searchPath;
     } else {
       // Otherwise use the list endpoint
       const listPath = API_ENDPOINTS.MOVIES.LIST;
@@ -71,84 +73,83 @@ export const useMovies = (initialParams?: MovieSearchParams) => {
     fetcher
   );
 
-  // Get featured movies
+  // Get featured movies (popular with high rating)
   const getFeaturedMovies = useCallback(async () => {
     try {
-      const response = await fetch(API_ENDPOINTS.MOVIES.FEATURED);
-      if (!response.ok) {
-        throw new Error('Failed to fetch featured movies');
-      }
-      return await response.json();
+      const result = await movieService.getMovies({
+        sort: 'rating',
+        order: 'DESC',
+        limit: 10
+      });
+      return result.movies;
     } catch (err) {
       toast.error('Không thể tải phim đặc sắc');
-      return null;
+      return [];
     }
   }, []);
 
   // Get popular movies
   const getPopularMovies = useCallback(async () => {
     try {
-      const response = await fetch(API_ENDPOINTS.MOVIES.POPULAR);
-      if (!response.ok) {
-        throw new Error('Failed to fetch popular movies');
-      }
-      return await response.json();
+      const result = await movieService.getPopularMovies(10);
+      return result.movies;
     } catch (err) {
       toast.error('Không thể tải phim phổ biến');
-      return null;
+      return [];
     }
   }, []);
 
-  // Get trending movies
+  // Get trending movies (highest views in last week - simulated with sort by views)
   const getTrendingMovies = useCallback(async () => {
     try {
-      const response = await fetch(API_ENDPOINTS.MOVIES.TRENDING);
-      if (!response.ok) {
-        throw new Error('Failed to fetch trending movies');
-      }
-      return await response.json();
+      const result = await movieService.getMovies({
+        sort: 'views',
+        order: 'DESC',
+        limit: 10
+      });
+      return result.movies;
     } catch (err) {
       toast.error('Không thể tải phim xu hướng');
-      return null;
+      return [];
     }
   }, []);
 
   // Get newest movies
   const getNewestMovies = useCallback(async () => {
     try {
-      const response = await fetch(API_ENDPOINTS.MOVIES.NEWEST);
-      if (!response.ok) {
-        throw new Error('Failed to fetch newest movies');
-      }
-      return await response.json();
+      const result = await movieService.getNewestMovies(10);
+      return result.movies;
     } catch (err) {
       toast.error('Không thể tải phim mới nhất');
-      return null;
+      return [];
     }
   }, []);
 
-  // Get similar movies
+  // Get similar movies (movies with same genres - simulated with genre search)
   const getSimilarMovies = useCallback(async (movieId: string | number) => {
     try {
-      const response = await fetch(API_ENDPOINTS.MOVIES.SIMILAR(movieId));
-      if (!response.ok) {
-        throw new Error('Failed to fetch similar movies');
+      // Get movie details first to know its genres
+      const movie = await movieService.getMovieById(movieId);
+      
+      // If movie has genres, search for movies with same primary genre
+      if (movie.genres && movie.genres.length > 0) {
+        const primaryGenreId = movie.genres[0].id;
+        const result = await movieService.getMoviesByGenre(Number(primaryGenreId), 10);
+        // Filter out the current movie
+        return result.movies.filter(m => String(m.id) !== String(movieId));
       }
-      return await response.json();
+      
+      return [];
     } catch (err) {
       console.error('Không thể tải phim tương tự:', err);
-      return null;
+      return [];
     }
   }, []);
 
   // Get movie details by ID
   const getMovie = useCallback(async (id: string | number): Promise<Movie | null> => {
     try {
-      const response = await fetch(API_ENDPOINTS.MOVIES.DETAIL(id));
-      if (!response.ok) {
-        throw new Error('Failed to fetch movie details');
-      }
-      return await response.json();
+      return await movieService.getMovieById(id);
     } catch (err) {
       toast.error('Không thể tải thông tin phim');
       return null;

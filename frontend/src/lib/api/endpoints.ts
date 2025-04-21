@@ -16,10 +16,12 @@ export const API_ENDPOINTS = {
   // Users
   USERS: {
     LIST: '/api/users',
-    DETAIL: (id: string) => `/api/users/${id}`,
-    UPDATE: (id: string) => `/api/users/${id}`,
-    DELETE: (id: string) => `/api/users/${id}`,
-    CHANGE_PASSWORD: (id: string) => `/api/users/${id}/change-password`,
+    DETAIL: (id: string | number) => `/api/users/${id}`,
+    UPDATE: (id: string | number) => `/api/users/${id}`,
+    DELETE: (id: string | number) => `/api/users/${id}`,
+    CHANGE_PASSWORD: (id: string | number) => `/api/users/${id}/change-password`,
+    FAVORITES: (id: string | number) => `/api/users/${id}/favorites`,
+    WATCH_HISTORY: (id: string | number) => `/api/users/${id}/watch-history`,
   },
   
   // Movies
@@ -27,37 +29,28 @@ export const API_ENDPOINTS = {
     LIST: '/api/movies',
     DETAIL: (id: string | number) => `/api/movies/${id}`,
     SEARCH: '/api/movies/search',
-    FEATURED: '/api/movies/featured',
-    POPULAR: '/api/movies/popular',
-    TRENDING: '/api/movies/trending',
-    NEWEST: '/api/movies/newest',
-    BY_GENRE: (genreId: string | number) => `/api/movies/genre/${genreId}`,
-    SIMILAR: (id: string | number) => `/api/movies/${id}/similar`,
     CREATE: '/api/movies',
-    UPDATE: (id: string) => `/api/movies/${id}`,
-    DELETE: (id: string) => `/api/movies/${id}`,
+    UPDATE: (id: string | number) => `/api/movies/${id}`,
+    DELETE: (id: string | number) => `/api/movies/${id}`,
   },
   
   // Episodes
   EPISODES: {
-    LIST: (movieId: string | number) => `/api/movies/${movieId}/episodes`,
-    LIST_BY_MOVIE: (movieId: string) => `/api/episodes/movie/${movieId}`,
+    LIST_BY_MOVIE: (movieId: string | number) => `/api/episodes/movie/${movieId}`,
     DETAIL: (id: string | number) => `/api/episodes/${id}`,
-    NEXT: (id: string | number) => `/api/episodes/${id}/next`,
-    PREVIOUS: (id: string | number) => `/api/episodes/${id}/previous`,
     CREATE: '/api/episodes',
-    UPDATE: (id: string) => `/api/episodes/${id}`,
-    DELETE: (id: string) => `/api/episodes/${id}`,
+    UPDATE: (id: string | number) => `/api/episodes/${id}`,
+    DELETE: (id: string | number) => `/api/episodes/${id}`,
   },
   
   // Genres
   GENRES: {
     LIST: '/api/genres',
     DETAIL: (id: string | number) => `/api/genres/${id}`,
-    MOVIES: (id: string) => `/api/genres/${id}/movies`,
+    MOVIES: (id: string | number) => `/api/genres/${id}/movies`,
     CREATE: '/api/genres',
-    UPDATE: (id: string) => `/api/genres/${id}`,
-    DELETE: (id: string) => `/api/genres/${id}`,
+    UPDATE: (id: string | number) => `/api/genres/${id}`,
+    DELETE: (id: string | number) => `/api/genres/${id}`,
   },
   
   // Comments
@@ -80,46 +73,40 @@ export const API_ENDPOINTS = {
   // Watch History
   WATCH_HISTORY: {
     LIST: '/api/watch-history',
-    UPDATE: '/api/watch-history',
-    DELETE: (id: string | number) => `/api/watch-history/${id}`,
     ADD: '/api/watch-history',
+    DELETE: (id: string | number) => `/api/watch-history/${id}`,
   },
   
   // Media
   MEDIA: {
-    UPLOAD: '/api/media/upload',
-    POSTER: '/api/media/poster',
-    BACKDROP: '/api/media/backdrop',
-    VIDEO: '/api/media/video',
-    THUMBNAIL: '/api/media/thumbnail',
-    UPLOAD_POSTER: (movieId: string) => `/api/media/movies/${movieId}/poster`,
-    UPLOAD_BACKDROP: (movieId: string) => `/api/media/movies/${movieId}/backdrop`,
-    UPLOAD_TRAILER: (movieId: string) => `/api/media/movies/${movieId}/trailer`,
-    UPLOAD_EPISODE_VIDEO: (movieId: string, episodeId: string) => 
+    UPLOAD_POSTER: (movieId: string | number) => `/api/media/movies/${movieId}/poster`,
+    UPLOAD_BACKDROP: (movieId: string | number) => `/api/media/movies/${movieId}/backdrop`,
+    UPLOAD_TRAILER: (movieId: string | number) => `/api/media/movies/${movieId}/trailer`,
+    UPLOAD_EPISODE_VIDEO: (movieId: string | number, episodeId: string | number) => 
       `/api/media/episodes/${movieId}/${episodeId}/video`,
-    PROCESSING_STATUS: (episodeId: string) => `/api/media/episodes/${episodeId}/processing-status`,
+    PROCESSING_STATUS: (episodeId: string | number) => `/api/media/episodes/${episodeId}/processing-status`,
     PRESIGNED_URL: '/api/media/presigned-url',
-    DELETE_MEDIA: (movieId: string, mediaType: string) => `/api/media/movies/${movieId}/${mediaType}`,
-    DELETE_EPISODE: (movieId: string, episodeId: string) => `/api/media/episodes/${movieId}/${episodeId}`,
-    DELETE_MOVIE: (movieId: string) => `/api/media/movies/${movieId}`,
+    DELETE_MEDIA: (movieId: string | number, mediaType: string) => `/api/media/movies/${movieId}/${mediaType}`,
+    DELETE_EPISODE: (movieId: string | number, episodeId: string | number) => `/api/media/episodes/${movieId}/${episodeId}`,
+    DELETE_MOVIE: (movieId: string | number) => `/api/media/movies/${movieId}`,
+    LIST_FILES: (prefix: string) => `/api/media/files/${prefix}`,
   },
   
   // Views
   VIEWS: {
-    INCREMENT_MOVIE: (movieId: string) => `/api/views/movie/${movieId}/increment`,
-    INCREMENT_EPISODE: (episodeId: string) => `/api/views/episode/${episodeId}/increment`,
-    GET_MOVIE_VIEWS: (movieId: string) => `/api/views/movie/${movieId}`,
-    GET_EPISODE_VIEWS: (episodeId: string) => `/api/views/episode/${episodeId}`,
+    INCREMENT_MOVIE: (movieId: string | number) => `/api/views/movie/${movieId}`,
+    INCREMENT_EPISODE: (episodeId: string | number) => `/api/views/episode/${episodeId}`,
+    GET_MOVIE_VIEWS: (movieId: string | number) => `/api/views/movie/${movieId}`,
+    GET_EPISODE_VIEWS: (episodeId: string | number) => `/api/views/episode/${episodeId}`,
   },
   
   // Stats
   STATS: {
+    MOVIES_TOP: '/api/stats/movies/top',
+    EPISODES_TOP: '/api/stats/episodes/top',
+    MOVIE_DETAIL: (id: string | number) => `/api/stats/movies/${id}`,
+    EPISODE_DETAIL: (id: string | number) => `/api/stats/episodes/${id}`,
     OVERVIEW: '/api/stats/overview',
-    POPULAR_MOVIES: '/api/stats/popular-movies',
-    USER_ACTIVITY: '/api/stats/user-activity',
-    DASHBOARD: '/api/stats/dashboard',
-    NEW_USERS: '/api/stats/new-users',
-    GENRES: '/api/stats/genres',
     TIME_SERIES: '/api/stats/time-series',
   },
 };

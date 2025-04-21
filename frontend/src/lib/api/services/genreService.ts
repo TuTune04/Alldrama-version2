@@ -2,6 +2,25 @@ import { Genre, Movie, MovieListResponse } from '@/types';
 import { apiClient } from '../apiClient';
 import { API_ENDPOINTS } from '../endpoints';
 
+interface GenreMoviesResponse {
+  genre: Genre;
+  movies: Movie[];
+}
+
+interface CreateGenreResponse {
+  message: string;
+  genre: Genre;
+}
+
+interface UpdateGenreResponse {
+  message: string;
+  genre: Genre;
+}
+
+interface DeleteGenreResponse {
+  message: string;
+}
+
 export const genreService = {
   /**
    * Lấy danh sách tất cả thể loại
@@ -21,27 +40,33 @@ export const genreService = {
   /**
    * Lấy danh sách phim theo thể loại
    * @param genreId ID của thể loại
-   * @param page Số trang
-   * @param limit Số lượng mỗi trang
-   * @param sort Trường sắp xếp
-   * @param order Thứ tự sắp xếp
    */
-  async getMoviesByGenreId(
-    genreId: string | number,
-    page: number = 1,
-    limit: number = 20,
-    sort: string = 'createdAt',
-    order: 'ASC' | 'DESC' = 'DESC'
-  ): Promise<MovieListResponse> {
-    const params = new URLSearchParams({
-      page: String(page),
-      limit: String(limit),
-      sort,
-      order
-    });
-    
-    return apiClient.get<MovieListResponse>(
-      `${API_ENDPOINTS.MOVIES.BY_GENRE(genreId)}?${params.toString()}`
-    );
+  async getMoviesByGenreId(genreId: string | number): Promise<GenreMoviesResponse> {
+    return apiClient.get<GenreMoviesResponse>(API_ENDPOINTS.GENRES.MOVIES(genreId));
+  },
+
+  /**
+   * Tạo thể loại mới (chỉ Admin)
+   * @param name Tên thể loại
+   */
+  async createGenre(name: string): Promise<CreateGenreResponse> {
+    return apiClient.post<CreateGenreResponse>(API_ENDPOINTS.GENRES.CREATE, { name });
+  },
+
+  /**
+   * Cập nhật thể loại (chỉ Admin)
+   * @param genreId ID của thể loại
+   * @param name Tên thể loại mới
+   */
+  async updateGenre(genreId: string | number, name: string): Promise<UpdateGenreResponse> {
+    return apiClient.put<UpdateGenreResponse>(API_ENDPOINTS.GENRES.UPDATE(genreId), { name });
+  },
+
+  /**
+   * Xóa thể loại (chỉ Admin)
+   * @param genreId ID của thể loại
+   */
+  async deleteGenre(genreId: string | number): Promise<DeleteGenreResponse> {
+    return apiClient.delete<DeleteGenreResponse>(API_ENDPOINTS.GENRES.DELETE(genreId));
   }
 };

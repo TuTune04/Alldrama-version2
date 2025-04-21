@@ -180,6 +180,12 @@ class ApiClient {
     return response.data;
   }
 
+  // Phương thức patch generic
+  public async patch<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+    const response = await this.client.patch<T>(url, data, config);
+    return response.data;
+  }
+
   // Hỗ trợ hủy request với AbortController
   public createAbortController(): AbortController {
     return new AbortController();

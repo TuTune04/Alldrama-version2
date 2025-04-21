@@ -1,72 +1,62 @@
 import { useState, useCallback } from 'react';
 import useSWR from 'swr';
-import { CommentListResponse, AddCommentDto, UpdateCommentDto } from '@/types';
-import { commentService } from '@/lib/api';
+import { Comment } from '@/types';
+import { commentService, CreateCommentRequest, UpdateCommentRequest } from '@/lib/api/services/commentService';
 import { toast } from 'react-hot-toast';
 import { API_ENDPOINTS } from '@/lib/api/endpoints';
 
 export const useComments = (movieId: string | number, initialPage: number = 1, initialLimit: number = 10) => {
   const [page, setPage] = useState(initialPage);
   const [limit, setLimit] = useState(initialLimit);
+  const [sort, setSort] = useState<string>('createdAt');
+  const [order, setOrder] = useState<'ASC' | 'DESC'>('DESC');
 
   // SWR key
-  const key = movieId ? `${API_ENDPOINTS.COMMENTS.BY_MOVIE(movieId)}?page=${page}&limit=${limit}` : null;
+  const key = movieId ? 
+    `${API_ENDPOINTS.COMMENTS.BY_MOVIE(movieId)}?page=${page}&limit=${limit}&sort=${sort}&order=${order}` 
+    : null;
 
   // Fetcher function for SWR
   const fetcher = useCallback(
-    async (url: string) => {
+    async () => {
+      if (!movieId) return [];
       try {
-        const response = await fetch(url);
-        if (!response.ok) {
-          throw new Error('Failed to fetch comments');
-        }
-        return await response.json();
+        return await commentService.getCommentsByMovieId(movieId, page, limit, sort, order);
       } catch (error) {
         console.error('Error fetching comments:', error);
         throw error;
       }
     },
-    []
+    [movieId, page, limit, sort, order]
   );
 
   // Use SWR hook
-  const { data, error, isLoading, isValidating, mutate } = useSWR<CommentListResponse>(
+  const { data, error, isLoading, isValidating, mutate } = useSWR<Comment[]>(
     key,
     fetcher
   );
 
   // Add a new comment
   const addComment = useCallback(
-    async (comment: string, parentId?: string) => {
+    async (commentText: string, parentId?: string | number) => {
       if (!movieId) {
         toast.error('Không thể thêm bình luận');
         return null;
       }
 
       try {
-        const commentData: AddCommentDto = {
-          movieId: String(movieId),
-          comment,
+        const commentData: CreateCommentRequest = {
+          movieId: movieId,
+          comment: commentText,
           parentId: parentId || null,
         };
 
-        const result = await fetch(API_ENDPOINTS.COMMENTS.CREATE, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(commentData),
-          credentials: 'include',
-        });
-        
-        if (!result.ok) {
-          throw new Error('Failed to add comment');
-        }
+        const result = await commentService.createComment(commentData);
         
         // Refresh comments
         await mutate();
         toast.success('Đã thêm bình luận');
-        return await result.json();
+        return result.comment;
       } catch (err) {
         toast.error('Không thể thêm bình luận');
         return null;
@@ -77,26 +67,15 @@ export const useComments = (movieId: string | number, initialPage: number = 1, i
 
   // Update comment
   const updateComment = useCallback(
-    async (commentId: string, comment: string) => {
+    async (commentId: string | number, commentText: string) => {
       try {
-        const updateData: UpdateCommentDto = { comment };
-        const result = await fetch(API_ENDPOINTS.COMMENTS.UPDATE(commentId), {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(updateData),
-          credentials: 'include',
-        });
-        
-        if (!result.ok) {
-          throw new Error('Failed to update comment');
-        }
+        const updateData: UpdateCommentRequest = { comment: commentText };
+        const result = await commentService.updateComment(commentId, updateData);
         
         // Refresh comments
         await mutate();
         toast.success('Đã cập nhật bình luận');
-        return await result.json();
+        return result.comment;
       } catch (err) {
         toast.error('Không thể cập nhật bình luận');
         return null;
@@ -107,16 +86,9 @@ export const useComments = (movieId: string | number, initialPage: number = 1, i
 
   // Delete comment
   const deleteComment = useCallback(
-    async (commentId: string) => {
+    async (commentId: string | number) => {
       try {
-        const result = await fetch(API_ENDPOINTS.COMMENTS.DELETE(commentId), {
-          method: 'DELETE',
-          credentials: 'include',
-        });
-        
-        if (!result.ok) {
-          throw new Error('Failed to delete comment');
-        }
+        await commentService.deleteComment(commentId);
         
         // Refresh comments
         await mutate();
@@ -130,68 +102,44 @@ export const useComments = (movieId: string | number, initialPage: number = 1, i
     [mutate]
   );
 
-  // Reply to comment
-  const replyToComment = useCallback(
-    async (parentId: string, comment: string) => {
-      if (!movieId) {
-        toast.error('Không thể thêm phản hồi');
-        return null;
-      }
-
+  // Get comment by ID
+  const getComment = useCallback(
+    async (commentId: string | number) => {
       try {
-        const commentData = {
-          movieId: String(movieId),
-          comment,
-          parentId,
-        };
-
-        const result = await fetch(API_ENDPOINTS.COMMENTS.CREATE, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(commentData),
-          credentials: 'include',
-        });
-        
-        if (!result.ok) {
-          throw new Error('Failed to add reply');
-        }
-        
-        // Refresh comments
-        await mutate();
-        toast.success('Đã thêm phản hồi');
-        return await result.json();
+        return await commentService.getCommentById(commentId);
       } catch (err) {
-        toast.error('Không thể thêm phản hồi');
+        toast.error('Không thể lấy thông tin bình luận');
         return null;
       }
-    },
-    [movieId, mutate]
-  );
-
-  // Pagination
-  const goToPage = useCallback(
-    (newPage: number) => {
-      setPage(newPage);
     },
     []
   );
 
+  // Pagination
+  const goToPage = useCallback((newPage: number) => {
+    setPage(newPage);
+  }, []);
+
+  // Change sort
+  const changeSort = useCallback((newSort: string, newOrder: 'ASC' | 'DESC' = 'DESC') => {
+    setSort(newSort);
+    setOrder(newOrder);
+  }, []);
+
   return {
-    comments: data?.comments || [],
-    totalPages: data?.totalPages || 0,
-    currentPage: data?.currentPage || page,
-    totalComments: data?.totalComments || 0,
+    comments: data || [],
     loading: isLoading,
     isValidating,
     error,
     addComment,
     updateComment,
     deleteComment,
-    replyToComment,
-    goToPage,
-    setLimit,
+    getComment,
     refreshComments: mutate,
+    goToPage,
+    changeSort,
+    currentPage: page,
+    totalPages: Math.ceil((data?.length || 0) / limit),
+    setLimit,
   };
 };

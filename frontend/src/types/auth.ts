@@ -29,6 +29,15 @@ export interface RegisterCredentials {
 
 export interface EmailAuthRequest {
   email: string;
+  isSignUp?: boolean;
+}
+
+export interface UpdateUserDto {
+  full_name?: string;
+  email?: string;
+  password?: string;
+  role?: 'user' | 'admin' | 'subscriber';
+  subscriptionExpiredAt?: string;
 }
 
 export interface RefreshTokenResponse {

@@ -1,4 +1,4 @@
-import { Movie, MovieListResponse, MovieSearchParams } from '@/types';
+import { Movie, MovieListResponse, MovieSearchParams, CreateMovieDto, UpdateMovieDto } from '@/types';
 import { apiClient } from '../apiClient';
 import { API_ENDPOINTS } from '../endpoints';
 
@@ -11,11 +11,8 @@ export const movieService = {
     const queryParams: Record<string, string> = {};
     
     if (params) {
-      if (params.q) queryParams.q = params.q;
       if (params.page) queryParams.page = String(params.page);
       if (params.limit) queryParams.limit = String(params.limit);
-      if (params.genre) queryParams.genre = String(params.genre);
-      if (params.year) queryParams.year = String(params.year);
       if (params.sort) queryParams.sort = params.sort;
       if (params.order) queryParams.order = params.order;
     }
@@ -32,66 +29,86 @@ export const movieService = {
   },
 
   /**
-   * Tìm kiếm phim theo từ khóa
-   * @param query Từ khóa tìm kiếm
-   * @param page Số trang
-   * @param limit Số lượng mỗi trang
+   * Tìm kiếm phim theo từ khóa, thể loại, năm phát hành
+   * @param params Tham số tìm kiếm và phân trang
    */
-  async searchMovies(
-    query: string,
-    page: number = 1,
-    limit: number = 20
-  ): Promise<MovieListResponse> {
+  async searchMovies(params: Partial<MovieSearchParams>): Promise<MovieListResponse> {
+    const queryParams: Record<string, string> = {};
+    
+    if (params.q) queryParams.q = params.q;
+    if (params.genre) queryParams.genre = String(params.genre);
+    if (params.year) queryParams.year = String(params.year);
+    if (params.page) queryParams.page = String(params.page);
+    if (params.limit) queryParams.limit = String(params.limit);
+    if (params.sort) queryParams.sort = params.sort;
+    if (params.order) queryParams.order = params.order;
+    
     return apiClient.get<MovieListResponse>(API_ENDPOINTS.MOVIES.SEARCH, {
-      params: { q: query, page, limit }
+      params: queryParams
     });
   },
 
   /**
-   * Lấy danh sách phim nổi bật
+   * Tạo phim mới (chỉ Admin)
+   * @param movieData Dữ liệu phim mới
    */
-  async getFeaturedMovies(): Promise<Movie[]> {
-    return apiClient.get<Movie[]>(API_ENDPOINTS.MOVIES.FEATURED);
+  async createMovie(movieData: CreateMovieDto): Promise<Movie> {
+    return apiClient.post<Movie>(API_ENDPOINTS.MOVIES.CREATE, movieData);
   },
 
   /**
-   * Lấy danh sách phim phổ biến
-   * @param limit Số lượng phim trả về
-   */
-  async getPopularMovies(limit: number = 10): Promise<Movie[]> {
-    return apiClient.get<Movie[]>(API_ENDPOINTS.MOVIES.POPULAR, {
-      params: { limit }
-    });
-  },
-
-  /**
-   * Lấy danh sách phim xu hướng
-   * @param limit Số lượng phim trả về
-   */
-  async getTrendingMovies(limit: number = 10): Promise<Movie[]> {
-    return apiClient.get<Movie[]>(API_ENDPOINTS.MOVIES.TRENDING, {
-      params: { limit }
-    });
-  },
-
-  /**
-   * Lấy danh sách phim mới nhất
-   * @param limit Số lượng phim trả về
-   */
-  async getNewestMovies(limit: number = 10): Promise<Movie[]> {
-    return apiClient.get<Movie[]>(API_ENDPOINTS.MOVIES.NEWEST, {
-      params: { limit }
-    });
-  },
-
-  /**
-   * Lấy danh sách phim tương tự
+   * Cập nhật phim (chỉ Admin)
    * @param movieId ID của phim
+   * @param movieData Dữ liệu cập nhật
+   */
+  async updateMovie(movieId: string | number, movieData: UpdateMovieDto): Promise<Movie> {
+    return apiClient.patch<Movie>(API_ENDPOINTS.MOVIES.UPDATE(movieId), movieData);
+  },
+
+  /**
+   * Xóa phim (chỉ Admin)
+   * @param movieId ID của phim
+   */
+  async deleteMovie(movieId: string | number): Promise<void> {
+    return apiClient.delete(API_ENDPOINTS.MOVIES.DELETE(movieId));
+  },
+
+  /**
+   * Lấy phim phổ biến (dựa trên rating và views)
+   * Sử dụng API LIST với tham số sort
    * @param limit Số lượng phim trả về
    */
-  async getSimilarMovies(movieId: string | number, limit: number = 10): Promise<Movie[]> {
-    return apiClient.get<Movie[]>(API_ENDPOINTS.MOVIES.SIMILAR(movieId), {
-      params: { limit }
+  async getPopularMovies(limit: number = 10): Promise<MovieListResponse> {
+    return this.getMovies({
+      sort: 'views',
+      order: 'DESC',
+      limit
+    });
+  },
+
+  /**
+   * Lấy phim mới nhất
+   * Sử dụng API LIST với tham số sort
+   * @param limit Số lượng phim trả về
+   */
+  async getNewestMovies(limit: number = 10): Promise<MovieListResponse> {
+    return this.getMovies({
+      sort: 'createdAt',
+      order: 'DESC',
+      limit
+    });
+  },
+
+  /**
+   * Lấy phim theo thể loại
+   * Sử dụng API search với tham số genre
+   * @param genreId ID của thể loại
+   * @param limit Số lượng phim trả về
+   */
+  async getMoviesByGenre(genreId: number, limit: number = 10): Promise<MovieListResponse> {
+    return this.searchMovies({
+      genre: genreId,
+      limit
     });
   }
 };

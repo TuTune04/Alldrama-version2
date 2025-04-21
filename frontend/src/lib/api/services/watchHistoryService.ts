@@ -2,6 +2,19 @@ import { WatchHistory } from '@/types';
 import { apiClient } from '../apiClient';
 import { API_ENDPOINTS } from '../endpoints';
 
+export interface WatchHistoryResponse {
+  message: string;
+  watchHistory: WatchHistory;
+  viewIncreased: boolean;
+}
+
+export interface WatchHistoryRequest {
+  movieId: string | number;
+  episodeId: string | number;
+  progress: number;
+  duration: number;
+}
+
 export const watchHistoryService = {
   /**
    * Lấy lịch sử xem phim của người dùng
@@ -14,23 +27,10 @@ export const watchHistoryService = {
    * Thêm hoặc cập nhật lịch sử xem
    * @param data Dữ liệu lịch sử xem
    */
-  async addOrUpdateWatchHistory(data: {
-    movieId: string | number;
-    episodeId?: string | number;
-    progress: number;
-    duration: number;
-  }): Promise<{ message: string; watchHistory: WatchHistory }> {
-    // Chuyển đổi ID từ chuỗi sang số nếu cần
-    const payload = {
-      movieId: String(data.movieId),
-      episodeId: data.episodeId ? String(data.episodeId) : undefined,
-      progress: data.progress,
-      duration: data.duration
-    };
-
-    return apiClient.post<{ message: string; watchHistory: WatchHistory }>(
-      API_ENDPOINTS.WATCH_HISTORY.UPDATE,
-      payload
+  async addOrUpdateWatchHistory(data: WatchHistoryRequest): Promise<WatchHistoryResponse> {
+    return apiClient.post<WatchHistoryResponse>(
+      API_ENDPOINTS.WATCH_HISTORY.ADD,
+      data
     );
   },
 
@@ -49,7 +49,7 @@ export const watchHistoryService = {
   async getEpisodeProgress(episodeId: string | number): Promise<{
     progress: number;
     duration: number;
-    completed: boolean;
+    isCompleted: boolean;
   } | null> {
     try {
       const watchHistory = await this.getWatchHistory();
@@ -60,7 +60,7 @@ export const watchHistoryService = {
       return {
         progress: entry.progress,
         duration: entry.duration,
-        completed: entry.isCompleted
+        isCompleted: entry.isCompleted
       };
     } catch (error) {
       console.error('Error fetching episode progress:', error);
@@ -76,14 +76,14 @@ export const watchHistoryService = {
     episodeId: string | number;
     progress: number;
     duration: number;
-    completed: boolean;
+    isCompleted: boolean;
   } | null> {
     try {
       const watchHistory = await this.getWatchHistory();
       
       // Lọc các mục lịch sử của phim này
       const movieEntries = watchHistory.filter(
-        item => String(item.movieId) === String(movieId)
+        item => item.movie && String(item.movie.id) === String(movieId)
       );
       
       if (movieEntries.length === 0) return null;
@@ -99,7 +99,7 @@ export const watchHistoryService = {
         episodeId: latestEntry.episodeId,
         progress: latestEntry.progress,
         duration: latestEntry.duration,
-        completed: latestEntry.isCompleted
+        isCompleted: latestEntry.isCompleted
       };
     } catch (error) {
       console.error('Error fetching latest movie progress:', error);

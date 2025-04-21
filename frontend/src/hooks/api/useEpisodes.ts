@@ -1,32 +1,29 @@
 import { useState, useCallback } from 'react';
 import useSWR from 'swr';
-import { Episode, EpisodeListResponse } from '@/types';
+import { Episode, EpisodeViewRequest } from '@/types';
 import { toast } from 'react-hot-toast';
+import { episodeService } from '@/lib/api/services/episodeService';
 import { API_ENDPOINTS } from '@/lib/api/endpoints';
 
-export const useEpisodes = (movieId: string | number) => {
-  // SWR key - note that the backend returns all episodes for a movie, not paginated
-  const key = movieId ? API_ENDPOINTS.EPISODES.LIST(movieId) : null;
+export const useEpisodes = (movieId: string | number | null) => {
+  // SWR key - only fetch if we have a movieId
+  const key = movieId ? API_ENDPOINTS.EPISODES.LIST_BY_MOVIE(movieId) : null;
 
   // Fetcher function for SWR
   const fetcher = useCallback(
     async (url: string) => {
       try {
-        const response = await fetch(url);
-        if (!response.ok) {
-          throw new Error('Failed to fetch episodes');
-        }
-        return await response.json();
+        return await episodeService.getEpisodesByMovieId(movieId!);
       } catch (error) {
         console.error('Error fetching episodes:', error);
         throw error;
       }
     },
-    []
+    [movieId]
   );
 
   // Using SWR hook
-  const { data, error, isLoading, isValidating, mutate } = useSWR<EpisodeListResponse>(
+  const { data, error, isLoading, isValidating, mutate } = useSWR<Episode[]>(
     key,
     fetcher
   );
@@ -35,11 +32,7 @@ export const useEpisodes = (movieId: string | number) => {
   const getEpisode = useCallback(
     async (episodeId: string | number): Promise<Episode | null> => {
       try {
-        const response = await fetch(API_ENDPOINTS.EPISODES.DETAIL(episodeId));
-        if (!response.ok) {
-          throw new Error('Failed to fetch episode');
-        }
-        return await response.json();
+        return await episodeService.getEpisodeById(episodeId);
       } catch (err) {
         toast.error('Không thể tải thông tin tập phim');
         return null;
@@ -48,62 +41,17 @@ export const useEpisodes = (movieId: string | number) => {
     []
   );
 
-  // Get next episode
-  const getNextEpisode = useCallback(
-    async (episodeId: string | number): Promise<Episode | null> => {
-      try {
-        const response = await fetch(API_ENDPOINTS.EPISODES.NEXT(episodeId));
-        if (!response.ok) {
-          if (response.status === 404) {
-            // No next episode is available
-            return null;
-          }
-          throw new Error('Failed to fetch next episode');
-        }
-        return await response.json();
-      } catch (err) {
-        console.error('Error fetching next episode:', err);
-        return null;
-      }
-    },
-    []
-  );
-
-  // Get previous episode
-  const getPreviousEpisode = useCallback(
-    async (episodeId: string | number): Promise<Episode | null> => {
-      try {
-        const response = await fetch(API_ENDPOINTS.EPISODES.PREVIOUS(episodeId));
-        if (!response.ok) {
-          if (response.status === 404) {
-            // No previous episode is available
-            return null;
-          }
-          throw new Error('Failed to fetch previous episode');
-        }
-        return await response.json();
-      } catch (err) {
-        console.error('Error fetching previous episode:', err);
-        return null;
-      }
-    },
-    []
-  );
-
   // Increment view count
   const incrementView = useCallback(
-    async (episodeId: string | number) => {
+    async (episodeId: string | number, movieId: number, progress: number, duration: number) => {
       try {
-        const response = await fetch(`/api/views/episode/${episodeId}`, {
-          method: 'POST',
-          credentials: 'include',
-        });
+        const viewData: EpisodeViewRequest = {
+          movieId,
+          progress,
+          duration
+        };
         
-        if (!response.ok) {
-          throw new Error('Failed to increment view count');
-        }
-        
-        return await response.json();
+        return await episodeService.incrementView(episodeId, viewData);
       } catch (err) {
         // View count increment errors are not critical, just log them
         console.error('Không thể tăng lượt xem:', err);
@@ -113,16 +61,69 @@ export const useEpisodes = (movieId: string | number) => {
     []
   );
 
+  // Get processing status for episode video
+  const getProcessingStatus = useCallback(
+    async (episodeId: string | number) => {
+      try {
+        return await episodeService.getProcessingStatus(episodeId);
+      } catch (err) {
+        console.error('Không thể lấy trạng thái xử lý video:', err);
+        return null;
+      }
+    },
+    []
+  );
+
+  // Find next episode in the sequence (based on episode numbers)
+  const findNextEpisode = useCallback(
+    (currentEpisodeId: string | number): Episode | undefined => {
+      if (!data || data.length === 0) return undefined;
+      
+      // Find current episode
+      const currentEpisode = data.find(ep => 
+        String(ep.id) === String(currentEpisodeId)
+      );
+      
+      if (!currentEpisode) return undefined;
+      
+      // Find episode with the next episode number
+      return data.find(ep => 
+        ep.episodeNumber === currentEpisode.episodeNumber + 1
+      );
+    },
+    [data]
+  );
+
+  // Find previous episode in the sequence
+  const findPreviousEpisode = useCallback(
+    (currentEpisodeId: string | number): Episode | undefined => {
+      if (!data || data.length === 0) return undefined;
+      
+      // Find current episode
+      const currentEpisode = data.find(ep => 
+        String(ep.id) === String(currentEpisodeId)
+      );
+      
+      if (!currentEpisode) return undefined;
+      
+      // Find episode with the previous episode number
+      return data.find(ep => 
+        ep.episodeNumber === currentEpisode.episodeNumber - 1
+      );
+    },
+    [data]
+  );
+
   return {
-    episodes: data?.episodes || [],
-    totalEpisodes: data?.totalItems || 0,
+    episodes: data || [],
     loading: isLoading,
     isValidating,
     error,
     getEpisode,
-    getNextEpisode,
-    getPreviousEpisode,
+    findNextEpisode,
+    findPreviousEpisode,
     incrementView,
+    getProcessingStatus,
     refreshEpisodes: mutate,
   };
 };

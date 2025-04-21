@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { LoginCredentials, RegisterCredentials, User } from '@/types';
+import { LoginCredentials, RegisterCredentials, User, UpdateUserDto } from '@/types';
 import { authService } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
@@ -108,13 +108,15 @@ export const useAuth = () => {
 
   /**
    * Gửi email xác thực
+   * @param email Email để gửi link xác thực
+   * @param isSignUp true nếu đây là đăng ký mới, false nếu đăng nhập
    */
-  const emailAuth = useCallback(async (email: string) => {
+  const emailAuth = useCallback(async (email: string, isSignUp: boolean = false) => {
     setLoading(true);
     setError(null);
     
     try {
-      await authService.emailAuth({ email });
+      await authService.emailAuth({ email, isSignUp });
       toast.success('Email xác thực đã được gửi. Vui lòng kiểm tra hộp thư của bạn.');
       return true;
     } catch (err: any) {
@@ -166,6 +168,158 @@ export const useAuth = () => {
   }, [setAuthenticated, setUser]);
 
   /**
+   * Lấy danh sách tất cả người dùng (chỉ admin)
+   */
+  const getAllUsers = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const users = await authService.getAllUsers();
+      return users;
+    } catch (err: any) {
+      const message = err.response?.data?.message || 'Không thể lấy danh sách người dùng';
+      setError(message);
+      toast.error(message);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  /**
+   * Lấy thông tin của người dùng theo ID
+   */
+  const getUserById = useCallback(async (userId: string | number) => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const userData = await authService.getUserById(userId);
+      return userData;
+    } catch (err: any) {
+      const message = err.response?.data?.message || 'Không thể lấy thông tin người dùng';
+      setError(message);
+      toast.error(message);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  /**
+   * Cập nhật thông tin người dùng
+   */
+  const updateUser = useCallback(async (userId: string | number, userData: UpdateUserDto) => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await authService.updateUser(userId, userData);
+      // Nếu đang cập nhật thông tin chính mình, cập nhật luôn store
+      if (user && user.id === Number(userId)) {
+        setUser(response.user);
+      }
+      toast.success('Cập nhật thông tin thành công!');
+      return response;
+    } catch (err: any) {
+      const message = err.response?.data?.message || 'Không thể cập nhật thông tin người dùng';
+      setError(message);
+      toast.error(message);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, [user, setUser]);
+
+  /**
+   * Xóa người dùng (chỉ admin)
+   */
+  const deleteUser = useCallback(async (userId: string | number) => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await authService.deleteUser(userId);
+      toast.success('Đã xóa người dùng thành công!');
+      return response;
+    } catch (err: any) {
+      const message = err.response?.data?.message || 'Không thể xóa người dùng';
+      setError(message);
+      toast.error(message);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  /**
+   * Đổi mật khẩu người dùng
+   */
+  const changePassword = useCallback(async (
+    userId: string | number, 
+    currentPassword: string, 
+    newPassword: string
+  ) => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await authService.changePassword(userId, { 
+        currentPassword, 
+        newPassword 
+      });
+      toast.success('Đổi mật khẩu thành công!');
+      return response;
+    } catch (err: any) {
+      const message = err.response?.data?.message || 'Không thể đổi mật khẩu';
+      setError(message);
+      toast.error(message);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  /**
+   * Lấy danh sách phim yêu thích của người dùng
+   */
+  const getUserFavorites = useCallback(async (userId: string | number) => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const favorites = await authService.getUserFavorites(userId);
+      return favorites;
+    } catch (err: any) {
+      const message = err.response?.data?.message || 'Không thể lấy danh sách phim yêu thích';
+      setError(message);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  /**
+   * Lấy lịch sử xem phim của người dùng
+   */
+  const getUserWatchHistory = useCallback(async (userId: string | number) => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const watchHistory = await authService.getUserWatchHistory(userId);
+      return watchHistory;
+    } catch (err: any) {
+      const message = err.response?.data?.message || 'Không thể lấy lịch sử xem phim';
+      setError(message);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  /**
    * Refresh token thủ công (hiếm khi cần thiết vì đã có xử lý tự động)
    */
   const refreshToken = useCallback(async () => {
@@ -185,11 +339,15 @@ export const useAuth = () => {
     }
   }, [logoutStore, router, setAuthenticated]);
 
+  // Kiểm tra nếu người dùng có vai trò admin
+  const isAdmin = !!user && user.role === 'admin';
+
   return {
     user,
     loading,
     error,
     isAuthenticated,
+    isAdmin,
     register,
     login,
     logout,
@@ -197,6 +355,13 @@ export const useAuth = () => {
     emailAuth,
     getCsrfToken,
     fetchCurrentUser,
-    refreshToken
+    refreshToken,
+    getAllUsers,
+    getUserById,
+    updateUser,
+    deleteUser,
+    changePassword,
+    getUserFavorites,
+    getUserWatchHistory
   };
-}; 
+};
