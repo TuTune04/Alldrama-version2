@@ -1,92 +1,174 @@
 'use client'
 
-import { useState, useRef } from 'react';
-import VideoPlayer from '@/components/ui/VideoPlayer';
-import { mockMovies } from '@/mocks';
-import { getEpisodeListResponse, getPaginatedEpisodeResponse } from '@/mocks/episodes';
-import { createSlug } from '@/utils/url';
+import { useParams, useSearchParams } from "next/navigation"
+import { useEffect, useState, useRef } from "react"
+import axios from "axios"
+import { API_ENDPOINTS } from "@/lib/api/endpoints"
+import { Movie, Episode } from "@/types"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Button } from "@/components/ui/button"
+import Link from "next/link"
+import { generateMovieUrl } from "@/utils/url"
 
-// UI Components
-import { Button } from '@/components/ui/button';
+// Import custom watch components
+import VideoPlayer from '@/components/ui/VideoPlayer'
+import NotFoundMessage from '@/components/features/watch/NotFoundMessage'
+import MobileEpisodeSheet from '@/components/features/watch/MobileEpisodeSheet'
+import ContentInfoCard from '@/components/features/watch/ContentInfoCard'
+import CommentSection from '@/components/features/movie/comment-section'
+import RelatedMovies from '@/components/features/watch/RelatedMovies'
+import DesktopEpisodePanel from '@/components/features/watch/DesktopEpisodePanel'
 
-// Import components from features/watch
-import NotFoundMessage from '@/components/features/watch/NotFoundMessage';
-import MobileEpisodeSheet from '@/components/features/watch/MobileEpisodeSheet';
-import ContentInfoCard from '@/components/features/watch/ContentInfoCard';
-import CommentsSection from '@/components/features/watch/CommentsSection';
-import RelatedMovies from '@/components/features/watch/RelatedMovies';
-import DesktopEpisodePanel from '@/components/features/watch/DesktopEpisodePanel';
-
-
-interface WatchPageProps {
-  params: {
-    slug: string; // ten-phim
-  };
-  searchParams: {
-    episode?: string; // id tập phim, vd: episode-3-1
-    ep?: string; // số tập, vd: 1
-  };
-}
-
-export default function WatchPage({ params, searchParams }: WatchPageProps) {
+export default function WatchPage() {
+  const params = useParams()
+  const searchParams = useSearchParams()
+  const slug = params.slug as string
+  
+  // Get episode information from query parameters
+  const episodeId = searchParams.get('episode')
+  const episodeNumber = searchParams.get('ep')
+  
+  const videoContainerRef = useRef<HTMLDivElement>(null)
+  const [movie, setMovie] = useState<Movie | null>(null)
+  const [episode, setEpisode] = useState<Episode | null>(null)
+  const [allEpisodes, setAllEpisodes] = useState<Episode[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [currentProgress, setCurrentProgress] = useState(0)
+  const [nextEpisode, setNextEpisode] = useState<Episode | null>(null)
+  const [prevEpisode, setPrevEpisode] = useState<Episode | null>(null)
+  
   // UI control states
-  const [showEpisodeList, setShowEpisodeList] = useState(false);
-  const videoContainerRef = useRef<HTMLDivElement>(null);
-  const [episodeView, setEpisodeView] = useState<'grid' | 'list'>('grid');
+  const [showEpisodeList, setShowEpisodeList] = useState(false)
+  const [episodeView, setEpisodeView] = useState<'grid' | 'list'>('grid')
 
-  // Get data from URL parameters
-  const movieTitle = params.slug;
-  const episodeId = searchParams.episode;
-  const episodeNumber = searchParams.ep ? parseInt(searchParams.ep) : undefined;
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true)
+      setError(null)
+      
+      try {
+        // Extract the movie ID from the slug (assuming format is name-id)
+        const parts = slug.split('-')
+        const movieId = parts[parts.length - 1]
+        
+        if (!movieId || isNaN(Number(movieId))) {
+          throw new Error("Invalid movie ID in URL")
+        }
+        
+        // 1. Fetch movie details
+        const movieResponse = await axios.get(API_ENDPOINTS.MOVIES.DETAIL(movieId))
+        setMovie(movieResponse.data)
+        
+        // 2. If we're watching a TV show with episodes, fetch all episodes
+        if (movieResponse.data.totalEpisodes > 1) {
+          const episodesResponse = await axios.get(API_ENDPOINTS.EPISODES.LIST_BY_MOVIE(movieId))
+          setAllEpisodes(episodesResponse.data)
+          
+          // 3. If an episode ID was specified, fetch that specific episode
+          if (episodeId) {
+            const episodeResponse = await axios.get(API_ENDPOINTS.EPISODES.DETAIL(episodeId))
+            setEpisode(episodeResponse.data)
+            
+            // Find prev and next episodes
+            const currentIndex = episodesResponse.data.findIndex((ep: Episode) => ep.id.toString() === episodeId)
+            
+            if (currentIndex > 0) {
+              setPrevEpisode(episodesResponse.data[currentIndex - 1])
+            }
+            
+            if (currentIndex < episodesResponse.data.length - 1) {
+              setNextEpisode(episodesResponse.data[currentIndex + 1])
+            }
+            
+            // Increment view count for the episode
+            try {
+              await axios.post(API_ENDPOINTS.VIEWS.INCREMENT_EPISODE(episodeId), {
+                movieId: movieId,
+                progress: 0,
+                duration: episodeResponse.data.duration || 0
+              })
+            } catch (viewErr) {
+              console.error('Error incrementing episode view count:', viewErr)
+            }
+          } else {
+            // If no episode is specified but it's a TV show, default to first episode
+            if (episodesResponse.data.length > 0) {
+              setEpisode(episodesResponse.data[0])
+              setNextEpisode(episodesResponse.data.length > 1 ? episodesResponse.data[1] : null)
+            }
+          }
+        } else {
+          // For movies, increment movie view count
+          try {
+            await axios.post(API_ENDPOINTS.VIEWS.INCREMENT_MOVIE(movieId), {
+              progress: 0,
+              duration: movieResponse.data.duration || 0
+            })
+          } catch (viewErr) {
+            console.error('Error incrementing movie view count:', viewErr)
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching data for watch page:', err)
+        setError('Đã xảy ra lỗi khi tải thông tin phim')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    
+    fetchData()
+  }, [slug, episodeId])
 
-  console.log("Movie title slug:", movieTitle);
-  console.log("Episode ID:", episodeId);
-  console.log("Episode number:", episodeNumber);
-
-  // Find the movie by slug
-  const movie = mockMovies.find(m => createSlug(m.title) === movieTitle);
-
-  if (!movie) {
-    return <NotFoundMessage message="Không tìm thấy phim" description="Phim bạn đang tìm không tồn tại hoặc đã bị xóa." />;
-  }
-
-  // Check if we're watching a movie or an episode
-  const isEpisode = !!episodeId;
-  const isMovie = !isEpisode;
-
-  // Get episodes for this movie (direct array from API)
-  const episodes = getEpisodeListResponse(String(movie.id));
-
-  // If we're watching an episode, find the episode
-  let currentEpisode = null;
-  if (isEpisode) {
-    currentEpisode = episodes.find(ep => String(ep.id) === episodeId);
-
-    if (!currentEpisode) {
-      return <NotFoundMessage message="Không tìm thấy tập phim" description="Tập phim bạn đang tìm không tồn tại hoặc đã bị xóa." />;
+  // Handle view tracking for VideoPlayer component
+  const handleProgress = (progress: number) => {
+    if (Math.abs(progress - currentProgress) >= 5) {
+      setCurrentProgress(progress)
+      
+      // Update view progress in backend
+      if (episode) {
+        axios.post(API_ENDPOINTS.VIEWS.INCREMENT_EPISODE(episode.id), {
+          movieId: movie?.id,
+          progress: progress,
+          duration: episode.duration || 0
+        }).catch(err => console.error('Error updating episode progress:', err))
+      } else if (movie) {
+        axios.post(API_ENDPOINTS.VIEWS.INCREMENT_MOVIE(movie.id), {
+          progress: progress,
+          duration: movie.duration || 0
+        }).catch(err => console.error('Error updating movie progress:', err))
+      }
     }
   }
 
-  // Find previous and next episodes (only for episodes)
-  let prevEpisode = null;
-  let nextEpisode = null;
-
-  if (isEpisode && currentEpisode) {
-    const currentIndex = episodes.findIndex(ep => String(ep.id) === episodeId);
-    prevEpisode = currentIndex > 0 ? episodes[currentIndex - 1] : null;
-    nextEpisode = currentIndex < episodes.length - 1
-      ? episodes[currentIndex + 1]
-      : null;
+  if (isLoading) {
+    return (
+      <div className="h-[70vh] bg-gray-800 animate-pulse flex items-center justify-center">
+        <Skeleton className="w-3/4 h-[80%] max-w-7xl mx-auto rounded-xl" />
+      </div>
+    )
   }
-  
-  // Get paginated response for UI components that require pagination
-  const paginatedEpisodeResponse = getPaginatedEpisodeResponse(String(movie.id));
+
+  if (error || !movie) {
+    return <NotFoundMessage 
+      message="Không thể tải nội dung" 
+      description={error || 'Đã xảy ra lỗi khi tải nội dung phim'} 
+    />
+  }
+
+  // Check if we're watching a movie or an episode
+  const isEpisode = !!episode;
+  const isMovie = !isEpisode;
+
+  // Determine video source and poster
+  const videoSrc = episode ? episode.playlistUrl : movie.playlistUrl
+  const videoPoster = episode?.thumbnailUrl || movie.posterUrl || "/placeholder.svg"
 
   return (
     <div className="bg-gradient-to-b from-gray-950 via-gray-900 to-gray-800 min-h-screen pb-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
         <div className="pt-6 space-y-6">
-          {/*Video Player Section */}
+          {/* Video Player Section */}
           <div className="w-full">
             <div ref={videoContainerRef} className="w-full overflow-hidden rounded-lg shadow-xl relative">
               {/* Episode List Button for Desktop */}
@@ -104,10 +186,10 @@ export default function WatchPage({ params, searchParams }: WatchPageProps) {
               </div>
 
               {/* Mobile episode panel (for series only) */}
-              {!isMovie && episodes.length > 0 && (
+              {isEpisode && allEpisodes.length > 0 && (
                 <MobileEpisodeSheet
-                  episodes={episodes}
-                  currentEpisode={currentEpisode}
+                  episodes={allEpisodes}
+                  currentEpisode={episode}
                   movieId={String(movie.id)}
                   movieTitle={movie.title}
                   episodeView={episodeView}
@@ -117,13 +199,13 @@ export default function WatchPage({ params, searchParams }: WatchPageProps) {
 
               {/* Video Player */}
               <VideoPlayer
-                src={isMovie ? movie.playlistUrl || 'https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4' : currentEpisode ? currentEpisode.playlistUrl : 'https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4'}
-                poster={isMovie ? movie.posterUrl : `https://picsum.photos/seed/${(currentEpisode as any)?.id || 'default'}/800/450`}
-                title={isMovie ? movie.title : `${movie.title} - Tập ${(currentEpisode as any)?.episodeNumber || '?'}: ${(currentEpisode as any)?.title || 'Không có tiêu đề'}`}
-                episodeInfo={isEpisode && currentEpisode ? {
-                  id: String(currentEpisode.id),
-                  title: currentEpisode.title,
-                  number: currentEpisode.episodeNumber,
+                src={videoSrc || 'https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4'}
+                poster={videoPoster}
+                title={isMovie ? movie.title : `${movie.title} - Tập ${episode?.episodeNumber || '?'}: ${episode?.title || 'Không có tiêu đề'}`}
+                episodeInfo={isEpisode && episode ? {
+                  id: String(episode.id),
+                  title: episode.title,
+                  number: episode.episodeNumber,
                   prevEpisode: prevEpisode ? {
                     id: String(prevEpisode.id),
                     number: prevEpisode.episodeNumber,
@@ -139,13 +221,14 @@ export default function WatchPage({ params, searchParams }: WatchPageProps) {
                 } : undefined}
                 controls={true}
                 autoPlay={false}
+                onTimeUpdate={(time) => handleProgress(Math.floor(time))}
               />
 
               {/* Desktop Episode Panel (for series only) */}
-              {!isMovie && episodes.length > 0 && (
+              {isEpisode && allEpisodes.length > 0 && (
                 <DesktopEpisodePanel
-                  episodes={episodes}
-                  currentEpisode={currentEpisode}
+                  episodes={allEpisodes}
+                  currentEpisode={episode}
                   movieId={String(movie.id)}
                   movieTitle={movie.title}
                   showEpisodeList={showEpisodeList}
@@ -171,26 +254,26 @@ export default function WatchPage({ params, searchParams }: WatchPageProps) {
               {/* Content Information */}
               <ContentInfoCard
                 movie={movie}
-                currentEpisode={currentEpisode}
+                currentEpisode={episode}
                 prevEpisode={prevEpisode}
                 nextEpisode={nextEpisode}
                 isMovie={isMovie}
-                episodeListResponse={paginatedEpisodeResponse}
+                episodeListResponse={{ episodes: allEpisodes }}
                 setShowEpisodeList={setShowEpisodeList}
               />
 
               {/* Comments Section */}
-              <CommentsSection />
+              <CommentSection movieId={String(movie.id)} />
             </div>
 
             {/* Sidebar - Right Side */}
             <div className="space-y-6">
-              {/* Películas Relacionadas */}
-              <RelatedMovies relatedMovies={mockMovies.slice(0, 5)} />
+              {/* Related Movies */}
+              <RelatedMovies movie={movie} />
             </div>
           </div>
         </div>
       </div>
     </div>
-  );
+  )
 }

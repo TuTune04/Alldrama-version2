@@ -8,6 +8,7 @@ import CommentsAndRankings from "@/components/features/movie/CommentsAndRankings
 import FeaturedContentSwitcher from '@/components/features/movie/FeaturedContentSwitcher';
 import { useHomepageData } from '@/hooks/api/useHomepageData';
 import { Skeleton } from '@/components/ui/skeleton';
+import { mockMovies } from '@/mocks/movies';
 
 export default function Home() {
   // Sử dụng custom hook để lấy tất cả dữ liệu trang chủ trong 1 lần gọi API
@@ -24,19 +25,8 @@ export default function Home() {
   //Hiển thị skeleton khi đang loading
   if (isLoading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Hero />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <section className="py-4 space-y-12">
-          <MovieSlider title="Phim mới nhất" movies={newest} variant="new" size="md" />
-          <MovieSlider title="Phim xem nhiều" movies={popular} variant="popular" size="md" />
-          <MovieSlider title="Phim đánh giá cao" movies={featured} variant="top" size="md" />
-          <MovieSlider title="Phim đang hot" movies={trending} variant="trending" size="md" />
-          
-          {/* Thêm slider phim theo thể loại */}
-          <MovieSlider title="Phim hành động" movies={genres[1]} size="md" />
-        </section>
-      </div>
+      <div className="h-[70vh] bg-gray-800 animate-pulse flex items-center justify-center">
+        <Skeleton className="w-3/4 h-[80%] max-w-7xl mx-auto rounded-xl" />
       </div>
     );
   }
@@ -44,14 +34,9 @@ export default function Home() {
   // Hiển thị lỗi nếu có
   if (error) {
     return (
-      <>
-        <Hero />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="bg-red-900/30 border border-red-700 rounded-md p-4">
-            <p className="text-red-300">Không thể tải dữ liệu trang chủ. Vui lòng thử lại sau.</p>
-          </div>
-        </div>
-      </>
+      <div className="h-[70vh] bg-gray-800 animate-pulse flex items-center justify-center">
+        <Skeleton className="w-3/4 h-[80%] max-w-7xl mx-auto rounded-xl" />
+      </div>
     );
   }
 
@@ -60,7 +45,12 @@ export default function Home() {
       <Hero />
       
       {/* Top 10 Movies Section with trapezoid cards */}
-      {/* <TopMoviesSection movies={mostViewedMovies} /> */}
+      <TopMoviesSection 
+        movies={trending} 
+        isLoading={isLoading}
+        title="Top 10 Phim Đang Hot"
+        limit={10}
+      />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Section for featured movie sliders */}
@@ -118,14 +108,15 @@ export default function Home() {
       </div>
       {/* <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <CommentsAndRankings />
-      </div>
+      </div> */}
 
       <FeaturedContentSwitcher
-        items={mockMovies}
+        items={featured}
         title="Phim nổi bật"
         variant="dark"
         aspectRatio="video"
-      /> */}
+        isLoading={isLoading}
+      />
     </div>
   );
 }

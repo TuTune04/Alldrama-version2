@@ -6,7 +6,6 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname, useRouter } from "next/navigation"
-import { useAuthStore } from "@/store/auth"
 import {
   Search,
   ChevronDown,
@@ -36,6 +35,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { useMobile } from "@/hooks/use-mobile"
+import { useAuth } from "@/hooks/api/useAuth"
+import { toast } from "react-hot-toast"
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false)
@@ -47,8 +48,8 @@ const Navbar = () => {
   const pathname = usePathname()
   const router = useRouter()
 
-  // Lấy trạng thái đăng nhập từ auth store
-  const { isAuthenticated, user, logout } = useAuthStore()
+  // Sử dụng useAuth hook thay vì auth store trực tiếp
+  const { isAuthenticated, user, logout, loading } = useAuth()
 
   // Xử lý sự kiện scroll
   useEffect(() => {
@@ -94,9 +95,16 @@ const Navbar = () => {
     }
   }
 
-  const handleLogout = () => {
-    logout()
-    router.push("/")
+  // Xử lý đăng xuất sử dụng useAuth hook
+  const handleLogout = async () => {
+    try {
+      await logout()
+      toast.success("Đăng xuất thành công!")
+      // Chuyển hướng về trang chủ sau khi đăng xuất
+      router.push("/")
+    } catch (error) {
+      toast.error("Đã xảy ra lỗi khi đăng xuất")
+    }
   }
 
   // Lấy chữ cái đầu từ tên người dùng để hiển thị avatar
@@ -148,10 +156,10 @@ const Navbar = () => {
                   alt="AllDrama Logo"
                   width={40}
                   height={40}
-                  className="object-contain relative z-10 p-1.5"
+                  className="object-contain relative z-20 p-1.5"
                 />
               </div>
-              <span className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-amber-400 to-amber-500 text-transparent bg-clip-text transition-all duration-300 group-hover:from-amber-300 group-hover:to-amber-400">
+              <span className="text-2xl sm:text-3xl font-normal bg-gradient-to-r from-amber-400 to-amber-500 text-transparent bg-clip-text transition-all duration-300 group-hover:from-amber-300 group-hover:to-amber-400 font-fleur-de-leah">
                 AllDrama
               </span>
             </Link>
@@ -392,10 +400,10 @@ const Navbar = () => {
                         alt="AllDrama Logo"
                         width={32}
                         height={32}
-                        className="object-contain relative z-10 p-1.5"
+                        className="object-contain relative z-20 p-1.5"
                       />
                     </div>
-                    <span className="text-xl font-bold bg-gradient-to-r from-amber-400 to-amber-500 text-transparent bg-clip-text">
+                    <span className="text-xl font-normal bg-gradient-to-r from-amber-400 to-amber-500 text-transparent bg-clip-text font-fleur-de-leah">
                       AllDrama
                     </span>
                   </SheetTitle>

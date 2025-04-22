@@ -1,6 +1,8 @@
 'use client'
 import { useState, useRef, useEffect } from 'react';
 import { useMobile } from '@/hooks/use-mobile';
+import Hls from 'hls.js';
+import type { Level, ErrorData } from 'hls.js';
 
 interface EpisodeInfo {
   id: string;
@@ -20,6 +22,7 @@ interface VideoPlayerProps {
   onTimeUpdate?: (time: number) => void;
   initialTime?: number;
   episodeInfo?: EpisodeInfo;
+  isHLS?: boolean;
 }
 
 const VideoPlayer = ({ 
@@ -29,9 +32,11 @@ const VideoPlayer = ({
   poster,
   onTimeUpdate,
   initialTime = 0,
-  episodeInfo
+  episodeInfo,
+  isHLS = false
 }: VideoPlayerProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const hlsRef = useRef<Hls | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -39,6 +44,10 @@ const VideoPlayer = ({
   const [showControls, setShowControls] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [qualities, setQualities] = useState<Array<{height: number, bitrate: number}>>([]);
+  const [currentQuality, setCurrentQuality] = useState<number | 'auto'>('auto');
+  const [showQualityMenu, setShowQualityMenu] = useState(false);
+  
   const isMobile = useMobile();
   
   const hideControlsTimer = useRef<NodeJS.Timeout | undefined>(undefined);
@@ -82,6 +91,87 @@ const VideoPlayer = ({
     };
   }, [initialTime, onTimeUpdate]);
   
+  // HLS setup
+  useEffect(() => {
+    if (!videoRef.current || !src) return;
+    
+    // Trước khi tạo instance HLS mới, hủy instance cũ nếu có
+    if (hlsRef.current) {
+      hlsRef.current.destroy();
+      hlsRef.current = null;
+    }
+    
+    const videoSrc = src || videoUrl || '';
+    
+    // Nếu không phải là URL HLS, dùng video thông thường
+    if (!isHLS && !videoSrc.includes('.m3u8')) {
+      videoRef.current.src = videoSrc;
+      return;
+    }
+    
+    // Kiểm tra nếu trình duyệt hỗ trợ natively HLS (Safari)
+    if (videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
+      videoRef.current.src = videoSrc;
+    } else if (Hls.isSupported()) {
+      // Dùng hls.js cho các trình duyệt không hỗ trợ HLS natively
+      const hls = new Hls({
+        maxBufferLength: 30,
+        maxMaxBufferLength: 600,
+        backBufferLength: 60,
+        enableWorker: true,
+        lowLatencyMode: false,
+      });
+      
+      hls.loadSource(videoSrc);
+      hls.attachMedia(videoRef.current);
+      
+      // Events
+      hls.on(Hls.Events.MANIFEST_PARSED, (_event, data) => {
+        // Lấy danh sách chất lượng có sẵn
+        const availableQualities = data.levels.map((level: Level) => ({
+          height: level.height,
+          bitrate: level.bitrate
+        }));
+        setQualities(availableQualities);
+        
+        // Nếu có các chất lượng khác nhau và auto-play được bật
+        if (availableQualities.length > 0 && !videoRef.current?.paused) {
+          videoRef.current?.play();
+        }
+      });
+      
+      // Handle errors
+      hls.on(Hls.Events.ERROR, (_event, data: ErrorData) => {
+        if (data.fatal) {
+          switch (data.type) {
+            case Hls.ErrorTypes.NETWORK_ERROR:
+              console.error('Fatal network error encountered, trying to recover...');
+              hls.startLoad();
+              break;
+            case Hls.ErrorTypes.MEDIA_ERROR:
+              console.error('Fatal media error encountered, trying to recover...');
+              hls.recoverMediaError();
+              break;
+            default:
+              console.error('Fatal error, cannot recover:', data);
+              hls.destroy();
+              break;
+          }
+        }
+      });
+      
+      // Lưu instance hls vào ref để cleanup
+      hlsRef.current = hls;
+    }
+    
+    return () => {
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
+    };
+  }, [src, videoUrl, isHLS]);
+  
   // Ẩn controls sau một khoảng thời gian
   useEffect(() => {
     if (hideControlsTimer.current) {
@@ -91,6 +181,7 @@ const VideoPlayer = ({
     if (isPlaying) {
       hideControlsTimer.current = setTimeout(() => {
         setShowControls(false);
+        setShowQualityMenu(false);
       }, 3000);
     } else {
       setShowControls(true);
@@ -136,6 +227,20 @@ const VideoPlayer = ({
     }
   };
   
+  // Xử lý thay đổi chất lượng HLS
+  const changeQuality = (levelIndex: number | 'auto') => {
+    if (!hlsRef.current) return;
+    
+    if (levelIndex === 'auto') {
+      hlsRef.current.currentLevel = -1; // Auto quality
+    } else {
+      hlsRef.current.currentLevel = levelIndex as number;
+    }
+    
+    setCurrentQuality(levelIndex);
+    setShowQualityMenu(false);
+  };
+  
   // Cập nhật seekbar
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!videoRef.current) return;
@@ -167,6 +272,18 @@ const VideoPlayer = ({
     return `${minutes}:${secs < 10 ? '0' : ''}${secs}`;
   };
   
+  // Format tên của mức chất lượng hiện tại
+  const getCurrentQualityLabel = () => {
+    if (currentQuality === 'auto') return 'Tự động';
+    
+    if (qualities.length > 0 && typeof currentQuality === 'number') {
+      const quality = qualities[currentQuality];
+      return quality ? `${quality.height}p` : 'Không xác định';
+    }
+    
+    return 'Mặc định';
+  };
+  
   return (
     <div 
       className="relative w-full aspect-video bg-black rounded-lg overflow-hidden"
@@ -180,13 +297,13 @@ const VideoPlayer = ({
         if (isPlaying) {
           hideControlsTimer.current = setTimeout(() => {
             setShowControls(false);
+            setShowQualityMenu(false);
           }, 3000);
         }
       }}
     >
       <video
         ref={videoRef}
-        src={src || videoUrl}
         className="w-full h-full"
         poster={poster}
         onClick={togglePlay}
@@ -288,6 +405,50 @@ const VideoPlayer = ({
                 <span>{formatTime(duration || 0)}</span>
               </div>
             </div>
+
+            {/* Quality selector - Show only for HLS streams */}
+            {(isHLS || qualities.length > 0) && (
+              <div className="relative">
+                <button
+                  onClick={() => setShowQualityMenu(!showQualityMenu)}
+                  className="text-white hover:text-red-500 transition-colors focus:outline-none focus:ring-2 focus:ring-red-400 rounded-full p-2 sm:p-0 text-xs sm:text-sm flex items-center"
+                >
+                  <svg className="w-7 h-7 sm:w-5 sm:h-5 mr-1" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M19.45 12.04l-1.09.83c.34.62.54 1.33.54 2.08 0 2.36-1.91 4.27-4.27 4.27-2.36 0-4.27-1.91-4.27-4.27 0-2.36 1.91-4.27 4.27-4.27.75 0 1.46.2 2.08.54l.83-1.09c-.81-.49-1.75-.78-2.73-.78-2.95 0-5.35 2.4-5.35 5.35s2.4 5.35 5.35 5.35 5.35-2.4 5.35-5.35c0-.98-.29-1.92-.78-2.73zm-5.54 5.28c-1.32 0-2.4-1.08-2.4-2.4s1.08-2.4 2.4-2.4 2.4 1.08 2.4 2.4-1.08 2.4-2.4 2.4zM9.16 7.44c0-.62.51-1.13 1.13-1.13.63 0 1.13.51 1.13 1.13 0 .63-.5 1.13-1.13 1.13-.62 0-1.13-.5-1.13-1.13zm3.57 0c0 .62.51 1.13 1.13 1.13.63 0 1.13-.51 1.13-1.13s-.5-1.13-1.13-1.13c-.62 0-1.13.5-1.13 1.13zm3.57 0c0 .62.51 1.13 1.13 1.13.63 0 1.13-.51 1.13-1.13s-.5-1.13-1.13-1.13c-.62 0-1.13.5-1.13 1.13z" />
+                  </svg>
+                  <span className="hidden sm:inline-block">{getCurrentQualityLabel()}</span>
+                </button>
+
+                {showQualityMenu && (
+                  <div className="absolute bottom-full right-0 mb-2 bg-gray-900/95 border border-gray-700 rounded-md shadow-lg overflow-hidden">
+                    <ul className="py-1">
+                      <li>
+                        <button
+                          onClick={() => changeQuality('auto')}
+                          className={`w-full text-left px-4 py-2 text-sm ${
+                            currentQuality === 'auto' ? 'bg-red-600 text-white' : 'text-gray-300 hover:bg-gray-800'
+                          }`}
+                        >
+                          Tự động
+                        </button>
+                      </li>
+                      {qualities.map((quality, index) => (
+                        <li key={index}>
+                          <button
+                            onClick={() => changeQuality(index)}
+                            className={`w-full text-left px-4 py-2 text-sm ${
+                              currentQuality === index ? 'bg-red-600 text-white' : 'text-gray-300 hover:bg-gray-800'
+                            }`}
+                          >
+                            {quality.height}p
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Fullscreen button */}
             <button

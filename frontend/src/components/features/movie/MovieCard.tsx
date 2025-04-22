@@ -63,13 +63,14 @@ const MovieCard = ({
           <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-80"></div>
           <div className="absolute bottom-0 left-0 right-0 p-3">
             <h3 className="text-sm font-medium text-white truncate">{movie.title}</h3>
-            <div className="flex items-center mt-1 text-xs text-gray-300">
-              <span>{movie.releaseYear}</span>
+            <div className="flex items-center mt-1 text-xs text-gray-300 space-x-2">
+              <span className="inline-block">{movie.releaseYear}</span>
               {movie.rating !== undefined && (
                 <>
-                  <span className="mx-1">•</span>
-                  <span className="flex items-center text-amber-400">
-                    <Star size={10} className="fill-current mr-0.5" /> {movie.rating}
+                  <span className="inline-block text-gray-500">•</span>
+                  <span className="flex items-center text-amber-400 gap-1">
+                    <Star size={10} className="flex-shrink-0 fill-current" /> 
+                    <span>{movie.rating}</span>
                   </span>
                 </>
               )}
@@ -146,28 +147,29 @@ const MovieCard = ({
           {movie.title}
         </h3>
         
-        <div className="flex items-center text-xs text-gray-300">
+        <div className="flex items-center text-xs text-gray-300 space-x-2">
           {movie.rating !== undefined && (
-            <div className="flex items-center text-amber-400">
-              <Star size={12} className="fill-current mr-1" /> {movie.rating}
+            <div className="flex items-center text-amber-400 gap-1">
+              <Star size={12} className="flex-shrink-0 fill-current" /> 
+              <span>{movie.rating}</span>
             </div>
           )}
-          <span>{movie.releaseYear}</span>
+          <span className="inline-block">{movie.releaseYear}</span>
           
           {(variant === "featured" || variant === "trending") && movie.genres && movie.genres[0] && (
             <>
-              <span className="mx-1">•</span>
-              <span>
+              <span className="inline-block text-gray-500">•</span>
+              <span className="inline-block">
                 {typeof movie.genres[0] === "string" ? movie.genres[0] : movie.genres[0].name}
               </span>
             </>
           )}
           {variant === "trending" && movie.rating !== undefined && (
             <>
-              <span className="mx-1">•</span>
-              <span className="flex items-center">
-                <Star size={10} className="text-amber-400 fill-current mr-0.5" /> 
-                {movie.rating}
+              <span className="inline-block text-gray-500">•</span>
+              <span className="flex items-center gap-1">
+                <Star size={10} className="flex-shrink-0 text-amber-400 fill-current" /> 
+                <span>{movie.rating}</span>
               </span>
             </>
           )}

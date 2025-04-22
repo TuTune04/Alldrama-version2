@@ -267,6 +267,7 @@ const MovieSlider = ({
                         <Link 
                           href={generateMovieUrl(movie.id, movie.title)} 
                           className="transition-transform hover:scale-[1.03] duration-300 block w-full h-full"
+                          onClick={() => console.log(`Clicked movie: ${movie.title} (ID: ${movie.id}), URL: ${generateMovieUrl(movie.id, movie.title)}`)}
                         >
                           <MovieCard
                             movie={movie}
@@ -305,6 +306,7 @@ const MovieSlider = ({
                       <Link 
                         href={generateMovieUrl(movie.id, movie.title)} 
                         className="transition-transform hover:scale-[1.03] duration-300 block w-full h-full"
+                        onClick={() => console.log(`Clicked movie: ${movie.title} (ID: ${movie.id}), URL: ${generateMovieUrl(movie.id, movie.title)}`)}
                       >
                         <MovieCard
                           movie={movie}
@@ -329,7 +331,7 @@ const MovieSlider = ({
       {/* Case 4: Non data */}
       {!loading && !error && (!movieData || movieData.length === 0) && (
         <div className="p-4 bg-gray-800/30 rounded-md">
-          <p className="text-gray-400 text-center">Khu00f4ng cu00f3 phim nu00e0o trong danh mu1ee5c nu00e0y</p>
+          <p className="text-gray-400 text-center">Hiện tại phim chưa được cập nhật</p>
         </div>
       )}
     </div>

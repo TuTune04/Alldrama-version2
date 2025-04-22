@@ -83,14 +83,6 @@ export default function MovieListPage() {
       // Restrict sort to allowed values
       const allowedSorts = ['title', 'rating', 'views', 'releaseYear', 'createdAt'] as const;
       const sortValue = allowedSorts.includes(sort as any) ? sort : 'createdAt';
-      const params = {
-        limit: 20,
-        sort: sortValue,
-        order,
-        page: currentPage,
-        genre: activeGenre !== 'all' ? Number(activeGenre) : undefined,
-      };
-      await searchMovies(params);
     };
     fetchMovies();
   }, [activeGenre, sortOption, currentPage, searchMovies]);

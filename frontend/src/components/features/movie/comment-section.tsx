@@ -1,149 +1,222 @@
 'use client'
 
-import { useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { MessageSquare, Send, ThumbsUp, Reply } from 'lucide-react'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { mockComments, getMovieComments } from '@/mocks'
-import type { Comment } from '@/types'
+import { useState, useEffect, FormEvent } from "react"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
+import { Star, MessageCircle } from "lucide-react"
+import axios from "axios"
+import { API_ENDPOINTS } from "@/lib/api/endpoints"
+import { useAuth } from "@/hooks/api/useAuth"
+
+interface Comment {
+  id: string
+  userId: string
+  movieId: string
+  text: string
+  rating: number
+  user: {
+    id: string
+    name: string
+    imageUrl?: string
+  }
+  createdAt: string
+}
 
 interface CommentSectionProps {
   movieId: string
 }
 
-const CommentSection = ({ movieId }: CommentSectionProps) => {
-  // Get comments specific to this movie
-  const movieComments = getMovieComments(movieId).comments || mockComments.slice(0, 3)
-  const [comment, setComment] = useState('')
-  const [displayedComments, setDisplayedComments] = useState<Comment[]>(movieComments.slice(0, 3))
-  const [showAllComments, setShowAllComments] = useState(false)
-
-  const handleCommentSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    // In a real app, we would send this to an API
-    if (comment.trim()) {
-      console.log('Submitting comment:', comment)
-      setComment('')
-    }
-  }
-
-  const loadMoreComments = () => {
-    setDisplayedComments(movieComments)
-    setShowAllComments(true)
-  }
-
-  // Format the date
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('vi-VN')
-  }
-
+// Simple Textarea component to avoid dependency issues
+function Textarea({ 
+  className, 
+  placeholder, 
+  value, 
+  onChange 
+}: { 
+  className?: string, 
+  placeholder?: string, 
+  value: string, 
+  onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void 
+}) {
   return (
-    <div className="bg-card/50 rounded-xl p-6">
-      <h2 className="text-2xl font-bold mb-4 flex items-center">
-        <MessageSquare className="w-5 h-5 mr-2 text-primary" />
-        Bình luận ({movieComments.length})
-      </h2>
-
-      {/* Comment form */}
-      <form onSubmit={handleCommentSubmit} className="mb-6">
-        <div className="flex gap-4">
-          <Avatar className="w-10 h-10 flex-shrink-0">
-            <AvatarImage src="/images/placeholder-user.jpg" alt="Your profile" />
-            <AvatarFallback>U</AvatarFallback>
-          </Avatar>
-          <div className="flex-grow relative">
-            <textarea
-              className="w-full rounded-xl p-3 pr-12 bg-background border border-border resize-none min-h-[100px] focus:outline-none focus:ring-1 focus:ring-primary"
-              placeholder="Viết bình luận của bạn..."
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-            />
-            <Button 
-              type="submit" 
-              size="icon" 
-              className="absolute bottom-3 right-3 h-8 w-8 rounded-full"
-              disabled={!comment.trim()}
-            >
-              <Send className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </form>
-
-      {/* Comments list */}
-      <div className="space-y-6">
-        {displayedComments.map((comment) => (
-          <div key={comment.id} className="flex gap-4">
-            <Avatar className="w-10 h-10 flex-shrink-0">
-              <AvatarImage src="/images/placeholder-user.jpg" alt={comment.user?.name || 'User'} />
-              <AvatarFallback>{(comment.user?.name || 'U').charAt(0)}</AvatarFallback>
-            </Avatar>
-            <div className="flex-1">
-              <div className="bg-background p-4 rounded-xl">
-                <div className="flex justify-between items-start mb-2">
-                  <h4 className="font-medium">{comment.user?.name || 'Anonymous'}</h4>
-                  <span className="text-xs text-muted-foreground">
-                    {formatDate(comment.createdAt)}
-                  </span>
-                </div>
-                <p className="text-sm mb-2">{comment.content}</p>
-                <div className="flex gap-4 text-xs text-muted-foreground">
-                  <button className="flex items-center gap-1 hover:text-primary transition-colors">
-                    <ThumbsUp className="h-3.5 w-3.5" />
-                    <span>0</span>
-                  </button>
-                  <button className="flex items-center gap-1 hover:text-primary transition-colors">
-                    <Reply className="h-3.5 w-3.5" />
-                    <span>Trả lời</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Nested replies if any */}
-              {comment.replies && comment.replies.length > 0 && (
-                <div className="mt-3 ml-4 space-y-3">
-                  {comment.replies.map((reply) => (
-                    <div key={reply.id} className="flex gap-3">
-                      <Avatar className="w-8 h-8 flex-shrink-0">
-                        <AvatarImage src="/images/placeholder-user.jpg" alt={reply.user?.name || 'User'} />
-                        <AvatarFallback>{(reply.user?.name || 'U').charAt(0)}</AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 bg-background p-3 rounded-xl">
-                        <div className="flex justify-between items-start mb-1">
-                          <h5 className="font-medium text-sm">{reply.user?.name || 'Anonymous'}</h5>
-                          <span className="text-xs text-muted-foreground">
-                            {formatDate(reply.createdAt)}
-                          </span>
-                        </div>
-                        <p className="text-xs mb-1">{reply.content}</p>
-                        <div className="flex gap-3 text-xs text-muted-foreground">
-                          <button className="flex items-center gap-1 hover:text-primary transition-colors">
-                            <ThumbsUp className="h-3 w-3" />
-                            <span>0</span>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Load more button */}
-      {!showAllComments && movieComments.length > 3 && (
-        <Button 
-          variant="outline" 
-          className="w-full mt-6" 
-          onClick={loadMoreComments}
-        >
-          Xem thêm bình luận ({movieComments.length - 3})
-        </Button>
-      )}
-    </div>
+    <textarea
+      className={`w-full rounded-md p-3 ${className}`}
+      placeholder={placeholder}
+      value={value}
+      onChange={onChange}
+    />
   )
 }
 
-export default CommentSection 
+export default function CommentSection({ movieId }: CommentSectionProps) {
+  const [comments, setComments] = useState<Comment[]>([])
+  const [newComment, setNewComment] = useState("")
+  const [rating, setRating] = useState(0)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const { user, isAuthenticated } = useAuth()
+
+  // Fetch comments when component mounts or movieId changes
+  useEffect(() => {
+    const fetchComments = async () => {
+      try {
+        const response = await axios.get(API_ENDPOINTS.COMMENTS.BY_MOVIE(movieId))
+        setComments(response.data)
+      } catch (err) {
+        console.error("Error fetching comments:", err)
+        setError("Không thể tải bình luận. Vui lòng thử lại sau.")
+      }
+    }
+
+    if (movieId) {
+      fetchComments()
+    }
+  }, [movieId])
+
+  // Submit a new comment
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault()
+    
+    if (!isAuthenticated) {
+      setError("Vui lòng đăng nhập để bình luận")
+      return
+    }
+    
+    if (!newComment.trim()) {
+      setError("Vui lòng nhập nội dung bình luận")
+      return
+    }
+    
+    setIsSubmitting(true)
+    setError(null)
+    
+    try {
+      const response = await axios.post(API_ENDPOINTS.COMMENTS.CREATE, {
+        movieId,
+        text: newComment,
+        rating: rating || 5 // Default to 5 if no rating
+      })
+      
+      // Add new comment to list
+      setComments([response.data, ...comments])
+      
+      // Reset form
+      setNewComment("")
+      setRating(0)
+    } catch (err) {
+      console.error("Error posting comment:", err)
+      setError("Không thể đăng bình luận. Vui lòng thử lại sau.")
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  // Format date to friendly string
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('vi-VN', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    })
+  }
+
+  return (
+    <div>
+      <h2 className="text-xl font-bold mb-4 flex items-center text-white">
+        <MessageCircle className="w-5 h-5 mr-2 text-indigo-400" />
+        <span className="bg-gradient-to-r from-indigo-300 to-purple-300 bg-clip-text text-transparent">
+          Bình luận và đánh giá
+        </span>
+      </h2>
+
+      {/* Comment form */}
+      {isAuthenticated ? (
+        <form onSubmit={handleSubmit} className="mb-8">
+          <div className="flex items-start gap-4">
+            <Avatar className="w-10 h-10">
+              <AvatarImage src={user?.avatar_url} alt={user?.full_name} />
+              <AvatarFallback>{user?.avatar_url?.[0] || 'U'}</AvatarFallback>
+            </Avatar>
+            <div className="flex-1 space-y-3">
+              <Textarea
+                placeholder="Chia sẻ suy nghĩ của bạn về bộ phim này..."
+                className="min-h-24 bg-gray-800/50 border border-gray-700 focus:border-indigo-500"
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+              />
+              <div className="flex justify-between items-center">
+                <div className="flex items-center">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      className={`p-1 focus:outline-none ${star <= rating ? 'text-yellow-400' : 'text-gray-500'}`}
+                      onClick={() => setRating(star)}
+                    >
+                      <Star className={`w-5 h-5 ${star <= rating ? 'fill-yellow-400' : ''}`} />
+                    </button>
+                  ))}
+                  <span className="ml-2 text-sm text-gray-400">
+                    {rating > 0 ? `${rating}/5 sao` : 'Chọn đánh giá'}
+                  </span>
+                </div>
+                <Button 
+                  type="submit" 
+                  disabled={isSubmitting || !newComment.trim()}
+                  className="bg-indigo-600 hover:bg-indigo-700"
+                >
+                  {isSubmitting ? 'Đang gửi...' : 'Gửi'}
+                </Button>
+              </div>
+              {error && <p className="text-red-500 text-sm">{error}</p>}
+            </div>
+          </div>
+        </form>
+      ) : (
+        <div className="p-4 mb-6 bg-gray-800/50 rounded-lg border border-gray-700 text-center">
+          <p className="text-gray-300 mb-3">Vui lòng đăng nhập để bình luận về bộ phim này</p>
+          <Button asChild className="bg-indigo-600 hover:bg-indigo-700">
+            <a href="/login">Đăng nhập</a>
+          </Button>
+        </div>
+      )}
+
+      {/* Comments list */}
+      <div className="space-y-6">
+        {comments.length > 0 ? (
+          comments.map((comment) => (
+            <div key={comment.id} className="flex gap-4 p-4 rounded-lg bg-gray-800/30 border border-gray-700/50">
+              <Avatar className="w-10 h-10">
+                <AvatarImage src={comment.user.imageUrl} alt={comment.user.name} />
+                <AvatarFallback>{comment.user.name[0]}</AvatarFallback>
+              </Avatar>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h4 className="font-medium text-white">{comment.user.name}</h4>
+                  <span className="text-sm text-gray-400">{formatDate(comment.createdAt)}</span>
+                </div>
+                <div className="flex items-center mt-1 mb-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Star 
+                      key={star} 
+                      className={`w-4 h-4 ${star <= comment.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-500'}`} 
+                    />
+                  ))}
+                </div>
+                <p className="text-gray-300 text-sm">{comment.text}</p>
+              </div>
+            </div>
+          ))
+        ) : error ? (
+          <div className="text-center py-6">
+            <p className="text-gray-400">{error}</p>
+          </div>
+        ) : (
+          <div className="text-center py-6">
+            <p className="text-gray-400">Chưa có bình luận nào. Hãy là người đầu tiên bình luận!</p>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+} 

@@ -3,11 +3,12 @@
 import type { Movie, Episode } from "@/types"
 import Link from "next/link"
 import Image from "next/image"
-import { useState, useRef, useEffect } from "react"
+import { useState, useEffect } from "react"
 import { generateMovieUrl, generateWatchUrl } from "@/utils/url"
-import { Star, Play, Film, Clock, Calendar, Eye, ChevronDown, ChevronUp, Info, Heart, Bookmark, TrendingUp, BarChart3, Layers, Share, ChevronLeft, ChevronRight, AlertCircle } from "lucide-react"
+import { Star, Play, Film, Clock, Calendar, Eye, ChevronDown, ChevronUp, Info, Heart, Bookmark, TrendingUp, BarChart3, Layers, Share } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import CommentSection from "./comment-section"
+import { useMovieDetail } from "@/hooks/api/useMovieDetail"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Separator } from "@/components/ui/separator"
@@ -16,122 +17,137 @@ import { useMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
 import MovieGrid from "./MovieGrid"
 import MovieSlider from "./MovieSlider"
-import { useMovies } from "@/hooks/api/useMovies"
-import { useEpisodes } from "@/hooks/api/useEpisodes"
-import { useGenres } from "@/hooks/api/useGenres"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Alert, AlertDescription } from "@/components/ui/alert" // Fix the import for the Alert component
+import axios from "axios"
+import { API_ENDPOINTS } from "@/lib/api/endpoints"
 
-// Movie versions types
-interface MovieVersion {
-  id: string;
-  name: string;
-  type: 'SUB' | 'DUB' | 'CINEMA';
-  isDefault: boolean;
-}
-
-// Mock movie versions (to be moved to API eventually)
-const movieVersions: MovieVersion[] = [
+// Mock movie versions (sẽ được thay thế bằng API sau)
+const movieVersions = [
   { id: '1', name: 'Bản Việt Sub', type: 'SUB', isDefault: true },
   { id: '2', name: 'Bản Thuyết Minh', type: 'DUB', isDefault: false },
   { id: '3', name: 'Bản Chiếu Rạp', type: 'CINEMA', isDefault: false },
 ]
 
 interface MovieDetailProps {
-  movieId: string | number;
+  movieId: string | number
 }
 
 const MovieDetail = ({ movieId }: MovieDetailProps) => {
+  const { movie, episodes, isLoading, error } = useMovieDetail(movieId)
   const [showFullDescription, setShowFullDescription] = useState(false)
   const [activeEpisode, setActiveEpisode] = useState<string | null>(null)
   const [selectedVersion, setSelectedVersion] = useState(movieVersions[0].id)
   const [isWatchlist, setIsWatchlist] = useState(false)
   const [isLiked, setIsLiked] = useState(false)
-  const [isLoadingRelated, setIsLoadingRelated] = useState(false)
   const [relatedMovies, setRelatedMovies] = useState<Movie[]>([])
-  const [error, setError] = useState<string | null>(null)
+  const [topRatedMovies, setTopRatedMovies] = useState<Movie[]>([])
   const isMobile = useMobile()
-  
-  // Fetch movie data from API
-  const { getMovie, loading: loadingMovie } = useMovies()
-  const { episodes, loading: loadingEpisodes } = useEpisodes(movieId)
-  const { genres, loading: loadingGenres } = useGenres()
-  
-  const [movie, setMovie] = useState<Movie | null>(null)
-  
-  // Fetch movie details
+
+  // Fetch related movies based on the current movie's genres
   useEffect(() => {
-    const fetchMovieDetails = async () => {
-      try {
-        const movieData = await getMovie(String(movieId))
-        if (movieData) {
-          setMovie(movieData)
-          setError(null)
-          // After getting movie data, fetch related movies
-          fetchRelatedMovies(movieData)
+    const fetchRelatedMovies = async () => {
+      if (movie && movie.genres && movie.genres.length > 0) {
+        try {
+          // Get first genre ID to find related movies
+          const genreId = typeof movie.genres[0] === 'string' 
+            ? movie.genres[0] 
+            : movie.genres[0].id
+          
+          // Fetch movies by genre
+          const response = await axios.get(API_ENDPOINTS.GENRES.MOVIES(genreId))
+          // Filter out the current movie
+          const filtered = response.data.movies.filter((m: Movie) => m.id !== movie.id)
+          // Limit to 5 movies
+          setRelatedMovies(filtered.slice(0, 5))
+        } catch (err) {
+          console.error('Error fetching related movies:', err)
         }
-      } catch (err) {
-        console.error('Error fetching movie details:', err)
-        setError('Không thể tải thông tin phim. Vui lòng thử lại sau.')
       }
     }
-    
-    fetchMovieDetails()
-  }, [movieId, getMovie])
+
+    fetchRelatedMovies()
+  }, [movie])
   
-  // Fetch related movies based on genres
-  const fetchRelatedMovies = async (currentMovie: Movie) => {
-    if (!currentMovie || !currentMovie.genres || currentMovie.genres.length === 0) return
-    
-    setIsLoadingRelated(true)
-    try {
-      // Get genre IDs from current movie
-      const genreIds = currentMovie.genres.map(genre => String(genre.id))
-      
-      if (genreIds.length > 0) {
-        // Use the first genre to find related movies
-        const response = await fetch(`/api/movies/search?genre=${genreIds[0]}&limit=10`)
-        const data = await response.json()
+  // Fetch top rated movies 
+  useEffect(() => {
+    const fetchTopRatedMovies = async () => {
+      try {
+        // Fetch top rated movies from the API
+        const response = await axios.get(`${API_ENDPOINTS.MOVIES.LIST}?sort=rating&order=DESC&limit=6`)
         
-        // Filter out the current movie and limit to 5 movies
-        const filtered = data.movies.filter((m: Movie) => String(m.id) !== String(currentMovie.id)).slice(0, 5)
-        setRelatedMovies(filtered)
+        // Filter out the current movie if it's in the list
+        const filtered = response.data.movies.filter((m: Movie) => 
+          movie ? m.id !== movie.id : true
+        )
+        
+        // Sort by rating in descending order and take the top 5
+        const sorted = filtered.sort((a: Movie, b: Movie) => 
+          (b.rating || 0) - (a.rating || 0)
+        ).slice(0, 5)
+        
+        setTopRatedMovies(sorted)
+      } catch (err) {
+        console.error('Error fetching top rated movies:', err)
       }
-    } catch (err) {
-      console.error('Error fetching related movies:', err)
-    } finally {
-      setIsLoadingRelated(false)
     }
-  }
+    
+    fetchTopRatedMovies()
+  }, [movie])
 
   const toggleDescription = () => {
     setShowFullDescription(!showFullDescription)
   }
 
-  // If loading, show skeleton UI
-  if (loadingMovie && !movie) {
-    return <MovieDetailSkeleton />
+  useEffect(() => {
+    // Reset description state when movie changes
+    setShowFullDescription(false)
+  }, [movieId])
+
+  // Update the episode watch url generation
+  const generateEpisodeLink = (movie: Movie, episode: Episode) => {
+    return `/watch/${generateMovieUrl(movie.id, movie.title).split('/').pop()}?episode=${episode.id}&ep=${episode.episodeNumber}`;
   }
-  
-  // If error, show error message
-  if (error) {
+
+  // Loading state
+  if (isLoading) {
     return (
-      <Alert variant="destructive" className="max-w-3xl mx-auto my-8">
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>{error}</AlertDescription>
-      </Alert>
+      <div className="min-h-screen bg-gray-950">
+        <div className="h-[50vh] md:h-[75vh] bg-gray-800 animate-pulse">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full pt-[40vh] md:pt-[65vh]">
+            <Skeleton className="h-10 w-3/4 mb-4" />
+            <Skeleton className="h-6 w-1/2 mb-6" />
+            <div className="flex gap-2 mb-4">
+              <Skeleton className="h-8 w-20" />
+              <Skeleton className="h-8 w-20" />
+              <Skeleton className="h-8 w-20" />
+            </div>
+          </div>
+        </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-8">
+            <div>
+              <Skeleton className="h-80 w-full mb-6" />
+            </div>
+            <div>
+              <Skeleton className="h-60 w-full" />
+            </div>
+          </div>
+        </div>
+      </div>
     )
   }
-  
-  // If no movie data, show empty state
-  if (!movie) {
+
+  // Error state
+  if (error || !movie) {
     return (
-      <div className="text-center py-20">
-        <h2 className="text-2xl font-bold mb-2">Không tìm thấy phim</h2>
-        <p className="text-muted-foreground mb-4">Phim bạn đang tìm không tồn tại hoặc đã bị xóa.</p>
-        <Button asChild>
-          <Link href="/">Quay về trang chủ</Link>
-        </Button>
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+        <div className="text-center p-8 max-w-md mx-auto">
+          <h2 className="text-2xl font-bold text-white mb-4">Không thể tải thông tin phim</h2>
+          <p className="text-gray-400 mb-6">{error || 'Đã xảy ra lỗi khi tải thông tin phim. Vui lòng thử lại sau.'}</p>
+          <Button asChild>
+            <Link href="/">Quay lại trang chủ</Link>
+          </Button>
+        </div>
       </div>
     )
   }
@@ -142,15 +158,15 @@ const MovieDetail = ({ movieId }: MovieDetailProps) => {
       <div className="relative w-full h-[50vh] md:h-[75vh] overflow-hidden">
         {/* Background Image with Overlay */}
         <div className="absolute inset-0 w-full h-full">
-          <div className="absolute inset-0 bg-gradient-to-r from-gray-800/70 to-gray-900/50" />
-          <div className="absolute inset-0 bg-[url('/images/noise.png')] opacity-[0.02] pointer-events-none" />
-          <div className="absolute inset-0 bg-gradient-to-t from-gray-800/70 via-gray-900/80 to-black/10" />
+          <div className="absolute inset-0 bg-gradient-to-r from-gray-800/40 to-gray-900/40 mix-blend-multiply z-5" />
+          <div className="absolute inset-0 bg-[url('/images/noise.png')] opacity-[0.02] mix-blend-overlay pointer-events-none z-5" />
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/90 to-background/30" />
         </div>
 
         {/* Poster for mobile */}
         <div className="absolute top-4 left-4 md:hidden w-32 h-48 rounded-xl overflow-hidden shadow-2xl shadow-indigo-500/10">
           <Image 
-            src={movie.posterUrl || "/placeholder.svg"} 
+            src={"/images/test.jpg"} 
             alt={movie.title} 
             fill 
             priority
@@ -166,7 +182,7 @@ const MovieDetail = ({ movieId }: MovieDetailProps) => {
               {/* Poster with glow effect */}
               <div className="hidden md:block w-48 h-72 md:w-64 md:h-96 flex-shrink-0 relative rounded-xl overflow-hidden shadow-2xl shadow-indigo-500/10 group">
                 <Image 
-                  src={movie.posterUrl || "/placeholder.svg"} 
+                  src={ "/placeholder.svg"} 
                   alt={movie.title} 
                   fill 
                   className="object-cover transform group-hover:scale-105 transition-transform duration-700" 
@@ -246,14 +262,14 @@ const MovieDetail = ({ movieId }: MovieDetailProps) => {
                 <div className="flex flex-wrap gap-1 md:gap-3">
                   {episodes.length > 0 ? (
                     <Button asChild size="sm" className="rounded-full gap-1 md:gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 border-none text-white shadow-lg px-2 md:px-4 py-1 md:py-3 text-xs md:text-base">
-                      <Link href={generateWatchUrl(movie.id, movie.title, episodes[0].id, episodes[0].episodeNumber)}>
+                      <Link href={generateEpisodeLink(movie, episodes[0])}>
                         <Play className="h-3 w-3 md:h-5 md:w-5 fill-current" />
                         Xem ngay
                       </Link>
                     </Button>
                   ) : (
                     <Button asChild size="sm" className="rounded-full gap-1 md:gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 border-none text-white shadow-lg px-2 md:px-4 py-1 md:py-3 text-xs md:text-base">
-                      <Link href={movie.trailerUrl || "#"}>
+                      <Link href={`/watch/${generateMovieUrl(movie.id, movie.title).split('/').pop()}`}>
                         <Play className="h-3 w-3 md:h-5 md:w-5 fill-current" />
                         Xem phim
                       </Link>
@@ -434,20 +450,22 @@ const MovieDetail = ({ movieId }: MovieDetailProps) => {
                 </Card>
 
                 {/* Có thể bạn cũng thích */}
-                <Card className="bg-gradient-to-br from-gray-800/70 to-gray-900/50 border-gray-700 overflow-hidden">
-                  <div className="absolute inset-0 bg-[url('/images/noise.png')] opacity-5 pointer-events-none"></div>
-                  <CardContent className="px-4 relative">
-                    <MovieSlider
-                      title="Có thể bạn cũng thích"
-                      movies={relatedMovies}
-                      variant="trending"
-                      maxItems={5}
-                      className="mb-0"
-                      size="sm" 
-                      showPopover={false}
-                    />
-                  </CardContent>
-                </Card>
+                {relatedMovies.length > 0 && (
+                  <Card className="bg-gradient-to-br from-gray-800/60 to-gray-900/60 border-gray-700 overflow-hidden">
+                    <div className="absolute inset-0 bg-[url('/images/noise.png')] opacity-5 mix-blend-overlay pointer-events-none"></div>
+                    <CardContent className="px-4 relative">
+                      <MovieSlider
+                        title="Có thể bạn cũng thích"
+                        movies={relatedMovies}
+                        variant="trending"
+                        maxItems={5}
+                        className="mb-0"
+                        size="sm" 
+                        showPopover={false}
+                      />
+                    </CardContent>
+                  </Card>
+                )}
               </TabsContent>  
               
               {/* Episodes Tab */}
@@ -467,7 +485,7 @@ const MovieDetail = ({ movieId }: MovieDetailProps) => {
                         {episodes.map((episode) => (
                           <Link
                             key={episode.id}
-                            href={generateWatchUrl(movie.id, movie.title, episode.id, episode.episodeNumber)}
+                            href={generateEpisodeLink(movie, episode)}
                             className="group overflow-hidden rounded-xl hover:shadow-lg hover:shadow-indigo-900/10 border border-gray-700 hover:border-indigo-500/30 transition-all flex flex-col"
                             onMouseEnter={() => setActiveEpisode(String(episode.id))}
                             onMouseLeave={() => setActiveEpisode(null)}
@@ -510,11 +528,12 @@ const MovieDetail = ({ movieId }: MovieDetailProps) => {
                               // Desktop view with thumbnails
                               <>
                                 <div className="relative aspect-video overflow-hidden">
-                                  {/* <img 
-                                    src={episode.thumbnailUrl} 
+                                  <Image 
+                                    src={episode.thumbnailUrl || "/placeholder.svg"} 
                                     alt={episode.title}
-                                    className="w-full h-full object-cover"
-                                  /> */}
+                                    fill
+                                    className="object-cover"
+                                  />
                                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                     <div className="w-12 h-12 rounded-full bg-indigo-600/80 flex items-center justify-center">
                                       <Play className="h-6 w-6 text-white fill-current ml-1" />
@@ -584,7 +603,7 @@ const MovieDetail = ({ movieId }: MovieDetailProps) => {
                 </h2>
                 
                 <div className="space-y-4">
-                  {relatedMovies.map((movie, index) => (
+                  {topRatedMovies.map((movie, index) => (
                     <Link
                       key={movie.id}
                       href={generateMovieUrl(movie.id, movie.title)}
@@ -604,7 +623,7 @@ const MovieDetail = ({ movieId }: MovieDetailProps) => {
                       </div>
                       <div className="w-16 h-22 flex-shrink-0 rounded-md overflow-hidden relative">
                         <Image
-                          src={movie.posterUrl || "/placeholder.svg"}
+                          src={"/placeholder.svg"}
                           alt={movie.title}
                           fill
                           className="object-cover"
@@ -615,43 +634,6 @@ const MovieDetail = ({ movieId }: MovieDetailProps) => {
                 </div>
               </CardContent>
             </Card>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// Skeleton component for loading state
-const MovieDetailSkeleton = () => {
-  return (
-    <div className="animate-pulse">
-      <div className="relative w-full h-[50vh] md:h-[75vh] bg-gray-800/50">
-        <div className="absolute inset-0 flex items-end">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full pb-6 md:pb-12">
-            <div className="flex flex-col md:flex-row md:items-end gap-4 md:gap-6">
-              <div className="hidden md:block w-64 h-96 flex-shrink-0 bg-gray-700 rounded-xl"></div>
-              <div className="w-full">
-                <Skeleton className="w-3/4 h-10 mb-2" />
-                <Skeleton className="w-1/2 h-5 mb-4" />
-                <div className="flex gap-2 mb-4">
-                  <Skeleton className="w-20 h-8 rounded-full" />
-                  <Skeleton className="w-20 h-8 rounded-full" />
-                </div>
-                <Skeleton className="w-full h-20" />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
-        <div className="grid grid-cols-1 md:grid-cols-[300px_1fr] gap-8">
-          <Skeleton className="w-full h-96 rounded-xl" />
-          <div>
-            <Skeleton className="w-full h-10 mb-4" />
-            <Skeleton className="w-full h-40 mb-4" />
-            <Skeleton className="w-full h-60" />
           </div>
         </div>
       </div>

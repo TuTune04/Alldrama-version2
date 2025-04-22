@@ -7,15 +7,22 @@ import { useEffect, useState, useRef } from "react"
 import { generateMovieUrl } from "@/utils/url"
 import { Movie } from "@/types"
 import MoviePopover from "./MoviePopover"
+import { Skeleton } from "@/components/ui/skeleton"
 
 interface TopMoviesSectionProps {
-  movies: Movie[]
+  movies?: Movie[]
   title?: string
   limit?: number
+  isLoading?: boolean
 }
 
-const TopMoviesSection = ({ movies, title = "Top 10 Phim Xem Nhiều", limit = 10 }: TopMoviesSectionProps) => {
-  const topMovies = movies.slice(0, limit)
+const TopMoviesSection = ({ 
+  movies = [], 
+  title = "Top 10 Phim Xem Nhiều", 
+  limit = 10,
+  isLoading = false
+}: TopMoviesSectionProps) => {
+  const topMovies = movies?.slice(0, limit) || []
   const sliderRef = useRef<HTMLDivElement>(null)
   const [scrollPosition, setScrollPosition] = useState(0)
   
@@ -36,6 +43,29 @@ const TopMoviesSection = ({ movies, title = "Top 10 Phim Xem Nhiều", limit = 1
       sliderRef.current.scrollTo({ left: newPosition, behavior: 'smooth' })
       setScrollPosition(newPosition)
     }
+  }
+
+  // Hiển thị skeleton khi đang loading hoặc không có dữ liệu
+  if (isLoading || topMovies.length === 0) {
+    return (
+      <div className="py-10 bg-gradient-to-b from-[#0F111A] to-[#151823]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center mb-5">
+            <h2 className="text-2xl md:text-3xl font-bold text-white flex items-center">
+              <span className="bg-gradient-to-r from-amber-500 to-red-500 bg-clip-text text-transparent">{title}</span>
+            </h2>
+          </div>
+          
+          <div className="flex gap-3 overflow-hidden pb-6">
+            {[...Array(5)].map((_, index) => (
+              <div key={index} className="relative flex-shrink-0 w-[calc(100%/5-12px)] min-w-[190px] py-4">
+                <Skeleton className="aspect-[2/3] w-full rounded-lg" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
   }
   
   return (
@@ -79,7 +109,7 @@ const TopMoviesSection = ({ movies, title = "Top 10 Phim Xem Nhiều", limit = 1
                   variant="simple"
                   showPopover={false}
                   trigger={
-                    <div className="relative transition-all duration-300 hover:z-50">
+                    <div className="relative transition-all duration-300 hover:z-5">
                       <Link href={generateMovieUrl(movie.id, movie.title)}>
                         {/* Card thiết kế với hiệu ứng cắt chéo mạnh hơn */}
                         <div 
@@ -94,7 +124,7 @@ const TopMoviesSection = ({ movies, title = "Top 10 Phim Xem Nhiều", limit = 1
                           {/* Poster Image */}
                           <div className="relative aspect-[2/3] w-full">
                             <Image 
-                              src={movie.posterUrl || "/placeholder.svg"} 
+                              src={"/placeholder.svg"} 
                               alt={movie.title}
                               fill
                               className="object-cover group-hover:brightness-105"
@@ -104,8 +134,12 @@ const TopMoviesSection = ({ movies, title = "Top 10 Phim Xem Nhiều", limit = 1
                             
                             {/* Overlay badges */}
                             <div className="absolute bottom-1.5 left-1.5 flex gap-1">
-                              <span className="bg-[#4B5563] text-white text-[9px] px-1 py-0.5 rounded-md font-medium">PD.{movie.releaseYear.toString().substring(2)}</span>
-                              <span className="bg-[#22C55E] text-white text-[9px] px-1 py-0.5 rounded-md font-medium">TM.{movie.releaseYear.toString().substring(2)}</span>
+                              <span className="bg-[#4B5563] text-white text-[9px] px-1 py-0.5 rounded-md font-medium">
+                                PD.{movie.releaseYear ? movie.releaseYear.toString().substring(2) : 'NA'}
+                              </span>
+                              <span className="bg-[#22C55E] text-white text-[9px] px-1 py-0.5 rounded-md font-medium">
+                                TM.{movie.releaseYear ? movie.releaseYear.toString().substring(2) : 'NA'}
+                              </span>
                             </div>
                             
                             {/* Gradient overlay */}
@@ -120,12 +154,19 @@ const TopMoviesSection = ({ movies, title = "Top 10 Phim Xem Nhiều", limit = 1
                             </p>
                             
                             <div className="flex items-center justify-between">
-                              <div className="flex items-center text-[10px] text-gray-300 gap-0.5">
-                                <span className="px-1 py-0.5 bg-gray-800 rounded-sm">T{movie.releaseYear.toString().substring(2)}</span>
-                                <span>•</span>
-                                <div className="flex items-center ml-0.5">
-                                  <Star className="w-2 h-2 text-[#FFD95A] mr-0.5" fill="#FFD95A" />
-                                  <span className="text-[#FFD95A] font-medium">{movie.rating ? movie.rating.toFixed(1) : 'N/A'}</span>
+                              <div className="flex items-center text-[10px] text-gray-300 gap-2">
+                                <span className="px-1 py-0.5 bg-gray-800 rounded-sm">
+                                  T{movie.releaseYear ? movie.releaseYear.toString().substring(2) : 'NA'}
+                                </span>
+                                <div className="flex items-center gap-1">
+                                  <Star className="w-3 h-3 text-[#FFD95A]" fill="#FFD95A" />
+                                  <span className="text-[#FFD95A] font-medium">
+                                    {movie.rating 
+                                      ? (typeof movie.rating === 'number' 
+                                          ? movie.rating.toFixed(1) 
+                                          : movie.rating)
+                                      : 'N/A'}
+                                  </span>
                                 </div>
                               </div>
                               
@@ -165,8 +206,8 @@ const TopMoviesSection = ({ movies, title = "Top 10 Phim Xem Nhiều", limit = 1
           </div>
           
           {/* Gradient fades on sides */}
-          <div className="absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-[#0F111A] to-transparent z-10"></div>
-          <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-[#0F111A] to-transparent z-10"></div>
+          <div className="absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-[#0F111A] to-transparent"></div>
+          <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-[#0F111A] to-transparent"></div>
         </div>
       </div>
     </div>

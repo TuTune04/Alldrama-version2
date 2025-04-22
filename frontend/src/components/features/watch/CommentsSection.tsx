@@ -2,7 +2,11 @@ import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
-export default function CommentsSection() {
+interface CommentsSectionProps {
+  contentId: string;
+}
+
+export default function CommentsSection({ contentId }: CommentsSectionProps) {
   // Define the common glass background style
   const GLASS_BG = "bg-gradient-to-br from-gray-800/70 to-gray-900/80 border-gray-700/60 backdrop-blur-sm shadow-lg";
   

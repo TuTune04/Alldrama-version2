@@ -94,3 +94,12 @@ export function generateWatchUrl(
   // Nếu không có episodeId, đây là trang xem phim
   return `/watch/${createSlug(movieTitle)}`;
 }
+
+// Add a utility function to debug URL generation
+export function debugUrlGeneration(id: string | number, title: string): void {
+  console.log(`Generating URL for movie: ID=${id}, Title=${title}`);
+  const slug = createSlug(title);
+  console.log(`Generated slug: ${slug}`);
+  const fullUrl = `/movie/${slug}-${id}`;
+  console.log(`Final URL: ${fullUrl}`);
+}

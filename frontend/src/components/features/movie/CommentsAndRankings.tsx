@@ -94,7 +94,7 @@ const TrendingMovie = ({ movie, rank, trend = 'up' }: TrendingMovieProps) => {
       </div>
       <div className="h-12 w-[22px] aspect-[2/3] rounded-sm overflow-hidden flex-shrink-0">
         <img 
-          src={movie.posterUrl} 
+          src={"/placeholder.svg"} 
           alt={movie.title} 
           className="h-full w-full object-cover"
         />
@@ -171,7 +171,7 @@ const MostLiked = ({ movies = mockMovies.slice(0, 5) }: MostLikedProps) => {
             </div>
             <div className="h-12 w-[22px] aspect-[2/3] rounded-sm overflow-hidden flex-shrink-0">
               <img 
-                src={movie.posterUrl} 
+                src={"/images/placeholder.svg"} 
                 alt={movie.title} 
                 className="h-full w-full object-cover"
               />

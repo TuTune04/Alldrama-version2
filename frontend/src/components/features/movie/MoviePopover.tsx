@@ -35,7 +35,7 @@ const MoviePopover = ({
   const popoverRef = useRef<HTMLDivElement>(null)
   const movieDetailUrl = generateMovieUrl(movie.id, movie.title)
   const watchUrl = generateMovieUrl(movie.id, movie.title)
-  const imageUrl = movie.posterUrl || "/images/test.jpg"
+  const imageUrl = "/images/test.jpg"
 
   const sizeConfig = {
     sm: {
@@ -69,10 +69,9 @@ const MoviePopover = ({
 
   // On mobile or if showPopover is false, just render the trigger without popover functionality
   if (isMobile || !showPopover) {
+    // Trả về trigger element mà không wrap bằng Link để tránh lỗi Link lồng trong Link
     return (
-      <Link href={generateMovieUrl(movie)}>
-        {triggerElement}
-      </Link>
+      <>{triggerElement}</>
     )
   }
 

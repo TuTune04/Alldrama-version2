@@ -2,7 +2,7 @@
 
 import { FileQuestion, ChevronLeft, ChevronRight } from "lucide-react"
 import MovieCard from "./MovieCard"
-import type { Movie, MovieSearchParams } from "@/types"
+import type { Movie } from "@/types"
 import { motion } from "framer-motion"
 import MoviePopover from "./MoviePopover"
 import Link from "next/link"
@@ -10,21 +10,15 @@ import { generateMovieUrl } from "@/utils/url"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 import { useState, useEffect, useCallback } from "react"
-import { useMovies } from "@/hooks/api/useMovies"
 import React from "react"
 
 interface MovieGridProps {
-  movies?: Movie[]
+  movies: Movie[] // Make this required
   isLoading?: boolean
   emptyMessage?: string
   layout?: 'grid' | 'classic'
   onHover?: (movie: Movie) => void
-  // Thêm props liên quan đến API
-  endpoint?: "newest" | "popular" | "trending" | "featured"
-  genreId?: string | number
-  searchQuery?: string
-  limit?: number
-  // Thêm props hỗ trợ phân trang
+  // Pagination props
   showPagination?: boolean
   totalPages?: number
   currentPage?: number
@@ -33,108 +27,15 @@ interface MovieGridProps {
 
 const MovieGrid = ({
   movies,
-  isLoading: externalLoading = false,
+  isLoading = false,
   emptyMessage = "Không tìm thấy phim nào",
   layout = 'grid',
   onHover,
-  endpoint,
-  genreId,
-  searchQuery,
-  limit = 20,
   showPagination = false,
   totalPages = 1,
   currentPage = 1,
   onPageChange,
 }: MovieGridProps) => {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  
-  const { 
-    movies: swrMovies,
-    searchMovies,
-    loading: swrLoading
-  } = useMovies();
-  
-  const fetchMovies = useCallback(async () => {
-    // Nếu đã truyền movies thì sử dụng chúng, không cần gọi API
-    if (movies) {
-      return;
-    }
-    
-    // Nếu không có endpoint hoặc genreId thì không gọi API
-    if (!endpoint && !genreId && !searchQuery) {
-      return;
-    }
-    
-    setLoading(true);
-    setError(null);
-    
-    try {
-      // Chuẩn bị search params theo props
-      const params: MovieSearchParams = { 
-        limit: limit || 20,
-        page: currentPage
-      };
-      
-      if (searchQuery) {
-        params.q = searchQuery;
-      }
-      
-      if (genreId) {
-        // Convert genreId to number because MovieSearchParams.genre requires number
-        const genreIdAsNumber = typeof genreId === 'string' ? parseInt(genreId, 10) : genreId;
-        if (!isNaN(genreIdAsNumber)) {
-          params.genre = genreIdAsNumber;
-        }
-      }
-      
-      if (endpoint) {
-        // Các endpoint đặc biệt sẽ map sang sort params
-        switch (endpoint) {
-          case "newest":
-            params.sort = "createdAt";
-            params.order = "DESC";
-            break;
-          case "popular":
-            params.sort = "views";
-            params.order = "DESC";
-            break;
-          case "trending":
-            params.sort = "rating";
-            params.order = "DESC";
-            break;
-          case "featured":
-            // Sử dụng solution khác cho featured movies (sort by rating)
-            params.sort = "rating";
-            params.order = "DESC";
-            // Trong API service sẽ cần thêm logic để xử lý featured movies
-            break;
-        }
-      }
-      
-      // Sử dụng searchMovies để fetch dữ liệu
-      await searchMovies(params);
-      
-    } catch (err) {
-      console.error("Error fetching movies:", err);
-      setError("Không thể tải dữ liệu phim");
-    } finally {
-      setLoading(false);
-    }
-  }, [
-    movies, 
-    endpoint, 
-    genreId, 
-    searchQuery,
-    limit,
-    currentPage,
-    searchMovies
-  ]);
-  
-  useEffect(() => {
-    fetchMovies();
-  }, [fetchMovies]);
-  
   // Xử lý chuyển trang
   const handlePageChange = useCallback((newPage: number) => {
     if (onPageChange) {
@@ -142,24 +43,11 @@ const MovieGrid = ({
     }
   }, [onPageChange]);
   
-  // Sử dụng dữ liệu từ API hoặc props
-  const displayMovies = movies || swrMovies || [];
-  // Xác định trạng thái loading tổng hợp
-  const isLoadingState = externalLoading || loading || swrLoading;
   // Xác định trạng thái trống
-  const isEmpty = !isLoadingState && (!displayMovies || displayMovies.length === 0);
+  const isEmpty = !isLoading && (!movies || movies.length === 0);
   
-  // Render error state
-  if (error) {
-    return (
-      <div className="bg-red-900/30 border border-red-700 rounded-md p-4">
-        <p className="text-red-300">{error}</p>
-      </div>
-    );
-  }
-
   // Render loading skeleton
-  if (isLoadingState) {
+  if (isLoading) {
     return (
       <div>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
@@ -248,40 +136,95 @@ const MovieGrid = ({
     return (
       <div>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
-          {displayMovies.map((movie) => (
-            <motion.div
-              key={movie.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-              onMouseEnter={() => onHover && onHover(movie)}
+          {movies.map((movie) => (
+            <div 
+              key={movie.id} 
+              onMouseEnter={() => onHover?.(movie)}
             >
-              <Link href={generateMovieUrl(movie.id, movie.title)}>
-                <MovieCard movie={movie} />
-              </Link>
-            </motion.div>
+              <MovieCard movie={movie} />
+            </div>
           ))}
         </div>
-        
         {renderPagination()}
       </div>
     )
   }
 
-  // Render classic layout (with popover)
+  // Render classic layout
   return (
     <div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
-        {displayMovies.map((movie) => (
-          <MoviePopover key={movie.id} movie={movie}>
-            <MovieCard movie={movie} />
-          </MoviePopover>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {movies.map((movie) => (
+          <MoviePopover 
+            key={movie.id} 
+            movie={movie} 
+            size="lg" 
+            trigger={
+              <Link href={generateMovieUrl(movie.id, movie.title)}>
+                <motion.div 
+                  className="group relative bg-gray-900 rounded-lg overflow-hidden shadow-lg hover:shadow-red-900/20 transition duration-300 flex h-full flex-col"
+                  layoutId={`movie-${movie.id}`}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                  onHoverStart={() => onHover?.(movie)}
+                  whileHover={{ scale: 1.01 }}
+                >
+                  {/* Aspect ratio div for the image */}
+                  <div className="relative aspect-video">
+                    <img 
+                      src={movie.posterUrl || '/placeholder-landscape.jpg'} 
+                      alt={movie.title}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-gray-900 to-transparent opacity-60 group-hover:opacity-80 transition-opacity"></div>
+                  </div>
+                  
+                  <div className="p-4 flex-grow flex flex-col">
+                    <h3 className="text-lg font-semibold text-white group-hover:text-red-500 transition-colors line-clamp-2">{movie.title}</h3>
+                    
+                    <div className="flex items-center mt-1 text-sm text-gray-400">
+                      <span>{movie.releaseYear}</span>
+                      {movie.duration && (
+                        <>
+                          <span className="mx-2">•</span>
+                          <span>{Math.floor(movie.duration / 60)}h {movie.duration % 60}m</span>
+                        </>
+                      )}
+                    </div>
+                    
+                    <p className="mt-3 text-gray-400 text-sm line-clamp-2">
+                      {movie.description || ''}
+                    </p>
+                    
+                    <div className="mt-auto pt-4 flex justify-between items-center">
+                      <div className="flex items-center">
+                        <div className="bg-red-600 text-white font-medium text-xs px-2 py-1 rounded">
+                          IMDb
+                        </div>
+                        <span className="text-amber-400 ml-2 font-medium">{movie.rating || 8.5}</span>
+                      </div>
+                      
+                      {movie.genres && movie.genres.length > 0 && (
+                        <div>
+                          <span className="bg-gray-800 text-gray-300 text-xs px-2 py-1 rounded">
+                            {typeof movie.genres[0] === 'string' 
+                              ? movie.genres[0] 
+                              : movie.genres[0]?.name || 'Action'}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              </Link>
+            }
+          />
         ))}
       </div>
-      
       {renderPagination()}
     </div>
   )
 }
 
-export default React.memo(MovieGrid)
+export default MovieGrid;

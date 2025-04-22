@@ -13,9 +13,10 @@ import { Movie } from '@/types'
 import { generateMovieUrl } from '@/utils/url'
 import { useMobile } from '@/hooks/use-mobile'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Skeleton } from '@/components/ui/skeleton'
 
 export interface FeaturedContentSwitcherProps {
-  items: Movie[]
+  items?: Movie[]
   title?: string
   variant?: 'default' | 'indigo' | 'amber' | 'dark'
   aspectRatio?: 'video' | 'poster' | 'banner' | 'landscape' | 'portrait'
@@ -30,10 +31,11 @@ export interface FeaturedContentSwitcherProps {
   autoPlayInterval?: number
   defaultIndex?: number
   wrapContainer?: boolean
+  isLoading?: boolean
 }
 
 const FeaturedContentSwitcher = ({
-  items,
+  items = [],
   title = 'Nổi bật',
   variant = 'default',
   aspectRatio = 'video',
@@ -47,11 +49,12 @@ const FeaturedContentSwitcher = ({
   autoPlay = false,
   autoPlayInterval = 5000,
   defaultIndex = 0,
-  wrapContainer = true
+  wrapContainer = true,
+  isLoading = false
 }: FeaturedContentSwitcherProps) => {
   const [selectedIndex, setSelectedIndex] = useState(defaultIndex)
-  const selectedItem = items[selectedIndex]
-  const totalItems = items.length
+  const totalItems = items?.length || 0
+  const selectedItem = totalItems > 0 ? items[selectedIndex] : null
   const isMobile = useMobile()
   
   // Touch handling for mobile
@@ -173,15 +176,17 @@ const FeaturedContentSwitcher = ({
   
   // Handle item selection
   const handleItemSelect = useCallback((index: number) => {
+    if (!items || items.length === 0) return
+    
     setSelectedIndex(index)
-    if (onItemChange) {
+    if (onItemChange && items[index]) {
       onItemChange(items[index], index)
     }
   }, [items, onItemChange])
   
   // Auto play functionality
   useEffect(() => {
-    if (!autoPlay) return
+    if (!autoPlay || totalItems === 0) return
 
     const interval = setInterval(() => {
       setSelectedIndex((prev) => (prev + 1) % totalItems)
@@ -192,6 +197,8 @@ const FeaturedContentSwitcher = ({
   
   // Keyboard navigation
   useEffect(() => {
+    if (totalItems === 0) return
+    
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowLeft') {
         setSelectedIndex((prev) => (prev - 1 + totalItems) % totalItems)
@@ -204,6 +211,26 @@ const FeaturedContentSwitcher = ({
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [totalItems])
   
+  // Hiển thị skeleton khi đang loading hoặc không có dữ liệu
+  if (isLoading) {
+    return wrapContainer ? (
+      <section className="bg-gradient-to-b from-gray-950 to-black">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="py-12">
+            <Skeleton className="h-8 w-48 mb-6" />
+            <Skeleton className="w-full aspect-[21/9] rounded-lg" />
+          </div>
+        </div>
+      </section>
+    ) : (
+      <div className="py-12">
+        <Skeleton className="h-8 w-48 mb-6" />
+        <Skeleton className="w-full aspect-[21/9] rounded-lg" />
+      </div>
+    )
+  }
+  
+  // Return null if no items
   if (!items || items.length === 0) return null
   
   // Calculate the number of thumbnails to show based on viewport size
@@ -233,73 +260,82 @@ const FeaturedContentSwitcher = ({
         )}>
           <CardContent className="p-0">
             <div className="relative w-full aspect-[21/9] overflow-hidden">
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={selectedIndex}
-                  initial={{ opacity: 0, scale: 1.05 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ duration: 0.4, ease: "easeInOut" }}
-                  className="absolute inset-0"
-                >
-                  <Image
-                    src={selectedItem.posterUrl}
-                    alt={selectedItem.title}
-                    fill
-                    priority
-                    className="object-cover"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
-                </motion.div>
-              </AnimatePresence>
-              <div className={cn(
-                "absolute bottom-0 left-0 w-full p-2",
-                viewportSize.width < 640 ? "" : "p-6 pb-16"
-              )}>
-                <div className="flex flex-col gap-2 max-w-2xl">
-                  <h3 className={cn(` font-bold bg-gradient-to-r ${styles.titleGradient} bg-clip-text text-transparent`, viewportSize.width < 640 ? "text-base" : "text-3xl")}>
-                    {selectedItem.title}
-                  </h3>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-xs bg-white/10 text-white">
-                      {selectedItem.releaseYear}
-                    </Badge>
-                    {selectedItem.rating && (
-                      <Badge variant="outline" className="flex items-center gap-1 text-xs bg-white/10 text-white">
-                        <Star className="h-3 w-3" />
-                        {selectedItem.rating}
-                      </Badge>
-                    )}
-                  </div>
-                  <p className="text-sm text-white/80 line-clamp-2 md:line-clamp-3">
-                    {selectedItem.summary}
-                  </p>
-                  <div className="flex items-center gap-2 mt-2">
-                    <Button
-                      variant="default"
-                      size="sm"
-                      className="gap-1"
-                      asChild
-                    >
-                      <Link href={`/watch/${String(selectedItem.id)}`}>
-                        <Play className="h-3 w-3" />
-                        Xem ngay
-                      </Link>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-1 bg-white/10 hover:bg-white/20 text-sm text-white"
-                      asChild
-                    >
-                      <Link href={generateMovieUrl(String(selectedItem.id), selectedItem.title)}>
-                        <Info className="h-3 w-3" />
-                        Chi tiết
-                      </Link>
-                    </Button>
+              {selectedItem && (
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={selectedIndex}
+                    initial={{ opacity: 0, scale: 1.05 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ duration: 0.4, ease: "easeInOut" }}
+                    className="absolute inset-0"
+                  >
+                    <Image
+                      src={"/placeholder.svg"}
+                      alt={selectedItem.title || "Movie poster"}
+                      fill
+                      priority
+                      className="object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
+                  </motion.div>
+                </AnimatePresence>
+              )}
+              
+              {selectedItem && (
+                <div className={cn(
+                  "absolute bottom-0 left-0 w-full p-2",
+                  viewportSize.width < 640 ? "" : "p-6 pb-16"
+                )}>
+                  <div className="flex flex-col gap-2 max-w-2xl">
+                    <h3 className={cn(` font-bold bg-gradient-to-r ${styles.titleGradient} bg-clip-text text-transparent`, viewportSize.width < 640 ? "text-base" : "text-3xl")}>
+                      {selectedItem.title}
+                    </h3>
+                    <div className="flex items-center gap-2">
+                      {selectedItem.releaseYear && (
+                        <Badge variant="outline" className="text-xs bg-white/10 text-white">
+                          {selectedItem.releaseYear}
+                        </Badge>
+                      )}
+                      {selectedItem.rating && (
+                        <Badge variant="outline" className="flex items-center gap-1 text-xs bg-white/10 text-white">
+                          <Star className="h-3 w-3" />
+                          {typeof selectedItem.rating === 'number' 
+                            ? selectedItem.rating.toFixed(1) 
+                            : selectedItem.rating}
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-white/80 line-clamp-2 md:line-clamp-3">
+                      {selectedItem.summary || "Đang cập nhật thông tin phim..."}
+                    </p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <Button
+                        variant="default"
+                        size="sm"
+                        className="gap-1"
+                        asChild
+                      >
+                        <Link href={`/watch/${String(selectedItem.id)}`}>
+                          <Play className="h-3 w-3" />
+                          Xem ngay
+                        </Link>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1 bg-white/10 hover:bg-white/20 text-sm text-white"
+                        asChild
+                      >
+                        <Link href={generateMovieUrl(String(selectedItem.id), selectedItem.title)}>
+                          <Info className="h-3 w-3" />
+                          Chi tiết
+                        </Link>
+                      </Button>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -313,7 +349,7 @@ const FeaturedContentSwitcher = ({
                 <div className="inline-flex bg-black/70 backdrop-blur-md p-2 rounded-xl space-x-6 shadow-xl">
                   {items.slice(0, visibleThumbs).map((item, index) => (
                     <div
-                      key={item.id}
+                      key={item.id || index}
                       className={cn(
                         'relative rounded-md overflow-hidden transition-all duration-200 cursor-pointer h-27 w-20',
                         index === selectedIndex 
@@ -323,8 +359,8 @@ const FeaturedContentSwitcher = ({
                       onClick={() => handleItemSelect(index)}
                     >
                       <img
-                        src={item.posterUrl}
-                        alt={item.title}
+                        src={ "/placeholder.svg"}
+                        alt={item.title || `Movie ${index + 1}`}
                         className="w-full h-full object-cover"
                       />
                       <div className={cn(
@@ -333,7 +369,7 @@ const FeaturedContentSwitcher = ({
                           ? `bg-gradient-to-r ${styles.gradient} text-white`
                           : 'bg-black/60 text-gray-300'
                       )}>
-                        {item.title}
+                        {item.title || `Movie ${index + 1}`}
                       </div>
                       {index === selectedIndex && (
                         <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
