@@ -86,12 +86,12 @@ export const useHomepageData = () => {
   }, []);
 
   const fetchLatestData = async (showLoading = true) => {
-    try {
+      try {
       if (showLoading) {
         setIsLoading(true);
       }
-      setError(null);
-      
+        setError(null);
+        
       // Tạo AbortController mới cho request này
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
@@ -112,7 +112,7 @@ export const useHomepageData = () => {
       const popular = popularResult.status === 'fulfilled' ? popularResult.value : [];
       const featured = featuredResult.status === 'fulfilled' ? featuredResult.value : [];
       const trending = trendingResult.status === 'fulfilled' ? trendingResult.value : [];
-      
+        
       // 2. Fetch genres song song - sử dụng Promise.allSettled để không bị lỗi nếu 1 request thất bại
       const genrePromises = [
         movieService.getMoviesByGenre(1, 10),
@@ -135,8 +135,8 @@ export const useHomepageData = () => {
         genres[3] = dramaResult.value.movies;
       } else {
         genres[3] = [];
-      }
-      
+        }
+        
       // Chỉ cập nhật state nếu component vẫn còn mounted
       if (isMounted.current) {
         const newData = {
@@ -159,15 +159,15 @@ export const useHomepageData = () => {
           setIsLoading(false);
         }
       }
-    } catch (err) {
-      console.error('Error fetching homepage data:', err);
+      } catch (err) {
+        console.error('Error fetching homepage data:', err);
       if (isMounted.current && showLoading) {
         setError(err as Error);
         setIsLoading(false);
         toast.error('Không thể tải dữ liệu trang chủ');
       }
-    }
-  };
+      }
+    };
 
   // Thêm hàm refresh để có thể gọi lại API khi cần
   const refreshData = () => {

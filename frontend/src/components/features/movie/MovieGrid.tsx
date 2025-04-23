@@ -173,7 +173,7 @@ const MovieGrid = ({
                   {/* Aspect ratio div for the image */}
                   <div className="relative aspect-video">
                     <img 
-                      src={movie.posterUrl || '/placeholder-landscape.jpg'} 
+                      src={'/placeholder-landscape.jpg'} 
                       alt={movie.title}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                     />
@@ -194,7 +194,7 @@ const MovieGrid = ({
                     </div>
                     
                     <p className="mt-3 text-gray-400 text-sm line-clamp-2">
-                      {movie.description || ''}
+                      {movie.summary || ''}
                     </p>
                     
                     <div className="mt-auto pt-4 flex justify-between items-center">

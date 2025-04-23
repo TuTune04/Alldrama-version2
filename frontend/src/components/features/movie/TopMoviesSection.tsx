@@ -109,11 +109,11 @@ const TopMoviesSection = ({
                   variant="simple"
                   showPopover={false}
                   trigger={
-                    <div className="relative transition-all duration-300 hover:z-5">
+                    <div className="relative transition-all duration-300 z-5">
                       <Link href={generateMovieUrl(movie.id, movie.title)}>
                         {/* Card thiết kế với hiệu ứng cắt chéo mạnh hơn */}
                         <div 
-                          className="relative overflow-hidden shadow-[0_4px_12px_rgba(0,0,0,0.2)] transition-all duration-300 bg-[#1A1C25] group"
+                          className="relative overflow-hidden shadow-[0_4px_12px_rgba(0,0,0,0.2)] transition-all duration-300 bg-[#1A1C25] group hover:shadow-[0_6px_16px_rgba(0,0,0,0.3)] hover:scale-[1.035] transform-gpu"
                           style={{
                             borderRadius: '10px 10px 10px 10px',
                             clipPath: index % 2 === 0 
@@ -124,10 +124,10 @@ const TopMoviesSection = ({
                           {/* Poster Image */}
                           <div className="relative aspect-[2/3] w-full">
                             <Image 
-                              src={"/placeholder.svg"} 
+                              src={"/images/test.jpg"} 
                               alt={movie.title}
                               fill
-                              className="object-cover group-hover:brightness-105"
+                              className="object-cover linear-gradient(to bottom, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 1) 20%, rgba(0, 0, 0, 1) 80%, rgba(0, 0, 0, 0) 100%)"
                               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 25vw, 20vw"
                               priority={index < 5}
                             />
@@ -180,22 +180,12 @@ const TopMoviesSection = ({
                           </div>
                           
                           {/* Play button overlay */}
-                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 bg-black/50">
-                            <div className="p-2.5 rounded-full bg-[#22C55E] text-white transform scale-0 group-hover:scale-100 transition-all duration-300 shadow-lg">
+                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 duration-300 bg-black/30 transition-all">
+                            <div className="p-2.5 rounded-full bg-[#22C55E] text-white transform scale-0 group-hover:scale-100 duration-300 shadow-lg">
                               <Play fill="white" size={20} />
                             </div>
                           </div>
                           
-                          {/* Border highlight */}
-                          <div 
-                            className="absolute inset-0 opacity-0 group-hover:opacity-100 border-2 border-[#22C55E]/50 transition-opacity duration-300"
-                            style={{
-                              borderRadius: '0 0 8px 8px',
-                              clipPath: index % 2 === 0 
-                                ? 'polygon(0 0, 100% 25px, 100% 100%, 0 100%)' // Card lẻ
-                                : 'polygon(0 25px, 100% 0, 100% 100%, 0 100%)' // Card chẵn
-                            }}
-                          ></div>
                         </div>
                       </Link>
                     </div>
@@ -204,10 +194,6 @@ const TopMoviesSection = ({
               </div>
             ))}
           </div>
-          
-          {/* Gradient fades on sides */}
-          <div className="absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-[#0F111A] to-transparent"></div>
-          <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-[#0F111A] to-transparent"></div>
         </div>
       </div>
     </div>

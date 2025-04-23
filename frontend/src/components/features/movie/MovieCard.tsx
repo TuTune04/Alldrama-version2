@@ -30,9 +30,9 @@ const MovieCard = ({
 }: MovieCardProps) => {
   const router = useRouter()
   const cardRef = useRef<HTMLDivElement>(null)
-  const [imageUrl, setImageUrl] = useState(movie.posterUrl || "/images/test.jpg")
+  const [imageUrl, setImageUrl] = useState("/images/test.jpg")
   const isMobile = useMobile()
-  const movieDetailUrl = generateMovieUrl(movie.id.toString(), movie.title)
+  const movieDetailUrl = generateMovieUrl(movie.id, movie.title)
   const [imageLoaded, setImageLoaded] = useState(false)
   const [imageError, setImageError] = useState(false)
 

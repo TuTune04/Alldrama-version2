@@ -60,8 +60,25 @@ export default function CommentSection({ movieId }: CommentSectionProps) {
   useEffect(() => {
     const fetchComments = async () => {
       try {
+        if (!movieId) {
+          console.error("No movieId provided to CommentSection");
+          setError("Không thể tải bình luận. Thiếu ID phim.");
+          return;
+        }
+        
         const response = await axios.get(API_ENDPOINTS.COMMENTS.BY_MOVIE(movieId))
-        setComments(response.data)
+        
+        // Ensure we have valid comments data
+        if (Array.isArray(response.data)) {
+          // Filter out comments with malformed user data
+          const validComments = response.data.filter(comment => 
+            comment && comment.user && typeof comment.user.name === 'string'
+          );
+          setComments(validComments)
+        } else {
+          console.error("Invalid comments data format:", response.data);
+          setComments([])
+        }
       } catch (err) {
         console.error("Error fetching comments:", err)
         setError("Không thể tải bình luận. Vui lòng thử lại sau.")
@@ -113,11 +130,24 @@ export default function CommentSection({ movieId }: CommentSectionProps) {
 
   // Format date to friendly string
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('vi-VN', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    })
+    if (!dateString) return '';
+    
+    try {
+      return new Date(dateString).toLocaleDateString('vi-VN', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+    } catch (err) {
+      console.error("Error formatting date:", err);
+      return '';
+    }
+  }
+
+  // Safe getter for user initials
+  const getUserInitial = (user: Comment['user'] | undefined): string => {
+    if (!user || !user.name || user.name.length === 0) return 'U';
+    return user.name[0].toUpperCase();
   }
 
   return (
@@ -135,7 +165,7 @@ export default function CommentSection({ movieId }: CommentSectionProps) {
           <div className="flex items-start gap-4">
             <Avatar className="w-10 h-10">
               <AvatarImage src={user?.avatar_url} alt={user?.full_name} />
-              <AvatarFallback>{user?.avatar_url?.[0] || 'U'}</AvatarFallback>
+              <AvatarFallback>{user?.full_name?.[0] || 'U'}</AvatarFallback>
             </Avatar>
             <div className="flex-1 space-y-3">
               <Textarea
@@ -187,19 +217,19 @@ export default function CommentSection({ movieId }: CommentSectionProps) {
           comments.map((comment) => (
             <div key={comment.id} className="flex gap-4 p-4 rounded-lg bg-gray-800/30 border border-gray-700/50">
               <Avatar className="w-10 h-10">
-                <AvatarImage src={comment.user.imageUrl} alt={comment.user.name} />
-                <AvatarFallback>{comment.user.name[0]}</AvatarFallback>
+                <AvatarImage src={comment.user?.imageUrl} alt={comment.user?.name || 'User'} />
+                <AvatarFallback>{getUserInitial(comment.user)}</AvatarFallback>
               </Avatar>
               <div>
                 <div className="flex items-center gap-2">
-                  <h4 className="font-medium text-white">{comment.user.name}</h4>
+                  <h4 className="font-medium text-white">{comment.user?.name || 'Anonymous'}</h4>
                   <span className="text-sm text-gray-400">{formatDate(comment.createdAt)}</span>
                 </div>
                 <div className="flex items-center mt-1 mb-2">
                   {[1, 2, 3, 4, 5].map((star) => (
                     <Star 
                       key={star} 
-                      className={`w-4 h-4 ${star <= comment.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-500'}`} 
+                      className={`w-4 h-4 ${star <= (comment.rating || 0) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-500'}`} 
                     />
                   ))}
                 </div>

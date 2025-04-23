@@ -330,8 +330,14 @@ const MovieSlider = ({
 
       {/* Case 4: Non data */}
       {!loading && !error && (!movieData || movieData.length === 0) && (
-        <div className="p-4 bg-gray-800/30 rounded-md">
-          <p className="text-gray-400 text-center">Hiện tại phim chưa được cập nhật</p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-5">
+          {Array.from({ length: 5 }).map((_, index) => (
+            <div key={index} className="flex flex-col gap-2">
+              <Skeleton className="w-full aspect-[2/3] rounded-md h-64 sm:h-72" />
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-3 w-1/2" />
+            </div>
+          ))}
         </div>
       )}
     </div>

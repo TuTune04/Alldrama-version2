@@ -9,26 +9,39 @@ export function createSlug(text: string): string {
 }
 
 export function getIdFromSlug(slug: string): string {
-  // Format của slug là: movie-4-ten-phim
-  // Chúng ta cần lấy phần movie-4
-  const regex = /^(movie-\d+)/;
-  const match = slug.match(regex);
+  // Pattern for slug like "phim-hanh-dong-1-1", "ten-phim-123", etc.
+  // We want to extract just the numeric ID at the end
+  
+  // First, look for numeric ID at the end of the slug
+  const numericIdRegex = /-(\d+)$/;
+  const match = slug.match(numericIdRegex);
   
   if (match && match[1]) {
-    console.log("Regex match found:", match[1]);
-    return match[1];
+    console.log("Found numeric ID at end of slug:", match[1]);
+    return match[1]; // Return just the numeric ID
   }
   
-  console.log("Regex match not found, trying fallback");
-  // Fallback: lấy các phần đầu tiên của chuỗi slug
+  // If that fails, try another approach by splitting on hyphens
   const parts = slug.split('-');
-  if (parts.length >= 2) {
-    console.log("Fallback returning:", parts[0] + '-' + parts[1]);
-    return parts[0] + '-' + parts[1];
+  const lastPart = parts[parts.length - 1];
+  
+  // Check if the last part is numeric
+  if (lastPart && !isNaN(Number(lastPart))) {
+    console.log("Found numeric ID by splitting:", lastPart);
+    return lastPart;
+  }
+  
+  // If that fails too, try to find any number in the slug
+  const anyNumberRegex = /(\d+)/;
+  const numberMatch = slug.match(anyNumberRegex);
+  
+  if (numberMatch && numberMatch[1]) {
+    console.log("Found any numeric part in slug:", numberMatch[1]);
+    return numberMatch[1];
   }
   
   console.log("All extraction methods failed, returning original slug");
-  return slug; // Trả về slug gốc nếu không phân tích được
+  return slug; // Return the original slug as fallback
 }
 
 export function getEpisodeIdFromSlug(slug: string): string {

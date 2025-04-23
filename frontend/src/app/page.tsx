@@ -23,13 +23,13 @@ export default function Home() {
   } = useHomepageData();
 
   //Hiển thị skeleton khi đang loading
-  if (isLoading) {
-    return (
-      <div className="h-[70vh] bg-gray-800 animate-pulse flex items-center justify-center">
-        <Skeleton className="w-3/4 h-[80%] max-w-7xl mx-auto rounded-xl" />
-      </div>
-    );
-  }
+  // if (isLoading) {
+  //   return (
+  //     <div className="h-[70vh] bg-gray-800 animate-pulse flex items-center justify-center">
+  //       <Skeleton className="w-3/4 h-[80%] max-w-7xl mx-auto rounded-xl" />
+  //     </div>
+  //   );
+  // }
 
   // Hiển thị lỗi nếu có
   if (error) {
@@ -102,13 +102,13 @@ export default function Home() {
         </section>
         
         {/* Genre list section */}
-        <section className="py-8 mt-8">
+        {/* <section className="py-8 mt-8">
           <GenreList />
-        </section>
+        </section> */}
       </div>
-      {/* <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <CommentsAndRankings />
-      </div> */}
+      </div>
 
       <FeaturedContentSwitcher
         items={featured}

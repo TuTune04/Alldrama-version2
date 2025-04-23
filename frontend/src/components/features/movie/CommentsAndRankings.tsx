@@ -9,6 +9,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useMobile } from '@/hooks/use-mobile'
+import { useComments } from '@/hooks/api/useComments'
+import { movieService } from '@/lib/api/services/movieService'
 import { 
   mockComments, 
   mockPopularMovies, 
@@ -18,9 +20,10 @@ import {
 import type { 
   Comment, 
   GenreStat, 
-  PopularMovie, 
-  Movie 
+  Movie, 
+  MovieListResponse 
 } from '@/types'
+import { useEffect as useEffectOnce } from 'react'
 
 // --------------------------------
 // TOP COMMENTS CAROUSEL COMPONENTS
@@ -36,11 +39,11 @@ const CommentCard = ({ comment }: CommentCardProps) => {
       <CardHeader className="pb-2">
         <div className="flex items-center gap-3">
           <Avatar className="h-8 w-8">
-            <AvatarImage src="/images/placeholder-user.jpg" alt={comment.user?.name || 'User'} />
-            <AvatarFallback>{(comment.user?.name || 'U').charAt(0)}</AvatarFallback>
+            <AvatarImage src="/images/placeholder-user.jpg" alt={comment.user?.full_name || 'User'} />
+            <AvatarFallback>{(comment.user?.full_name || 'U').charAt(0)}</AvatarFallback>
           </Avatar>
           <div>
-            <h4 className="font-medium text-sm text-gray-200">{comment.user?.name || 'Anonymous'}</h4>
+            <h4 className="font-medium text-sm text-gray-200">{comment.user?.full_name || 'Anonymous'}</h4>
             <p className="text-xs text-gray-400">
               {new Date(comment.createdAt).toLocaleDateString('vi-VN')}
             </p>
@@ -48,7 +51,7 @@ const CommentCard = ({ comment }: CommentCardProps) => {
         </div>
       </CardHeader>
       <CardContent className="pb-3">
-        <p className="text-sm line-clamp-3 text-gray-300">{comment.content}</p>
+        <p className="text-sm line-clamp-3 text-gray-300">{comment.comment}</p>
       </CardContent>
       <CardFooter className="pt-0 flex justify-between text-xs text-gray-400">
         <div className="flex items-center gap-3">
@@ -74,8 +77,16 @@ const CommentCard = ({ comment }: CommentCardProps) => {
 // RANKINGS & ACTIVITY SECTIONS
 // ----------------------------
 
+interface PopularMovie {
+  id: number;
+  title: string;
+  views: number;
+  rating?: number;
+  poster_path?: string;
+}
+
 interface TrendingMovieProps {
-  movie: PopularMovie
+  movie: Movie
   rank: number
   trend?: 'up' | 'down' | 'stable'
 }
@@ -94,7 +105,7 @@ const TrendingMovie = ({ movie, rank, trend = 'up' }: TrendingMovieProps) => {
       </div>
       <div className="h-12 w-[22px] aspect-[2/3] rounded-sm overflow-hidden flex-shrink-0">
         <img 
-          src={"/placeholder.svg"} 
+          src={movie.posterUrl || "/placeholder.svg"} 
           alt={movie.title} 
           className="h-full w-full object-cover"
         />
@@ -103,7 +114,7 @@ const TrendingMovie = ({ movie, rank, trend = 'up' }: TrendingMovieProps) => {
         <h4 className="font-medium text-sm truncate text-gray-200">{movie.title}</h4>
         <div className="flex items-center gap-1 text-xs text-gray-400">
           <Eye className="h-3 w-3" />
-          <span>{(movie.views / 1000).toFixed(0)}K</span>
+          <span>{((movie.views || 0) / 1000).toFixed(0)}K</span>
           {trendIcon[trend]}
         </div>
       </div>
@@ -112,10 +123,10 @@ const TrendingMovie = ({ movie, rank, trend = 'up' }: TrendingMovieProps) => {
 }
 
 interface TopTrendingProps {
-  movies?: PopularMovie[]
+  movies?: Movie[]
 }
 
-const TopTrending = ({ movies = mockPopularMovies }: TopTrendingProps) => {
+const TopTrending = ({ movies = [] }: TopTrendingProps) => {
   const trends: ('up' | 'down' | 'stable')[] = ['up', 'up', 'down', 'stable', 'up']
   
   return (
@@ -131,7 +142,7 @@ const TopTrending = ({ movies = mockPopularMovies }: TopTrendingProps) => {
       <CardContent className="pb-3">
         {movies.slice(0, 5).map((movie, idx) => (
           <TrendingMovie 
-            key={movie._id} 
+            key={movie.id} 
             movie={movie} 
             rank={idx + 1} 
             trend={trends[idx]} 
@@ -152,7 +163,7 @@ interface MostLikedProps {
   movies?: Movie[]
 }
 
-const MostLiked = ({ movies = mockMovies.slice(0, 5) }: MostLikedProps) => {
+const MostLiked = ({ movies = [] }: MostLikedProps) => {
   return (
     <Card className="h-full bg-gray-800/50 border-gray-700">
       <CardHeader className="pb-2">
@@ -171,7 +182,7 @@ const MostLiked = ({ movies = mockMovies.slice(0, 5) }: MostLikedProps) => {
             </div>
             <div className="h-12 w-[22px] aspect-[2/3] rounded-sm overflow-hidden flex-shrink-0">
               <img 
-                src={"/images/placeholder.svg"} 
+                src={movie.posterUrl || "/images/placeholder.svg"} 
                 alt={movie.title} 
                 className="h-full w-full object-cover"
               />
@@ -257,9 +268,10 @@ const HotGenres = ({ genres = mockGenreStats }: HotGenresProps) => {
 
 interface RecentCommentsProps {
   comments?: Comment[]
+  movies?: Movie[]
 }
 
-const RecentComments = ({ comments = mockComments.slice(0, 6) }: RecentCommentsProps) => {
+const RecentComments = ({ comments = [], movies = [] }: RecentCommentsProps) => {
   return (
     <Card className="h-full bg-gray-800/50 border-gray-700">
       <CardHeader className="pb-2">
@@ -276,18 +288,18 @@ const RecentComments = ({ comments = mockComments.slice(0, 6) }: RecentCommentsP
             <div key={comment.id} className="mb-4">
               <div className="flex items-center gap-2 mb-1">
                 <Avatar className="h-6 w-6">
-                  <AvatarImage src="/images/placeholder-user.jpg" alt={comment.user?.name || 'User'} />
-                  <AvatarFallback>{(comment.user?.name || 'U').charAt(0)}</AvatarFallback>
+                  <AvatarImage src="/images/placeholder-user.jpg" alt={comment.user?.full_name || 'User'} />
+                  <AvatarFallback>{(comment.user?.full_name || 'U').charAt(0)}</AvatarFallback>
                 </Avatar>
-                <span className="text-sm font-medium text-gray-200">{comment.user?.name || 'Anonymous'}</span>
+                <span className="text-sm font-medium text-gray-200">{comment.user?.full_name || 'Anonymous'}</span>
                 <span className="text-xs text-gray-500">
                   {new Date(comment.createdAt).toLocaleDateString('vi-VN')}
                 </span>
               </div>
-              <p className="text-xs line-clamp-2 ml-8 text-gray-300">{comment.content}</p>
+              <p className="text-xs line-clamp-2 ml-8 text-gray-300">{comment.comment}</p>
               <div className="ml-8 mt-1">
                 <Badge variant="outline" className="text-[10px] h-4 px-1 border-gray-700 bg-gray-700/50 text-gray-300">
-                  {mockMovies.find(m => m.id === comment.movieId)?.title || 'Unknown movie'}
+                  {movies.find(m => m.id === comment.movieId)?.title || 'Unknown movie'}
                 </Badge>
               </div>
             </div>
@@ -300,22 +312,54 @@ const RecentComments = ({ comments = mockComments.slice(0, 6) }: RecentCommentsP
 
 // Main component
 interface CommentsAndRankingsProps {
-  comments?: Comment[]
-  topMovies?: PopularMovie[]
-  mostLikedMovies?: Movie[] 
-  hotGenres?: GenreStat[]
+  initialMovieId?: string | number
 }
 
 const CommentsAndRankings = ({
-  comments = mockComments,
-  topMovies = mockPopularMovies,
-  mostLikedMovies = mockMovies.slice(0, 5),
-  hotGenres = mockGenreStats
+  initialMovieId = 1
 }: CommentsAndRankingsProps) => {
   const commentsContainerRef = useRef<HTMLDivElement>(null)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(true)
   const isMobile = useMobile()
+  
+  // State for API data
+  const [popularMovies, setPopularMovies] = useState<Movie[]>([])
+  const [topRatedMovies, setTopRatedMovies] = useState<Movie[]>([])
+  const [loading, setLoading] = useState(true)
+
+  // Get comments using the hook
+  const { 
+    comments, 
+    loading: loadingComments 
+  } = useComments(initialMovieId, 1, 30)
+
+  // Fetch movie data
+  useEffect(() => {
+    const fetchMovieData = async () => {
+      try {
+        setLoading(true)
+        
+        // Fetch popular movies
+        const popularResponse = await movieService.getPopularMovies(10)
+        setPopularMovies(popularResponse.movies || [])
+        
+        // Fetch top rated movies
+        const topRatedResponse = await movieService.getMovies({
+          sort: 'rating',
+          order: 'DESC',
+          limit: 10
+        })
+        setTopRatedMovies(topRatedResponse.movies || [])
+      } catch (error) {
+        console.error('Error fetching movie data:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    fetchMovieData()
+  }, [])
 
   // Update scroll buttons state
   const updateScrollButtons = () => {
@@ -348,6 +392,17 @@ const CommentsAndRankings = ({
   if (isMobile) {
     return null
   }
+
+  // Show loading state or fallback to mock data if needed
+  const displayComments = comments.length > 0 ? comments : (loadingComments ? [] : mockComments)
+  const displayPopularMovies = popularMovies.length > 0 ? popularMovies : (loading ? [] : mockMovies.slice(0, 10))
+  const displayTopRatedMovies = topRatedMovies.length > 0 ? topRatedMovies : (loading ? [] : mockMovies.slice(0, 5))
+  
+  // Combined all movies for reference in comments
+  const allMovies = [...popularMovies, ...topRatedMovies]
+  const uniqueMovies = allMovies.filter((movie, index, self) => 
+    self.findIndex(m => m.id === movie.id) === index
+  )
 
   return (
     <div className="container mx-auto py-6">
@@ -388,7 +443,7 @@ const CommentsAndRankings = ({
             className="flex gap-4 overflow-x-auto scrollbar-hide scroll-smooth pb-2"
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
           >
-            {comments.slice(0, 8).map(comment => (
+            {displayComments.slice(0, 8).map(comment => (
               <CommentCard key={comment.id} comment={comment} />
             ))}
           </div>
@@ -400,10 +455,10 @@ const CommentsAndRankings = ({
         {/* Rankings & Activity Grid - 4 columns */}
         <div className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-            <TopTrending movies={topMovies} />
-            <MostLiked movies={mostLikedMovies} />
-            <HotGenres genres={hotGenres} />
-            <RecentComments comments={comments} />
+            <TopTrending movies={displayPopularMovies} />
+            <MostLiked movies={displayTopRatedMovies} />
+            <HotGenres genres={mockGenreStats} />
+            <RecentComments comments={displayComments} movies={uniqueMovies} />
           </div>
         </div>
       </div>

@@ -8,14 +8,14 @@ import { Movie, Episode } from "@/types"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { generateMovieUrl } from "@/utils/url"
+import { generateMovieUrl, getIdFromSlug } from "@/utils/url"
 
 // Import custom watch components
 import VideoPlayer from '@/components/ui/VideoPlayer'
 import NotFoundMessage from '@/components/features/watch/NotFoundMessage'
 import MobileEpisodeSheet from '@/components/features/watch/MobileEpisodeSheet'
 import ContentInfoCard from '@/components/features/watch/ContentInfoCard'
-import CommentSection from '@/components/features/movie/comment-section'
+import CommentSection from '@/components/features/movie/CommentSection'
 import RelatedMovies from '@/components/features/watch/RelatedMovies'
 import DesktopEpisodePanel from '@/components/features/watch/DesktopEpisodePanel'
 
@@ -48,13 +48,16 @@ export default function WatchPage() {
       setError(null)
       
       try {
-        // Extract the movie ID from the slug (assuming format is name-id)
-        const parts = slug.split('-')
-        const movieId = parts[parts.length - 1]
+        // Extract the movie ID from the slug using our URL utility
+        const movieId = slug.split('-').pop()
         
         if (!movieId || isNaN(Number(movieId))) {
+          console.error("Invalid slug format:", slug);
           throw new Error("Invalid movie ID in URL")
         }
+        
+        // Log the extracted ID for debugging
+        console.log(`Extracted movie ID ${movieId} from slug: ${slug}`);
         
         // 1. Fetch movie details
         const movieResponse = await axios.get(API_ENDPOINTS.MOVIES.DETAIL(movieId))
@@ -63,40 +66,58 @@ export default function WatchPage() {
         // 2. If we're watching a TV show with episodes, fetch all episodes
         if (movieResponse.data.totalEpisodes > 1) {
           const episodesResponse = await axios.get(API_ENDPOINTS.EPISODES.LIST_BY_MOVIE(movieId))
-          setAllEpisodes(episodesResponse.data)
           
-          // 3. If an episode ID was specified, fetch that specific episode
-          if (episodeId) {
-            const episodeResponse = await axios.get(API_ENDPOINTS.EPISODES.DETAIL(episodeId))
-            setEpisode(episodeResponse.data)
+          // Ensure we have a valid episode array
+          if (Array.isArray(episodesResponse.data)) {
+            setAllEpisodes(episodesResponse.data)
             
-            // Find prev and next episodes
-            const currentIndex = episodesResponse.data.findIndex((ep: Episode) => ep.id.toString() === episodeId)
-            
-            if (currentIndex > 0) {
-              setPrevEpisode(episodesResponse.data[currentIndex - 1])
-            }
-            
-            if (currentIndex < episodesResponse.data.length - 1) {
-              setNextEpisode(episodesResponse.data[currentIndex + 1])
-            }
-            
-            // Increment view count for the episode
-            try {
-              await axios.post(API_ENDPOINTS.VIEWS.INCREMENT_EPISODE(episodeId), {
-                movieId: movieId,
-                progress: 0,
-                duration: episodeResponse.data.duration || 0
-              })
-            } catch (viewErr) {
-              console.error('Error incrementing episode view count:', viewErr)
+            // 3. If an episode ID was specified, fetch that specific episode
+            if (episodeId) {
+              try {
+                const episodeResponse = await axios.get(API_ENDPOINTS.EPISODES.DETAIL(episodeId))
+                setEpisode(episodeResponse.data)
+                
+                // Find prev and next episodes
+                const currentIndex = episodesResponse.data.findIndex((ep: Episode) => ep.id.toString() === episodeId)
+                
+                if (currentIndex > 0) {
+                  setPrevEpisode(episodesResponse.data[currentIndex - 1])
+                }
+                
+                if (currentIndex < episodesResponse.data.length - 1) {
+                  setNextEpisode(episodesResponse.data[currentIndex + 1])
+                }
+                
+                // Increment view count for the episode
+                try {
+                  await axios.post(API_ENDPOINTS.VIEWS.INCREMENT_EPISODE(episodeId), {
+                    movieId: movieId,
+                    progress: 0,
+                    duration: episodeResponse.data.duration || 0
+                  })
+                } catch (viewErr) {
+                  console.error('Error incrementing episode view count:', viewErr)
+                }
+              } catch (episodeErr) {
+                console.error('Error fetching episode:', episodeErr);
+                // If episode fetch fails, default to first episode
+                if (episodesResponse.data.length > 0) {
+                  setEpisode(episodesResponse.data[0]);
+                  if (episodesResponse.data.length > 1) {
+                    setNextEpisode(episodesResponse.data[1]);
+                  }
+                }
+              }
+            } else {
+              // If no episode is specified but it's a TV show, default to first episode
+              if (episodesResponse.data.length > 0) {
+                setEpisode(episodesResponse.data[0])
+                setNextEpisode(episodesResponse.data.length > 1 ? episodesResponse.data[1] : null)
+              }
             }
           } else {
-            // If no episode is specified but it's a TV show, default to first episode
-            if (episodesResponse.data.length > 0) {
-              setEpisode(episodesResponse.data[0])
-              setNextEpisode(episodesResponse.data.length > 1 ? episodesResponse.data[1] : null)
-            }
+            console.error("Invalid episodes data format:", episodesResponse.data);
+            setAllEpisodes([]);
           }
         } else {
           // For movies, increment movie view count
@@ -117,7 +138,9 @@ export default function WatchPage() {
       }
     }
     
-    fetchData()
+    if (slug) {
+      fetchData()
+    }
   }, [slug, episodeId])
 
   // Handle view tracking for VideoPlayer component

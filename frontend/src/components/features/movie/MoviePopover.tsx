@@ -3,13 +3,14 @@
 import Link from "next/link"
 import Image from "next/image"
 import type { Movie } from "@/types"
-import { generateMovieUrl } from "@/utils/url"
+import { generateMovieUrl, generateWatchUrl } from "@/utils/url"
 import { Star, Play, Heart, Info, Calendar, Clock, Film, User } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { useMobile } from '@/hooks/use-mobile'
+
 
 interface MoviePopoverProps {
   movie: Movie
@@ -18,6 +19,7 @@ interface MoviePopoverProps {
   size?: 'sm' | 'md' | 'lg'
   variant?: 'default' | 'simple'
   showPopover?: boolean
+  hoverDelay?: number
 }
 
 const MoviePopover = ({ 
@@ -26,16 +28,50 @@ const MoviePopover = ({
   children,
   size = 'md',
   variant = 'default',
-  showPopover = true
+  showPopover = true,
+  hoverDelay = 500 // Default 250ms delay
 }: MoviePopoverProps) => {
   const [open, setOpen] = useState(false)
   const isMobile = useMobile(1024)
   const isDesktop = !isMobile
   const triggerRef = useRef<HTMLDivElement>(null)
   const popoverRef = useRef<HTMLDivElement>(null)
+  const timerRef = useRef<NodeJS.Timeout | null>(null)
+  
+  // Generate URLs using the utility functions
   const movieDetailUrl = generateMovieUrl(movie.id, movie.title)
-  const watchUrl = generateMovieUrl(movie.id, movie.title)
+  const watchUrl = generateWatchUrl(movie.id, movie.title)
+  
   const imageUrl = "/images/test.jpg"
+
+  // Clean up timer on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current)
+      }
+    }
+  }, [])
+
+  // Handle mouse enter with delay
+  const handleMouseEnter = () => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current)
+    }
+    
+    timerRef.current = setTimeout(() => {
+      setOpen(true)
+    }, hoverDelay)
+  }
+
+  // Handle mouse leave
+  const handleMouseLeave = () => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current)
+      timerRef.current = null
+    }
+    setOpen(false)
+  }
 
   const sizeConfig = {
     sm: {
@@ -79,8 +115,8 @@ const MoviePopover = ({
     <div className="relative group">
       <div 
         className="relative"
-        onMouseEnter={() => setOpen(true)}
-        onMouseLeave={() => setOpen(false)}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
         ref={triggerRef}
       >
         <div className={`${open ? 'opacity-90 scale-[1.05]' : 'opacity-100'} transition-all duration-300`}>

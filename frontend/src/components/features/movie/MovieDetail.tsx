@@ -7,7 +7,7 @@ import { useState, useEffect } from "react"
 import { generateMovieUrl, generateWatchUrl } from "@/utils/url"
 import { Star, Play, Film, Clock, Calendar, Eye, ChevronDown, ChevronUp, Info, Heart, Bookmark, TrendingUp, BarChart3, Layers, Share } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import CommentSection from "./comment-section"
+import CommentSection from "./CommentSection"
 import { useMovieDetail } from "@/hooks/api/useMovieDetail"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
@@ -30,10 +30,11 @@ const movieVersions = [
 
 interface MovieDetailProps {
   movieId: string | number
+  initialData?: Movie
 }
 
-const MovieDetail = ({ movieId }: MovieDetailProps) => {
-  const { movie, episodes, isLoading, error } = useMovieDetail(movieId)
+const MovieDetail = ({ movieId, initialData }: MovieDetailProps) => {
+  const { movie, episodes, isLoading, error } = useMovieDetail(movieId, initialData)
   const [showFullDescription, setShowFullDescription] = useState(false)
   const [activeEpisode, setActiveEpisode] = useState<string | null>(null)
   const [selectedVersion, setSelectedVersion] = useState(movieVersions[0].id)
@@ -105,7 +106,7 @@ const MovieDetail = ({ movieId }: MovieDetailProps) => {
 
   // Update the episode watch url generation
   const generateEpisodeLink = (movie: Movie, episode: Episode) => {
-    return `/watch/${generateMovieUrl(movie.id, movie.title).split('/').pop()}?episode=${episode.id}&ep=${episode.episodeNumber}`;
+    return generateWatchUrl(movie.id, movie.title, episode.id, episode.episodeNumber);
   }
 
   // Loading state
@@ -269,7 +270,7 @@ const MovieDetail = ({ movieId }: MovieDetailProps) => {
                     </Button>
                   ) : (
                     <Button asChild size="sm" className="rounded-full gap-1 md:gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 border-none text-white shadow-lg px-2 md:px-4 py-1 md:py-3 text-xs md:text-base">
-                      <Link href={`/watch/${generateMovieUrl(movie.id, movie.title).split('/').pop()}`}>
+                      <Link href={generateWatchUrl(movie.id, movie.title)}>
                         <Play className="h-3 w-3 md:h-5 md:w-5 fill-current" />
                         Xem phim
                       </Link>
@@ -582,7 +583,7 @@ const MovieDetail = ({ movieId }: MovieDetailProps) => {
                 <Card className="bg-gradient-to-br from-gray-800/60 to-gray-900/60 border-gray-700 overflow-hidden">
                   <div className="absolute inset-0 bg-[url('/images/noise.png')] opacity-5 mix-blend-overlay pointer-events-none"></div>
                   <CardContent className="p-6 relative">
-                    <CommentSection movieId={movie.id.toString()} />
+                    <CommentSection movieId={String(movie.id)} />
                   </CardContent>
                 </Card>
               </TabsContent>
