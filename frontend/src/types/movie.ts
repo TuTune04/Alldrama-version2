@@ -1,9 +1,10 @@
 import { Genre } from './genre';
-import { PaginatedData } from './api';
 
 export interface Movie {
   id: number;
   title: string;
+  rating: number;
+  views: number;
   summary: string;
   duration: number;
   totalEpisodes: number;
@@ -11,12 +12,10 @@ export interface Movie {
   posterUrl: string;
   trailerUrl: string;
   playlistUrl: string;
-  backdropUrl?: string;
-  genres: Genre[];
-  rating: number;
-  views: number;
   createdAt?: string;
   updatedAt?: string;
+  backdropUrl?: string;
+  genres: Genre[];
 }
 
 export interface MovieListResponse {

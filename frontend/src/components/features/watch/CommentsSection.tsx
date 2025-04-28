@@ -8,21 +8,8 @@ import axios from "axios"
 import { API_ENDPOINTS } from "@/lib/api/endpoints"
 import { useAuth } from "@/hooks/api/useAuth"
 import { Card, CardContent } from "@/components/ui/card"
+import { Comment } from "@/types/comment"
 
-interface Comment {
-  id: string
-  userId: string
-  contentId: string
-  text: string
-  rating: number
-  user: {
-    id: string
-    name: string
-    imageUrl?: string
-  }
-  createdAt: string
-  containsSpoilers?: boolean
-}
 
 interface CommentsSectionProps {
   contentId: string;
@@ -154,10 +141,10 @@ export default function CommentsSection({ contentId }: CommentsSectionProps) {
 
   // Safe getter for user initials
   const getUserInitial = (user: Comment['user'] | undefined): string => {
-    if (!user || !user.name || user.name.length === 0) return 'U';
-    return user.name[0].toUpperCase();
+    if (!user || !user.full_name || user.full_name.length === 0) return 'U';
+    return user.full_name[0].toUpperCase();
   }
-
+  
   return (
     <Card className={GLASS_BG}>
       <CardContent className="p-4">
@@ -173,22 +160,22 @@ export default function CommentsSection({ contentId }: CommentsSectionProps) {
           <form onSubmit={handleSubmit} className="mb-6">
             <div className="flex-1 space-y-3">
               <Textarea
-                placeholder="Viết bình luận..."
+              placeholder="Viết bình luận..."
                 className="min-h-24 bg-gray-700/50 border border-gray-600 focus:border-amber-500 text-white placeholder-gray-400 resize-none focus:ring-0 focus:outline-none"
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
-              />
+            />
               <div className="flex justify-between items-center">
                 <div className="flex items-center">
-                  <label className="flex items-center text-sm text-gray-300">
+              <label className="flex items-center text-sm text-gray-300">
                     <input 
                       type="checkbox" 
                       className="mr-2 rounded bg-gray-600 border-gray-500"
                       checked={containsSpoilers}
                       onChange={(e) => setContainsSpoilers(e.target.checked)}
                     />
-                    Ẩn nội dung spoil
-                  </label>
+                Ẩn nội dung spoil
+              </label>
                 </div>
                 <div className="flex items-center">
                   {[1, 2, 3, 4, 5].map((star) => (
@@ -201,15 +188,15 @@ export default function CommentsSection({ contentId }: CommentsSectionProps) {
                       <Star className={`w-5 h-5 ${star <= rating ? 'fill-yellow-400' : ''}`} />
                     </button>
                   ))}
-                  <Button 
+              <Button 
                     type="submit" 
                     disabled={isSubmitting || !newComment.trim()}
                     variant="default" 
                     size="sm" 
                     className="ml-3 bg-amber-500 hover:bg-amber-600 text-gray-900"
-                  >
+              >
                     {isSubmitting ? 'Đang gửi...' : 'Gửi'}
-                  </Button>
+              </Button>
                 </div>
               </div>
               {error && <p className="text-red-500 text-sm">{error}</p>}
@@ -230,29 +217,29 @@ export default function CommentsSection({ contentId }: CommentsSectionProps) {
             comments.map((comment) => (
               <div key={comment.id} className="flex gap-4 p-4 rounded-lg bg-gray-700/50 border border-gray-600/50">
                 <Avatar className="w-10 h-10">
-                  <AvatarImage src={comment.user?.imageUrl} alt={comment.user?.name || 'User'} />
+                  <AvatarImage src={comment.user?.avatar_url} alt={comment.user?.avatar_url || 'User'} />
                   <AvatarFallback>{getUserInitial(comment.user)}</AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <h4 className="font-medium text-white">{comment.user?.name || 'Anonymous'}</h4>
+                    <h4 className="font-medium text-white">{comment.user?.avatar_url || 'Anonymous'}</h4>
                     <span className="text-sm text-gray-400">{formatDate(comment.createdAt)}</span>
                   </div>
                   <div className="flex items-center mt-1 mb-2">
                     {[1, 2, 3, 4, 5].map((star) => (
                       <Star 
                         key={star} 
-                        className={`w-4 h-4 ${star <= (comment.rating || 0) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-500'}`} 
+                        className={`w-4 h-4 ${star <= (comment.movie?.rating || 0) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-500'}`} 
                       />
                     ))}
                   </div>
                   {comment.containsSpoilers ? (
                     <details className="text-gray-300 text-sm">
                       <summary className="cursor-pointer text-amber-400 font-medium">Cảnh báo: Có spoiler! (Bấm để xem)</summary>
-                      <p className="mt-2">{comment.text}</p>
+                      <p className="mt-2">{comment.comment}</p>
                     </details>
                   ) : (
-                    <p className="text-gray-300 text-sm">{comment.text}</p>
+                    <p className="text-gray-300 text-sm">{comment.comment}</p>
                   )}
                 </div>
               </div>
@@ -262,9 +249,9 @@ export default function CommentsSection({ contentId }: CommentsSectionProps) {
               <p className="text-gray-400">{error}</p>
             </div>
           ) : (
-            <div className="text-center text-gray-400 text-sm py-4">
-              Chưa có bình luận nào
-            </div>
+          <div className="text-center text-gray-400 text-sm py-4">
+            Chưa có bình luận nào
+          </div>
           )}
         </div>
       </CardContent>

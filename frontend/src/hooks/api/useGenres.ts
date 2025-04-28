@@ -54,6 +54,15 @@ export const useGenres = () => {
     [data]
   );
 
+  // Get all genres
+  const getAllGenres = useCallback(async () => {
+    try {
+      return await genreService.getAllGenres();
+    } catch (err) {
+      toast.error('Không thể tải danh sách thể loại');  
+    }
+  }, []);
+
   // Get genre details by ID
   const getGenreById = useCallback(async (genreId: number | string) => {
     try {
@@ -146,6 +155,7 @@ export const useGenres = () => {
     error,
     findGenreById,
     findGenreByName,
+    getAllGenres,
     getGenreById,
     getMoviesByGenre,
     createGenre,

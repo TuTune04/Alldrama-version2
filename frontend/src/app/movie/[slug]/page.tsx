@@ -34,9 +34,9 @@ export default function MovieDetailPage() {
         // Extract ID from the slug using the utility function
         const id = getIdFromSlug(slug);
     
-        if (!id || isNaN(Number(id))) {
-          console.error("Could not extract numeric ID from slug:", slug);
-          setError("Không tìm thấy phim");
+    if (!id || isNaN(Number(id))) {
+      console.error("Could not extract numeric ID from slug:", slug);
+      setError("Không tìm thấy phim");
           return;
         }
         
@@ -61,7 +61,7 @@ export default function MovieDetailPage() {
         console.error("Error fetching movie:", err);
         setError("Đã xảy ra lỗi khi tải thông tin phim");
       } finally {
-        setIsLoading(false);
+    setIsLoading(false);
       }
     };
     

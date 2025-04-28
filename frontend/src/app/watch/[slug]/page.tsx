@@ -8,10 +8,11 @@ import { Movie, Episode } from "@/types"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { generateMovieUrl, getIdFromSlug } from "@/utils/url"
+import { generateMovieUrl, getIdFromSlug, generateWatchUrl } from "@/utils/url"
+import { useRouter } from "next/navigation"
 
 // Import custom watch components
-import VideoPlayer from '@/components/ui/VideoPlayer'
+import VideoPlayer from '@/components/features/movie/VideoPlayer'
 import NotFoundMessage from '@/components/features/watch/NotFoundMessage'
 import MobileEpisodeSheet from '@/components/features/watch/MobileEpisodeSheet'
 import ContentInfoCard from '@/components/features/watch/ContentInfoCard'
@@ -41,6 +42,8 @@ export default function WatchPage() {
   // UI control states
   const [showEpisodeList, setShowEpisodeList] = useState(false)
   const [episodeView, setEpisodeView] = useState<'grid' | 'list'>('grid')
+
+  const router = useRouter()
 
   useEffect(() => {
     const fetchData = async () => {
@@ -186,6 +189,17 @@ export default function WatchPage() {
   // Determine video source and poster
   const videoSrc = episode ? episode.playlistUrl : movie.playlistUrl
   const videoPoster = episode?.thumbnailUrl || movie.posterUrl || "/placeholder.svg"
+  
+  // Determine if we should use test video (if no videoSrc is available)
+  const useTestVideo = !videoSrc;
+  
+  // Check if video is HLS format (ends with .m3u8)
+  const isHLS = videoSrc ? videoSrc.toLowerCase().includes('.m3u8') : true;
+  
+  // Prepare video title
+  const videoTitle = isMovie 
+    ? movie.title 
+    : `${movie.title} - Tập ${episode?.episodeNumber || '?'}: ${episode?.title || 'Không có tiêu đề'}`;
 
   return (
     <div className="bg-gradient-to-b from-gray-950 via-gray-900 to-gray-800 min-h-screen pb-12">
@@ -221,31 +235,78 @@ export default function WatchPage() {
               )}
 
               {/* Video Player */}
-              <VideoPlayer
-                src={videoSrc || 'https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4'}
-                poster={videoPoster}
-                title={isMovie ? movie.title : `${movie.title} - Tập ${episode?.episodeNumber || '?'}: ${episode?.title || 'Không có tiêu đề'}`}
-                episodeInfo={isEpisode && episode ? {
-                  id: String(episode.id),
-                  title: episode.title,
-                  number: episode.episodeNumber,
-                  prevEpisode: prevEpisode ? {
-                    id: String(prevEpisode.id),
-                    number: prevEpisode.episodeNumber,
-                    title: prevEpisode.title
-                  } : null,
-                  nextEpisode: nextEpisode ? {
-                    id: String(nextEpisode.id),
-                    number: nextEpisode.episodeNumber,
-                    title: nextEpisode.title
-                  } : null,
-                  movieId: String(movie.id),
-                  movieTitle: movie.title,
-                } : undefined}
-                controls={true}
-                autoPlay={false}
-                onTimeUpdate={(time) => handleProgress(Math.floor(time))}
-              />
+              {isEpisode && episode ? (
+                <VideoPlayer
+                  src={videoSrc}
+                  poster={videoPoster}
+                  title={videoTitle}
+                  initialTime={currentProgress}
+                  onTimeUpdate={(time) => handleProgress(Math.floor(time))}
+                  isHLS={true}
+                  autoPlay={true}
+                  useCustomControls={true}
+                  useTestVideo={!videoSrc}
+                  episodeInfo={{
+                    ...episode,
+                    prevEpisode: prevEpisode ? {
+                      id: prevEpisode.id,
+                      title: prevEpisode.title,
+                      episodeNumber: prevEpisode.episodeNumber,
+                    } : null,
+                    nextEpisode: nextEpisode ? {
+                      id: nextEpisode.id,
+                      title: nextEpisode.title,
+                      episodeNumber: nextEpisode.episodeNumber,
+                    } : null,
+                  }}
+                  onEnded={() => {
+                    if (nextEpisode) {
+                      const nextEpisodeUrl = generateWatchUrl(
+                        movie.id, 
+                        movie.title, 
+                        nextEpisode.id, 
+                        nextEpisode.episodeNumber
+                      );
+                      router.push(nextEpisodeUrl);
+                    }
+                  }}
+                  videoUrl={videoSrc}
+                />
+              ) : (
+                /* Nếu là phim lẻ, ta cần tạo một EpisodeWithNavigation từ thông tin movie */
+                <VideoPlayer
+                  src={videoSrc}
+                  poster={videoPoster}
+                  title={videoTitle}
+                  initialTime={currentProgress}
+                  onTimeUpdate={(time) => handleProgress(Math.floor(time))}
+                  isHLS={true}
+                  autoPlay={true}
+                  useCustomControls={true}
+                  useTestVideo={!videoSrc}
+                  episodeInfo={{
+                    id: movie.id,
+                    movieId: movie.id,
+                    title: movie.title,
+                    description: movie.summary || '',
+                    duration: movie.duration || 0,
+                    episodeNumber: 1,
+                    playlistUrl: movie.playlistUrl || videoSrc,
+                    thumbnailUrl: movie.posterUrl || '',
+                    isProcessed: true,
+                    processingError: null,
+                    views: movie.views || 0,
+                    createdAt: movie.createdAt || '',
+                    updatedAt: movie.updatedAt || '',
+                    prevEpisode: null,
+                    nextEpisode: null,
+                  }}
+                  onEnded={() => {
+                    // Không cần xử lý gì thêm khi phim kết thúc
+                  }}
+                  videoUrl={videoSrc}
+                />
+              )}
 
               {/* Desktop Episode Panel (for series only) */}
               {isEpisode && allEpisodes.length > 0 && (

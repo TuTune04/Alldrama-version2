@@ -10,20 +10,8 @@ export interface WatchHistory {
   progress: number;
   duration: number;
   isCompleted: boolean;
-  movie?: {
-    id: number;
-    title: string;
-    posterUrl: string;
-    genres?: Array<{
-      id: number;
-      name: string;
-    }>;
-  };
-  episode?: {
-    id: number;
-    title: string;
-    episodeNumber: number;
-  };
+  movie?: Movie
+  episode?: Episode
 }
 
 export interface WatchHistoryRequest {

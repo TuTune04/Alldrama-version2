@@ -5,16 +5,9 @@ export interface Favorite {
   userId: number;
   movieId: number;
   favoritedAt: string;
-  movie?: {
-    id: number;
-    title: string;
-    rating: number;
-    posterUrl: string;
-    genres: Array<{
-      id: number;
-      name: string;
-    }>;
-  };
+  createdAt: string;
+  updatedAt: string;
+  movie?: Movie
 }
 
 export interface FavoriteRequest {

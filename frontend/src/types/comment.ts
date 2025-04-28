@@ -1,3 +1,6 @@
+import { User } from "./auth";
+import { Movie } from "./movie";
+
 export interface Comment {
   id: number;
   comment: string;
@@ -6,14 +9,8 @@ export interface Comment {
   userName: string;
   createdAt: string;
   updatedAt: string;
-  user?: {
-    id: number;
-    full_name: string;
-  };
-  movie?: {
-    id: number;
-    title: string;
-  };
+  user?: User
+  movie?: Movie
   parentId?: number | null;
   replies?: Comment[];
 }

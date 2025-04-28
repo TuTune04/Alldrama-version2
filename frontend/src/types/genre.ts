@@ -13,7 +13,13 @@ export interface GenreWithMovies {
     rating: number;
     views: number;
     summary: string;
-    posterUrl: string;
+    duration: string;
+    totalEpisodes: number;
     releaseYear: number;
+    posterUrl: string;
+    trailerUrl: string;
+    createdAt: string;
+    updatedAt: string;
+    genres: Genre[];
   }[];
 }

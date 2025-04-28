@@ -1,3 +1,5 @@
+import { Movie } from "./movie";
+
 export interface Episode {
   id: number;
   movieId: number;
@@ -8,16 +10,28 @@ export interface Episode {
   thumbnailUrl: string;
   duration: number;
   isProcessed: boolean;
+  processingError: string | null;
   views: number;
   createdAt: string;
   updatedAt: string;
-  movie?: {
-    id: number;
-    title: string;
-    releaseYear: number;
-    posterUrl: string;
-  };
+  movie?: Movie
 }
+
+export interface EpisodeWithNavigation extends Episode {
+  prevEpisode?: {
+    id: string | number;
+    title?: string;
+    number?: number;
+    episodeNumber?: number;
+  } | null;
+  nextEpisode?: {
+    id: string | number;
+    title?: string;
+    number?: number;
+    episodeNumber?: number;
+  } | null;
+}
+
 
 export interface EpisodeListResponse {
   episodes: Episode[];

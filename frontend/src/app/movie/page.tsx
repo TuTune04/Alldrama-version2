@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Movie } from '@/types/movie';
+import { Genre } from '@/types/genre';
 import MovieGrid from '@/components/features/movie/MovieGrid';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -31,11 +32,28 @@ import { useGenres } from '@/hooks/api/useGenres';
 // Use genres from API
 const ALL_GENRE_OPTION = { id: 'all', name: 'Tất cả' };
 
+interface GenreMoviesResponse {
+  data?: Movie[];
+  pagination?: {
+    totalPages: number;
+  };
+}
+
+interface SortOptions {
+  sort?: 'title' | 'rating' | 'views' | 'releaseYear' | 'createdAt';
+  order?: 'ASC' | 'DESC';
+}
+
+interface ProcessedMovie extends Movie {
+  type: 'movie' | 'series';
+}
+
 export default function MovieListPage() {
   const [activeGenre, setActiveGenre] = useState('all');
   const [sortOption, setSortOption] = useState('popular');
   const [activeTab, setActiveTab] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
+  const [searchTerm, setSearchTerm] = useState('');
   
   // Use the movies hook
   const { 
@@ -46,46 +64,99 @@ export default function MovieListPage() {
     error
   } = useMovies({ limit: 20 });
 
-  // Fetch genres from API
-  const { genres, loading: genresLoading } = useGenres();
+  const {
+    getAllGenres,
+    findGenreById,
+    findGenreByName,
+    getGenreById,
+    getMoviesByGenre,
+    refreshGenres: mutate
+  } = useGenres();
+
+  const [genres, setGenres] = useState<Genre[]>([]);
+  const [genresLoading, setGenresLoading] = useState(true);
+  const [filteredGenres, setFilteredGenres] = useState<Genre[]>([]);
+
+  // Fetch genres when component mounts
+  useEffect(() => {
+    const fetchGenres = async () => {
+      try {
+        setGenresLoading(true);
+        const genreData = await getAllGenres();
+        if (genreData) {
+          setGenres(genreData);
+          setFilteredGenres(genreData);
+        }
+      } catch (error) {
+        console.error('Error fetching genres:', error);
+      } finally {
+        setGenresLoading(false);
+      }
+    };
+    
+    fetchGenres();
+  }, [getAllGenres]);
 
   // State for filtered movies
-  const [allMovies, setAllMovies] = useState<Movie[]>([]);
-  const [moviesOnly, setMoviesOnly] = useState<Movie[]>([]);
-  const [seriesOnly, setSeriesOnly] = useState<Movie[]>([]);
+  const [allMovies, setAllMovies] = useState<ProcessedMovie[]>([]);
+  const [moviesOnly, setMoviesOnly] = useState<ProcessedMovie[]>([]);
+  const [seriesOnly, setSeriesOnly] = useState<ProcessedMovie[]>([]);
 
   // Load movies when genre, sort, or page changes
   useEffect(() => {
     const fetchMovies = async () => {
-      // Determine sort options based on sortOption state
-      let sort = 'createdAt';
-      let order = 'DESC';
-      
-      switch (sortOption) {
-        case 'popular':
-          sort = 'views';
-          order = 'DESC';
-          break;
-        case 'trending':
-          sort = 'rating';
-          order = 'DESC';
-          break;
-        case 'newest':
-          sort = 'createdAt';
-          order = 'DESC';
-          break;
-        case 'topRated':
-          sort = 'rating';
-          order = 'DESC';
-          break;
+      try {
+        const sortOptions: SortOptions = {
+          sort: 'createdAt',
+          order: 'DESC'
+        };
+        
+        switch (sortOption) {
+          case 'popular':
+            sortOptions.sort = 'views';
+            break;
+          case 'trending':
+          case 'topRated':
+            sortOptions.sort = 'rating';
+            break;
+          case 'newest':
+            sortOptions.sort = 'createdAt';
+            break;
+        }
+
+        // Use different fetch strategy based on active genre
+        if (activeGenre === 'all') {
+          // Just update the search params - data will come through the movies state
+          searchMovies({
+            page: currentPage,
+            limit: 20,
+            ...sortOptions
+          });
+          // Don't try to access the result directly
+        } else {
+          // Get movies by genre - this does return data
+          const genreMovies = await getMoviesByGenre(activeGenre);
+          
+          if (genreMovies) {
+            const moviesArray = Array.isArray(genreMovies) ? genreMovies : [];
+            
+            const processedMovies = moviesArray.map((movie: Movie) => ({
+              ...movie,
+              type: movie.totalEpisodes > 0 ? 'series' : 'movie'
+            })) as ProcessedMovie[];
+            
+            setAllMovies(processedMovies);
+            setMoviesOnly(processedMovies.filter(movie => movie.type === 'movie'));
+            setSeriesOnly(processedMovies.filter(movie => movie.type === 'series'));
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching movies:', error);
       }
-      // Prepare search parameters compatible with MovieSearchParams
-      // Restrict sort to allowed values
-      const allowedSorts = ['title', 'rating', 'views', 'releaseYear', 'createdAt'] as const;
-      const sortValue = allowedSorts.includes(sort as any) ? sort : 'createdAt';
     };
+
     fetchMovies();
-  }, [activeGenre, sortOption, currentPage, searchMovies]);
+  }, [activeGenre, sortOption, currentPage, searchMovies, getMoviesByGenre]);
   
   // Separate movies into categories based on totalEpisodes
   useEffect(() => {
@@ -94,7 +165,7 @@ export default function MovieListPage() {
       const processedMovies = movies.map(movie => ({
         ...movie,
         type: movie.totalEpisodes > 0 ? 'series' : 'movie'
-      }));
+      })) as ProcessedMovie[];
       
       setAllMovies(processedMovies);
       setMoviesOnly(processedMovies.filter(movie => movie.type === 'movie'));
@@ -130,6 +201,22 @@ export default function MovieListPage() {
     }
   };
 
+  // Handle genre search
+  const handleGenreSearch = async (term: string) => {
+    setSearchTerm(term);
+    if (term.trim()) {
+      const foundGenre = await findGenreByName(term);
+      setFilteredGenres(foundGenre ? [foundGenre] : []);
+    } else {
+      setFilteredGenres(genres);
+    }
+  };
+
+  // Update filtered genres when genres change
+  useEffect(() => {
+    setFilteredGenres(genres);
+  }, [genres]);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950">
       {/* Hero Section */}
@@ -139,6 +226,15 @@ export default function MovieListPage() {
             <div>
               <h1 className="text-3xl md:text-4xl font-bold text-white mb-3">Khám phá phim</h1>
               <p className="text-gray-400 text-lg max-w-2xl">Thư viện phim đa dạng với nhiều thể loại hấp dẫn, cập nhật liên tục những bộ phim mới nhất.</p>
+            </div>
+            <div className="w-full md:w-72">
+              <Input
+                type="text"
+                placeholder="Tìm kiếm thể loại..."
+                value={searchTerm}
+                onChange={(e) => handleGenreSearch(e.target.value)}
+                className="bg-gray-800/50 border-gray-700 text-gray-200 placeholder-gray-400"
+              />
             </div>
           </div>
         </div>
@@ -171,14 +267,6 @@ export default function MovieListPage() {
               )}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Badge
-                    variant="outline"
-                    className="cursor-pointer bg-transparent hover:bg-gray-800 text-gray-300 border-gray-600 text-xs md:text-sm px-3 py-1 rounded-md shrink-0"
-                  >
-                    <span className="flex items-center gap-1">
-                      Thêm <ChevronDown size={14} />
-                    </span>
-                  </Badge>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="bg-gray-800 border-gray-700">
                   {genres?.slice(6).map((genre) => (
