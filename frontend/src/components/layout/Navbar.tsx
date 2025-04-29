@@ -19,6 +19,7 @@ import {
   Home,
   Clapperboard,
   Bell,
+  List,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -173,6 +174,11 @@ const Navbar = () => {
               <NavButton href="/movie" active={pathname.startsWith("/movie") && !pathname.startsWith("/movie/genre")}>
                 <Clapperboard className="h-4 w-4 mr-1.5" />
                 Phim
+              </NavButton>
+
+              <NavButton href="/episode" active={pathname.startsWith("/episode")}>
+                <List className="h-4 w-4 mr-1.5" />
+                Tập mới
               </NavButton>
 
               <DropdownMenu>
@@ -445,6 +451,23 @@ const Navbar = () => {
                         <Link href="/movie">
                           <Clapperboard className="h-4 w-4 mr-2" />
                           Phim
+                        </Link>
+                      </Button>
+                    </SheetClose>
+                    <SheetClose asChild>
+                      <Button
+                        variant={pathname.startsWith("/episode") ? "default" : "ghost"}
+                        className={cn(
+                          "w-full justify-start rounded-lg",
+                          pathname.startsWith("/episode")
+                            ? "bg-amber-600 hover:bg-amber-700 text-white"
+                            : "text-gray-300 hover:text-white hover:bg-gray-800/50",
+                        )}
+                        asChild
+                      >
+                        <Link href="/episode">
+                          <List className="h-4 w-4 mr-2" />
+                          Tập mới
                         </Link>
                       </Button>
                     </SheetClose>

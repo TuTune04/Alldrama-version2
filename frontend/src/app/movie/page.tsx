@@ -11,7 +11,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { 
   ChevronDown, Star, Grid, LayoutGrid, 
-  SlidersHorizontal, Heart, TrendingUp, Clock
+  SlidersHorizontal, Heart, TrendingUp, Clock,
+  Filter
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -32,13 +33,6 @@ import { useGenres } from '@/hooks/api/useGenres';
 // Use genres from API
 const ALL_GENRE_OPTION = { id: 'all', name: 'Tất cả' };
 
-interface GenreMoviesResponse {
-  data?: Movie[];
-  pagination?: {
-    totalPages: number;
-  };
-}
-
 interface SortOptions {
   sort?: 'title' | 'rating' | 'views' | 'releaseYear' | 'createdAt';
   order?: 'ASC' | 'DESC';
@@ -53,7 +47,6 @@ export default function MovieListPage() {
   const [sortOption, setSortOption] = useState('popular');
   const [activeTab, setActiveTab] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
-  const [searchTerm, setSearchTerm] = useState('');
   
   // Use the movies hook
   const { 
@@ -66,16 +59,11 @@ export default function MovieListPage() {
 
   const {
     getAllGenres,
-    findGenreById,
-    findGenreByName,
-    getGenreById,
     getMoviesByGenre,
-    refreshGenres: mutate
   } = useGenres();
 
   const [genres, setGenres] = useState<Genre[]>([]);
   const [genresLoading, setGenresLoading] = useState(true);
-  const [filteredGenres, setFilteredGenres] = useState<Genre[]>([]);
 
   // Fetch genres when component mounts
   useEffect(() => {
@@ -85,7 +73,6 @@ export default function MovieListPage() {
         const genreData = await getAllGenres();
         if (genreData) {
           setGenres(genreData);
-          setFilteredGenres(genreData);
         }
       } catch (error) {
         console.error('Error fetching genres:', error);
@@ -201,22 +188,6 @@ export default function MovieListPage() {
     }
   };
 
-  // Handle genre search
-  const handleGenreSearch = async (term: string) => {
-    setSearchTerm(term);
-    if (term.trim()) {
-      const foundGenre = await findGenreByName(term);
-      setFilteredGenres(foundGenre ? [foundGenre] : []);
-    } else {
-      setFilteredGenres(genres);
-    }
-  };
-
-  // Update filtered genres when genres change
-  useEffect(() => {
-    setFilteredGenres(genres);
-  }, [genres]);
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950">
       {/* Hero Section */}
@@ -227,15 +198,6 @@ export default function MovieListPage() {
               <h1 className="text-3xl md:text-4xl font-bold text-white mb-3">Khám phá phim</h1>
               <p className="text-gray-400 text-lg max-w-2xl">Thư viện phim đa dạng với nhiều thể loại hấp dẫn, cập nhật liên tục những bộ phim mới nhất.</p>
             </div>
-            <div className="w-full md:w-72">
-              <Input
-                type="text"
-                placeholder="Tìm kiếm thể loại..."
-                value={searchTerm}
-                onChange={(e) => handleGenreSearch(e.target.value)}
-                className="bg-gray-800/50 border-gray-700 text-gray-200 placeholder-gray-400"
-              />
-            </div>
           </div>
         </div>
       </div>
@@ -243,88 +205,92 @@ export default function MovieListPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Filters Bar */}
         <div className="mb-8 bg-gray-800/30 backdrop-blur-sm rounded-lg p-4 border border-gray-700/50 top-0 z-10">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            {/* Genre Filter */}
-            <div className="flex-1 grid grid-cols-3 sm:grid-cols-4 md:flex gap-2 overflow-x-auto pb-2 md:pb-0">
-              <button
-                className={`px-4 py-2 rounded-full border ${activeGenre === 'all' ? 'bg-amber-600 text-white' : 'bg-gray-800 text-gray-300 border-gray-700'} transition`}
-                onClick={() => setActiveGenre('all')}
-              >
-                Tất cả
-              </button>
-              {genresLoading ? (
-                <span className="text-gray-400 ml-2">Đang tải thể loại...</span>
-              ) : (
-                genres?.map((genre) => (
-                  <button
-                    key={genre.id}
-                    className={`px-4 py-2 rounded-full border ${activeGenre === String(genre.id) ? 'bg-amber-600 text-white' : 'bg-gray-800 text-gray-300 border-gray-700'} transition`}
-                    onClick={() => setActiveGenre(String(genre.id))}
-                  >
-                    {genre.name}
-                  </button>
-                ))
-              )}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="bg-gray-800 border-gray-700">
-                  {genres?.slice(6).map((genre) => (
-                    <DropdownMenuItem
+          <div className="flex flex-col gap-4">
+            <div className="flex justify-between items-center">
+              <h3 className="text-white font-medium">Lọc phim theo thể loại</h3>
+              
+              {/* Right-side controls */}
+              <div className="flex items-center gap-2">
+                {/* Sort Options */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="border-gray-700 bg-gray-800/50 text-gray-300 hover:bg-gray-700 flex gap-1.5 items-center">
+                      <SlidersHorizontal size={16} />
+                      <span className="hidden sm:inline">Sắp xếp</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="bg-gray-800 border-gray-700">
+                    <DropdownMenuItem 
+                      className={`flex items-center gap-2 cursor-pointer ${sortOption === 'popular' ? 'text-indigo-500' : 'text-gray-300'} hover:bg-gray-700`}
+                      onClick={() => setSortOption('popular')}
+                    >
+                      <Heart size={16} />
+                      <span>Phổ biến nhất</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      className={`flex items-center gap-2 cursor-pointer ${sortOption === 'trending' ? 'text-indigo-500' : 'text-gray-300'} hover:bg-gray-700`}
+                      onClick={() => setSortOption('trending')}
+                    >
+                      <TrendingUp size={16} /> 
+                      <span>Xu hướng</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      className={`flex items-center gap-2 cursor-pointer ${sortOption === 'newest' ? 'text-indigo-500' : 'text-gray-300'} hover:bg-gray-700`}
+                      onClick={() => setSortOption('newest')}
+                    >
+                      <Clock size={16} />
+                      <span>Mới nhất</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      className={`flex items-center gap-2 cursor-pointer ${sortOption === 'topRated' ? 'text-indigo-500' : 'text-gray-300'} hover:bg-gray-700`}
+                      onClick={() => setSortOption('topRated')}
+                    >
+                      <Star size={16} />
+                      <span>Đánh giá cao</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+            
+            {/* Genre Tags */}
+            <div className="overflow-x-auto pb-2">
+              <div className="flex gap-2">
+                <Badge 
+                  variant={activeGenre === 'all' ? "default" : "outline"}
+                  className={`px-4 py-2 rounded-full cursor-pointer text-sm font-normal ${
+                    activeGenre === 'all' 
+                      ? 'bg-indigo-600 hover:bg-indigo-700 text-white' 
+                      : 'bg-gray-800 text-gray-300 border-gray-700 hover:bg-gray-700'
+                  }`}
+                  onClick={() => handleGenreChange('all')}
+                >
+                  Tất cả
+                </Badge>
+                
+                {genresLoading ? (
+                  <div className="flex gap-2">
+                    {[1, 2, 3, 4, 5].map(i => (
+                      <div key={i} className="h-9 bg-gray-800 rounded-full w-20 animate-pulse"></div>
+                    ))}
+                  </div>
+                ) : (
+                  genres.map((genre) => (
+                    <Badge 
                       key={genre.id}
-                      className={`cursor-pointer ${
-                        activeGenre === String(genre.id) ? "bg-indigo-600 text-white" : "text-gray-200 hover:bg-gray-700"
+                      variant={activeGenre === String(genre.id) ? "default" : "outline"}
+                      className={`px-4 py-2 rounded-full cursor-pointer text-sm font-normal ${
+                        activeGenre === String(genre.id) 
+                          ? 'bg-indigo-600 hover:bg-indigo-700 text-white' 
+                          : 'bg-gray-800 text-gray-300 border-gray-700 hover:bg-gray-700'
                       }`}
-                      onClick={() => setActiveGenre(String(genre.id))}
+                      onClick={() => handleGenreChange(String(genre.id))}
                     >
                       {genre.name}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          
-            {/* Right-side controls */}
-            <div className="flex items-center gap-2">
-              {/* Sort Options */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="border-gray-700 bg-gray-800/50 text-gray-300 hover:bg-gray-700 flex gap-1.5 items-center">
-                    <SlidersHorizontal size={16} />
-                    <span className="hidden sm:inline">Sắp xếp</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="bg-gray-800 border-gray-700">
-                  <DropdownMenuItem 
-                    className={`flex items-center gap-2 cursor-pointer ${sortOption === 'popular' ? 'text-indigo-500' : 'text-gray-300'} hover:bg-gray-700`}
-                    onClick={() => setSortOption('popular')}
-                  >
-                    <Heart size={16} />
-                    <span>Phổ biến nhất</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem 
-                    className={`flex items-center gap-2 cursor-pointer ${sortOption === 'trending' ? 'text-indigo-500' : 'text-gray-300'} hover:bg-gray-700`}
-                    onClick={() => setSortOption('trending')}
-                  >
-                    <TrendingUp size={16} /> 
-                    <span>Xu hướng</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem 
-                    className={`flex items-center gap-2 cursor-pointer ${sortOption === 'newest' ? 'text-indigo-500' : 'text-gray-300'} hover:bg-gray-700`}
-                    onClick={() => setSortOption('newest')}
-                  >
-                    <Clock size={16} />
-                    <span>Mới nhất</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem 
-                    className={`flex items-center gap-2 cursor-pointer ${sortOption === 'topRated' ? 'text-indigo-500' : 'text-gray-300'} hover:bg-gray-700`}
-                    onClick={() => setSortOption('topRated')}
-                  >
-                    <Star size={16} />
-                    <span>Đánh giá cao</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                    </Badge>
+                  ))
+                )}
+              </div>
             </div>
           </div>
         </div>

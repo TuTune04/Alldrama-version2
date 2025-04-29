@@ -96,7 +96,11 @@ const MoviePopover = ({
         const favorited = await toggleFavorite(movie.id)
         if (favorited !== null) {
           setIsLiked(favorited)
-          toast.success(favorited ? "Đã thêm vào danh sách yêu thích" : "Đã xóa khỏi danh sách yêu thích")
+          if (favorited) {
+            toast.success("Đã thêm vào danh sách yêu thích")
+          } else {
+            toast.error("Đã xóa khỏi danh sách yêu thích")
+          }
         }
       } catch (error) {
         console.error("Error toggling favorite:", error)

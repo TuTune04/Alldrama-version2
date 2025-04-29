@@ -85,7 +85,7 @@ export const useAuth = () => {
       // Gọi API logout để xóa refresh token cookie
       await authService.logout();
       logoutStore();
-      toast.success('Đăng xuất thành công!');
+      // Loại bỏ toast ở đây vì đã hiển thị ở Navbar
       router.push('/login');
     } catch (err) {
       // Ngay cả khi API lỗi, vẫn đăng xuất ở local

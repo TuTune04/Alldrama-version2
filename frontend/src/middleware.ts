@@ -66,16 +66,26 @@ export async function middleware(request: NextRequest) {
     }
   }
   
-  // Nếu token hết hạn nhưng có refresh token, chuyển hướng đến API refresh token
+  // Nếu token hết hạn nhưng có refresh token, đặt cookie để client xử lý refresh token
   if (tokenExpired && refreshToken && !pathname.includes('/api/auth/refresh')) {
-    // Tạo một cookie tạm thời để lưu đường dẫn hiện tại
-    const response = NextResponse.redirect(new URL('/api/auth/refresh', request.url));
+    // Thay vì redirect, trả về response với thông tin token expired để client xử lý
+    const response = NextResponse.next();
+    
+    // Đặt cookie để client-side code biết là cần refresh token
+    response.cookies.set('needsTokenRefresh', 'true', { 
+      maxAge: 60, // 1 phút
+      path: '/',
+      sameSite: 'strict'
+    });
+    
+    // Lưu đường dẫn hiện tại để redirect sau khi refresh token
     response.cookies.set('redirectTo', pathname, { 
       httpOnly: true,
       maxAge: 60, // 1 phút
       path: '/',
       sameSite: 'strict'
     });
+    
     return response;
   }
   
