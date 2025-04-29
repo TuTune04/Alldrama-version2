@@ -8,6 +8,7 @@ import {
   onTokenRefreshed,
   notifySubscribers
 } from './authHelper';
+import { useAuthStore } from '@/store/authStore';
 
 // Cấu hình môi trường
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
@@ -46,10 +47,14 @@ class ApiClient {
     // Request interceptor - thêm token cho mỗi request
     this.client.interceptors.request.use(
       (config) => {
-        const token = localStorage.getItem('token');
+        // Lấy token từ authStore
+        const token = useAuthStore.getState().token;
+        
+        // Thêm token vào header nếu có
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
         }
+        
         return config;
       },
       (error) => {

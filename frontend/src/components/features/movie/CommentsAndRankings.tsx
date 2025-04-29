@@ -11,19 +11,10 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { useMobile } from '@/hooks/use-mobile'
 import { useComments } from '@/hooks/api/useComments'
 import { movieService } from '@/lib/api/services/movieService'
-import { 
-  mockComments, 
-  mockPopularMovies, 
-  mockGenreStats, 
-  mockMovies
-} from '@/mocks'
-import type { 
-  Comment, 
-  GenreStat, 
-  Movie, 
-  MovieListResponse 
-} from '@/types'
-import { useEffect as useEffectOnce } from 'react'
+import { Comment } from '@/types/comment'
+import { Movie } from '@/types/movie'
+import { GenreStat } from '@/types/stats'
+import { genreService } from '@/lib/api/services/genreService'
 
 // --------------------------------
 // TOP COMMENTS CAROUSEL COMPONENTS
@@ -211,7 +202,7 @@ interface HotGenresProps {
   genres?: GenreStat[]
 }
 
-const HotGenres = ({ genres = mockGenreStats }: HotGenresProps) => {
+const HotGenres = ({ genres = [] }: HotGenresProps) => {
   // Different colors for genre badges
   const colors = [
     'bg-rose-900/50 text-rose-200',
@@ -326,6 +317,7 @@ const CommentsAndRankings = ({
   // State for API data
   const [popularMovies, setPopularMovies] = useState<Movie[]>([])
   const [topRatedMovies, setTopRatedMovies] = useState<Movie[]>([])
+  const [genreStats, setGenreStats] = useState<GenreStat[]>([])
   const [loading, setLoading] = useState(true)
 
   // Get comments using the hook
@@ -351,6 +343,9 @@ const CommentsAndRankings = ({
           limit: 10
         })
         setTopRatedMovies(topRatedResponse.movies || [])
+        
+        const genreStatsResponse = await genreService.getAllGenres()
+
       } catch (error) {
         console.error('Error fetching movie data:', error)
       } finally {
@@ -393,10 +388,10 @@ const CommentsAndRankings = ({
     return null
   }
 
-  // Show loading state or fallback to mock data if needed
-  const displayComments = comments.length > 0 ? comments : (loadingComments ? [] : mockComments)
-  const displayPopularMovies = popularMovies.length > 0 ? popularMovies : (loading ? [] : mockMovies.slice(0, 10))
-  const displayTopRatedMovies = topRatedMovies.length > 0 ? topRatedMovies : (loading ? [] : mockMovies.slice(0, 5))
+  // Show loading state or empty arrays if data is loading
+  const displayComments = loadingComments ? [] : comments
+  const displayPopularMovies = loading ? [] : popularMovies
+  const displayTopRatedMovies = loading ? [] : topRatedMovies
   
   // Combined all movies for reference in comments
   const allMovies = [...popularMovies, ...topRatedMovies]
@@ -443,7 +438,7 @@ const CommentsAndRankings = ({
             className="flex gap-4 overflow-x-auto scrollbar-hide scroll-smooth pb-2"
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
           >
-            {displayComments.slice(0, 8).map(comment => (
+            {displayComments.slice(0, 8).map((comment) => (
               <CommentCard key={comment.id} comment={comment} />
             ))}
           </div>
@@ -457,7 +452,7 @@ const CommentsAndRankings = ({
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
             <TopTrending movies={displayPopularMovies} />
             <MostLiked movies={displayTopRatedMovies} />
-            <HotGenres genres={mockGenreStats} />
+            <HotGenres genres={genreStats} />
             <RecentComments comments={displayComments} movies={uniqueMovies} />
           </div>
         </div>

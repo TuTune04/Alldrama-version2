@@ -2,6 +2,7 @@ import { AuthResponse, LoginCredentials, RegisterCredentials, User, UpdateUserDt
 import { apiClient } from '../apiClient';
 import { API_ENDPOINTS } from '../endpoints';
 import { refreshTokenEndpoint, refreshAccessToken } from '../authHelper';
+import { useAuthStore } from '@/store/authStore';
 
 export const authService = {
   /**
@@ -113,25 +114,37 @@ export const authService = {
   },
 
   /**
-   * Lưu token vào localStorage
+   * Lưu token vào localStorage và authStore
    * @param token JWT token
    */
   saveToken(token: string): void {
-    localStorage.setItem('token', token);
+    // Lưu vào cookie để middleware có thể đọc
+    document.cookie = `accessToken=${token}; path=/; max-age=86400; SameSite=Strict`;
+    
+    // Cập nhật authStore
+    const authStore = useAuthStore.getState();
+    authStore.setToken(token);
   },
 
   /**
-   * Xóa token khỏi localStorage
+   * Xóa token khỏi localStorage và authStore
    */
   clearToken(): void {
-    localStorage.removeItem('token');
+    // Xóa token khỏi cookie
+    document.cookie = 'accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    
+    // Cập nhật authStore
+    const authStore = useAuthStore.getState();
+    authStore.setToken(null);
   },
 
   /**
    * Kiểm tra xem người dùng đã đăng nhập chưa
    */
   isAuthenticated(): boolean {
-    return !!localStorage.getItem('token');
+    // Kiểm tra từ authStore
+    const authStore = useAuthStore.getState();
+    return !!authStore.token;
   },
   
   /**
@@ -165,5 +178,13 @@ export const authService = {
    */
   async getCsrfToken(): Promise<{ csrfToken: string }> {
     return apiClient.get<{ csrfToken: string }>(API_ENDPOINTS.AUTH.CSRF_TOKEN);
+  },
+
+  /**
+   * Lấy token từ store
+   */
+  getToken(): string | null {
+    const authStore = useAuthStore.getState();
+    return authStore.token;
   }
 };

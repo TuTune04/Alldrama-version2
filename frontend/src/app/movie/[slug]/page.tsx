@@ -9,6 +9,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useParams } from 'next/navigation';
 import { Movie } from '@/types';
 import { getIdFromSlug } from '@/utils/url';
+import { useAuth } from '@/hooks/api/useAuth';
+import { useFavorites } from '@/hooks/api/useFavorites';
 
 export default function MovieDetailPage() {
   // Get slug from route params
@@ -23,6 +25,17 @@ export default function MovieDetailPage() {
   
   // Get the getMovie function from the useMovies hook
   const { getMovie } = useMovies();
+  
+  // Get auth and favorites functionality
+  const { isAuthenticated } = useAuth();
+  const { refreshFavorites } = useFavorites();
+  
+  // Refresh favorites list when page loads (if authenticated)
+  useEffect(() => {
+    if (isAuthenticated) {
+      refreshFavorites();
+    }
+  }, [isAuthenticated, refreshFavorites]);
   
   // Extract the movie ID from the slug and fetch movie data
   useEffect(() => {

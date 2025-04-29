@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { LoginCredentials, RegisterCredentials, User, UpdateUserDto } from '@/types';
 import { authService } from '@/lib/api';
 import { useRouter } from 'next/navigation';
@@ -11,7 +11,18 @@ export const useAuth = () => {
   const router = useRouter();
   
   // Sử dụng Zustand store
-  const { user, setUser, setAuthenticated, isAuthenticated, logout: logoutStore } = useAuthStore();
+  const { user, setUser, setAuthenticated, isAuthenticated, token, setToken, logout: logoutStore } = useAuthStore();
+
+  // Tự động kiểm tra người dùng hiện tại nếu có token
+  useEffect(() => {
+    const checkCurrentUser = async () => {
+      if (token && !user) {
+        await fetchCurrentUser();
+      }
+    };
+    
+    checkCurrentUser();
+  }, [token]);
 
   /**
    * Đăng ký người dùng mới
@@ -22,7 +33,7 @@ export const useAuth = () => {
     
     try {
       const response = await authService.register(credentials);
-      // Lưu access token vào localStorage
+      // Lưu access token và cập nhật store
       authService.saveToken(response.accessToken);
       setUser(response.user);
       setAuthenticated(true);
@@ -47,8 +58,7 @@ export const useAuth = () => {
     
     try {
       const response = await authService.login(credentials);
-      // Lưu access token vào localStorage
-      // Refresh token được xử lý tự động bởi backend trong HTTP-Only cookies
+      // Lưu access token và cập nhật store
       authService.saveToken(response.accessToken);
       setUser(response.user);
       setAuthenticated(true);
@@ -147,7 +157,7 @@ export const useAuth = () => {
    */
   const fetchCurrentUser = useCallback(async () => {
     // Nếu không có token, không cần gọi API
-    if (!authService.isAuthenticated()) {
+    if (!token) {
       return null;
     }
     
@@ -160,12 +170,12 @@ export const useAuth = () => {
       return currentUser;
     } catch (err) {
       // Xử lý lỗi và đăng xuất nếu có vấn đề
-      // Token refresh được xử lý tự động bởi apiClient
+      console.error("Error fetching current user:", err);
       return null;
     } finally {
       setLoading(false);
     }
-  }, [setAuthenticated, setUser]);
+  }, [token, setAuthenticated, setUser]);
 
   /**
    * Lấy danh sách tất cả người dùng (chỉ admin)
@@ -344,6 +354,7 @@ export const useAuth = () => {
 
   return {
     user,
+    token,
     loading,
     error,
     isAuthenticated,

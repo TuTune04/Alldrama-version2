@@ -10,6 +10,9 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { useState, useRef, useEffect } from "react"
 import { useMobile } from '@/hooks/use-mobile'
+import { useAuth } from '@/hooks/api/useAuth'
+import { useFavorites } from '@/hooks/api/useFavorites'
+import { toast } from 'sonner'
 
 
 interface MoviePopoverProps {
@@ -32,11 +35,16 @@ const MoviePopover = ({
   hoverDelay = 500 // Default 250ms delay
 }: MoviePopoverProps) => {
   const [open, setOpen] = useState(false)
+  const [isLiked, setIsLiked] = useState(false)
   const isMobile = useMobile(1024)
   const isDesktop = !isMobile
   const triggerRef = useRef<HTMLDivElement>(null)
   const popoverRef = useRef<HTMLDivElement>(null)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
+  
+  // Auth and favorites hooks
+  const { isAuthenticated } = useAuth()
+  const { toggleFavorite, isFavorite } = useFavorites()
   
   // Generate URLs using the utility functions
   const movieDetailUrl = generateMovieUrl(movie.id, movie.title)
@@ -52,6 +60,50 @@ const MoviePopover = ({
       }
     }
   }, [])
+  
+  // Check if the movie is in favorites when component mounts
+  useEffect(() => {
+    const checkFavoriteStatus = async () => {
+      if (isAuthenticated && movie) {
+        try {
+          const favorited = await isFavorite(movie.id)
+          setIsLiked(favorited)
+        } catch (error) {
+          console.error("Error checking favorite status:", error)
+        }
+      }
+    }
+    
+    // Only run this effect if the user is authenticated
+    if (isAuthenticated) {
+      checkFavoriteStatus()
+    }
+  }, [isAuthenticated, movie, isFavorite])
+
+  // Handle toggle favorite
+  const handleToggleFavorite = async (e: React.MouseEvent) => {
+    // Prevent the click from propagating to parent elements
+    e.preventDefault()
+    e.stopPropagation()
+    
+    if (!isAuthenticated) {
+      toast.error("Vui lòng đăng nhập để thêm vào danh sách yêu thích")
+      return
+    }
+    
+    if (movie) {
+      try {
+        const favorited = await toggleFavorite(movie.id)
+        if (favorited !== null) {
+          setIsLiked(favorited)
+          toast.success(favorited ? "Đã thêm vào danh sách yêu thích" : "Đã xóa khỏi danh sách yêu thích")
+        }
+      } catch (error) {
+        console.error("Error toggling favorite:", error)
+        toast.error("Không thể thay đổi trạng thái yêu thích")
+      }
+    }
+  }
 
   // Handle mouse enter with delay
   const handleMouseEnter = () => {
@@ -223,9 +275,10 @@ const MoviePopover = ({
                       <Button 
                         size="icon" 
                         variant="secondary" 
-                        className="h-9 w-9 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-amber-500"
+                        className={`h-9 w-9 ${isLiked ? 'bg-pink-600 hover:bg-pink-700 text-white' : 'bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-pink-500'}`}
+                        onClick={handleToggleFavorite}
                       >
-                        <Heart size={16} />
+                        <Heart size={16} className={isLiked ? 'fill-white' : ''} />
                       </Button>
                       <Button 
                         size="icon" 

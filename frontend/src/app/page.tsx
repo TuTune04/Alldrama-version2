@@ -8,7 +8,7 @@ import CommentsAndRankings from "@/components/features/movie/CommentsAndRankings
 import FeaturedContentSwitcher from '@/components/features/movie/FeaturedContentSwitcher';
 import { useHomepageData } from '@/hooks/api/useHomepageData';
 import { Skeleton } from '@/components/ui/skeleton';
-import { mockMovies } from '@/mocks/movies';
+
 
 export default function Home() {
   // Sử dụng custom hook để lấy tất cả dữ liệu trang chủ trong 1 lần gọi API

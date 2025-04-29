@@ -20,13 +20,9 @@ import MovieSlider from "./MovieSlider"
 import { Skeleton } from "@/components/ui/skeleton"
 import axios from "axios"
 import { API_ENDPOINTS } from "@/lib/api/endpoints"
-
-// Mock movie versions (sẽ được thay thế bằng API sau)
-const movieVersions = [
-  { id: '1', name: 'Bản Việt Sub', type: 'SUB', isDefault: true },
-  { id: '2', name: 'Bản Thuyết Minh', type: 'DUB', isDefault: false },
-  { id: '3', name: 'Bản Chiếu Rạp', type: 'CINEMA', isDefault: false },
-]
+import { useAuth } from "@/hooks/api/useAuth"
+import { toast } from "sonner"
+import { useFavorites } from "@/hooks/api/useFavorites"
 
 interface MovieDetailProps {
   movieId: string | number
@@ -37,12 +33,47 @@ const MovieDetail = ({ movieId, initialData }: MovieDetailProps) => {
   const { movie, episodes, isLoading, error } = useMovieDetail(movieId, initialData)
   const [showFullDescription, setShowFullDescription] = useState(false)
   const [activeEpisode, setActiveEpisode] = useState<string | null>(null)
-  const [selectedVersion, setSelectedVersion] = useState(movieVersions[0].id)
   const [isWatchlist, setIsWatchlist] = useState(false)
   const [isLiked, setIsLiked] = useState(false)
   const [relatedMovies, setRelatedMovies] = useState<Movie[]>([])
   const [topRatedMovies, setTopRatedMovies] = useState<Movie[]>([])
   const isMobile = useMobile()
+  
+  // Auth state and favorites functionality
+  const { user, isAuthenticated } = useAuth()
+  const { toggleFavorite, isFavorite } = useFavorites()
+
+  // Check if the movie is in favorites when component mounts or movie changes
+  useEffect(() => {
+    const checkFavoriteStatus = async () => {
+      if (isAuthenticated && movie) {
+        const favorited = await isFavorite(movie.id)
+        setIsLiked(favorited)
+      }
+    }
+    
+    checkFavoriteStatus()
+  }, [isAuthenticated, movie, isFavorite])
+
+  // Handle toggle favorite
+  const handleToggleFavorite = async () => {
+    if (!isAuthenticated) {
+      toast.error("Vui lòng đăng nhập để thêm vào danh sách yêu thích")
+      return
+    }
+    
+    if (movie) {
+      try {
+        const favorited = await toggleFavorite(movie.id)
+        if (favorited !== null) {
+          setIsLiked(favorited)
+        }
+      } catch (error) {
+        console.error("Error toggling favorite:", error)
+        toast.error("Không thể thay đổi trạng thái yêu thích")
+      }
+    }
+  }
 
   // Fetch related movies based on the current movie's genres
   useEffect(() => {
@@ -242,23 +273,6 @@ const MovieDetail = ({ movieId, initialData }: MovieDetailProps) => {
                   })}
                 </div>
 
-                {/* Movie Versions */}
-                <div className="flex flex-wrap gap-1 md:gap-2">
-                  {movieVersions.map((version) => (
-                    <button
-                      key={version.id}
-                      onClick={() => setSelectedVersion(version.id)}
-                      className={`px-2 md:px-3 py-1 text-xs md:text-sm rounded-md transition-colors ${
-                        selectedVersion === version.id
-                          ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md'
-                          : 'bg-gray-800/40 text-gray-300 hover:bg-gray-800/60 border border-gray-700'
-                      }`}
-                    >
-                      {version.name}
-                    </button>
-                  ))}
-                </div>
-
                 {/* Action Buttons */}
                 <div className="flex flex-wrap gap-1 md:gap-3">
                   {episodes.length > 0 ? (
@@ -319,7 +333,7 @@ const MovieDetail = ({ movieId, initialData }: MovieDetailProps) => {
                             className={`rounded-full w-8 h-8 md:w-11 md:h-11 ${isLiked 
                               ? 'bg-pink-600 text-white border-pink-500' 
                               : 'bg-gray-900/40 border-gray-600 hover:bg-gray-800 text-white backdrop-blur-sm'}`}
-                            onClick={() => setIsLiked(!isLiked)}
+                            onClick={handleToggleFavorite}
                           >
                             <Heart className={`h-4 w-4 md:h-5 md:w-5 ${isLiked ? 'fill-white' : ''}`} />
                           </Button>

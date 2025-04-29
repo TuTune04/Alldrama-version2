@@ -1,4 +1,5 @@
 import { Genre, Movie, MovieListResponse } from '@/types';
+import { GenreStat } from '@/types/stats';
 import { apiClient } from '../apiClient';
 import { API_ENDPOINTS } from '../endpoints';
 
@@ -68,5 +69,13 @@ export const genreService = {
    */
   async deleteGenre(genreId: string | number): Promise<DeleteGenreResponse> {
     return apiClient.delete<DeleteGenreResponse>(API_ENDPOINTS.GENRES.DELETE(genreId));
+  },
+
+  /**
+   * Lấy thống kê về thể loại phim
+   * @returns Danh sách thống kê thể loại
+   */
+  async getGenreStats(): Promise<GenreStat[]> {
+    return apiClient.get<GenreStat[]>(API_ENDPOINTS.GENRES.STATS);
   }
 };
