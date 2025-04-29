@@ -17,21 +17,6 @@ export interface Episode {
   movie?: Movie
 }
 
-export interface EpisodeWithNavigation extends Episode {
-  prevEpisode?: {
-    id: string | number;
-    title?: string;
-    number?: number;
-    episodeNumber?: number;
-  } | null;
-  nextEpisode?: {
-    id: string | number;
-    title?: string;
-    number?: number;
-    episodeNumber?: number;
-  } | null;
-}
-
 
 export interface EpisodeListResponse {
   episodes: Episode[];

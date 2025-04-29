@@ -76,6 +76,6 @@ export const genreService = {
    * @returns Danh sách thống kê thể loại
    */
   async getGenreStats(): Promise<GenreStat[]> {
-    return apiClient.get<GenreStat[]>(API_ENDPOINTS.GENRES.STATS);
+    return apiClient.get<GenreStat[]>(`${API_ENDPOINTS.STATS.OVERVIEW}/genres`);
   }
 };
