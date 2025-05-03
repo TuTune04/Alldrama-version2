@@ -38,6 +38,8 @@ import { Badge } from "@/components/ui/badge"
 import { useMobile } from "@/hooks/use-mobile"
 import { useAuth } from "@/hooks/api/useAuth"
 import { toast } from "react-hot-toast"
+import { useApiCache, CacheMatcher } from "@/hooks/api/useApiCache"
+import { API_ENDPOINTS } from "@/lib/api/endpoints"
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false)
@@ -51,6 +53,7 @@ const Navbar = () => {
 
   // Sử dụng useAuth hook thay vì auth store trực tiếp
   const { isAuthenticated, user, logout, loading } = useAuth()
+  const { clearCache } = useApiCache()
 
   // Xử lý sự kiện scroll
   useEffect(() => {
@@ -90,9 +93,20 @@ const Navbar = () => {
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (searchQuery.trim()) {
+      // Xóa cache của kết quả tìm kiếm trước đó
+      const matcher: CacheMatcher = (key: string) => key.includes(API_ENDPOINTS.MOVIES.SEARCH);
+      clearCache(matcher);
+      
+      // Chuyển hướng đến trang search với query parameter
       router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`)
-      setSearchQuery("")
+      
+      // Đóng khung tìm kiếm trên mobile sau khi submit
       setMobileSearchVisible(false)
+      
+      // Giữ lại giá trị tìm kiếm nếu ở trang search để dễ chỉnh sửa
+      if (!pathname.startsWith('/search')) {
+        setSearchQuery("")
+      }
     }
   }
 
@@ -207,7 +221,7 @@ const Navbar = () => {
                       asChild
                       className="text-gray-300 focus:text-white focus:bg-gray-800 rounded-lg transition-colors"
                     >
-                      <Link href={`/movie/genre/${genre.slug}`}>{genre.name}</Link>
+                      <Link href={`/search?genre=${encodeURIComponent(genre.name)}`}>{genre.name}</Link>
                     </DropdownMenuItem>
                   ))}
                 </DropdownMenuContent>
@@ -489,7 +503,7 @@ const Navbar = () => {
                             className="justify-start h-9 text-gray-300 hover:text-white hover:bg-gray-800/50 rounded-lg"
                             asChild
                           >
-                            <Link href={`/movie/genre/${genre.slug}`}>{genre.name}</Link>
+                            <Link href={`/search?genre=${encodeURIComponent(genre.name)}`}>{genre.name}</Link>
                           </Button>
                         </SheetClose>
                       ))}
