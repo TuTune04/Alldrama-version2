@@ -47,30 +47,50 @@ const MovieDetail = ({ movieId, initialData }: MovieDetailProps) => {
   useEffect(() => {
     const checkFavoriteStatus = async () => {
       if (isAuthenticated && movie) {
-        const favorited = await isFavorite(movie.id)
-        setIsLiked(favorited)
+        try {
+          console.log('Checking favorite status for movie:', movie.id);
+          const favorited = await isFavorite(movie.id);
+          console.log('Movie favorite status:', favorited);
+          setIsLiked(favorited);
+        } catch (error) {
+          console.error('Error checking favorite status:', error);
+        }
       }
     }
     
-    checkFavoriteStatus()
-  }, [isAuthenticated, movie, isFavorite])
+    checkFavoriteStatus();
+  }, [isAuthenticated, movie, isFavorite]);
 
   // Handle toggle favorite
   const handleToggleFavorite = async () => {
+    console.log('Toggle favorite clicked, auth status:', isAuthenticated);
+    
     if (!isAuthenticated) {
-      toast.error("Vui lòng đăng nhập để thêm vào danh sách yêu thích")
-      return
+      toast.error("Vui lòng đăng nhập để thêm vào danh sách yêu thích");
+      return;
     }
     
     if (movie) {
       try {
-        const favorited = await toggleFavorite(movie.id)
+        console.log('Attempting to toggle favorite for movie:', movie.id);
+        // Optimistically update UI
+        setIsLiked(!isLiked);
+        
+        const favorited = await toggleFavorite(movie.id);
+        console.log('Toggle favorite response:', favorited);
+        
         if (favorited !== null) {
-          setIsLiked(favorited)
+          setIsLiked(favorited);
+          toast.success(favorited ? 'Đã thêm vào danh sách yêu thích' : 'Đã xóa khỏi danh sách yêu thích');
+        } else {
+          // Revert UI if API call failed
+          setIsLiked(!isLiked);
         }
       } catch (error) {
-        console.error("Error toggling favorite:", error)
-        toast.error("Không thể thay đổi trạng thái yêu thích")
+        console.error("Error toggling favorite:", error);
+        // Revert UI change on error
+        setIsLiked(!isLiked);
+        toast.error("Không thể thay đổi trạng thái yêu thích");
       }
     }
   }
@@ -222,7 +242,7 @@ const MovieDetail = ({ movieId, initialData }: MovieDetailProps) => {
                 <div className="absolute inset-0 ring-1 ring-indigo-500/20 rounded-xl group-hover:ring-indigo-500/40 transition-all"></div>
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-center pb-3">
                   <Button className="rounded-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg text-xs md:text-sm px-2 md:px-3 py-1 md:py-1.5">
-                    <Play className="h-3 w-3 md:h-5 md:w-5 fill-current mr-1 md:mr-2" /> Xem ngay
+                    <Play className="h-4 w-4 md:h-5 md:w-5 fill-current mr-1 md:mr-2" /> Xem ngay
                   </Button>
                 </div>
               </div>
@@ -278,14 +298,14 @@ const MovieDetail = ({ movieId, initialData }: MovieDetailProps) => {
                   {episodes.length > 0 ? (
                     <Button asChild size="sm" className="rounded-full gap-1 md:gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 border-none text-white shadow-lg px-2 md:px-4 py-1 md:py-3 text-xs md:text-base">
                       <Link href={generateEpisodeLink(movie, episodes[0])}>
-                        <Play className="h-3 w-3 md:h-5 md:w-5 fill-current" />
+                        <Play className="h-4 w-4 md:h-5 md:w-5 fill-current" />
                         Xem ngay
                       </Link>
                     </Button>
                   ) : (
                     <Button asChild size="sm" className="rounded-full gap-1 md:gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 border-none text-white shadow-lg px-2 md:px-4 py-1 md:py-3 text-xs md:text-base">
                       <Link href={generateWatchUrl(movie.id, movie.title)}>
-                        <Play className="h-3 w-3 md:h-5 md:w-5 fill-current" />
+                        <Play className="h-4 w-4 md:h-5 md:w-5 fill-current" />
                         Xem phim
                       </Link>
                     </Button>
@@ -298,7 +318,7 @@ const MovieDetail = ({ movieId, initialData }: MovieDetailProps) => {
                     asChild
                   >
                     <Link href={movie.trailerUrl || "#"} target="_blank" rel="noopener noreferrer">
-                      <Film className="h-3 w-3 md:h-5 md:w-5" />
+                      <Film className="h-4 w-4 md:h-5 md:w-5" />
                       Xem trailer
                     </Link>
                   </Button>
@@ -523,7 +543,7 @@ const MovieDetail = ({ movieId, initialData }: MovieDetailProps) => {
                                 
                                 <div className="flex justify-between items-center text-sm text-gray-400 mt-2">
                                   <div className="flex items-center">
-                                    <Clock className="w-3 h-3 mr-1" />
+                                    <Clock className="w-4 h-4 mr-1" />
                                     {Math.floor(episode.duration / 60)} phút
                                   </div>
                                   {episode.isProcessed ? (
@@ -566,7 +586,7 @@ const MovieDetail = ({ movieId, initialData }: MovieDetailProps) => {
                                 <div className="p-3 bg-gray-800/50 hover:bg-gradient-to-r hover:from-indigo-900/40 hover:to-purple-900/40">
                                   <div className="flex justify-between items-center text-sm text-gray-400">
                                     <div className="flex items-center">
-                                      <Clock className="w-3 h-3 mr-1" />
+                                      <Clock className="w-4 h-4 mr-1" />
                                       {Math.floor(episode.duration / 60)} phút
                                     </div>
                                     {episode.isProcessed ? (
@@ -630,7 +650,7 @@ const MovieDetail = ({ movieId, initialData }: MovieDetailProps) => {
                       <div className="flex-grow min-w-0">
                         <h3 className="font-medium text-white line-clamp-1 group-hover:text-indigo-400 transition-colors">{movie.title}</h3>
                         <div className="flex items-center text-sm text-gray-400 mt-1">
-                          <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400 mr-1" />
+                          <Star className="w-4 h-4 text-amber-400 fill-amber-400 mr-1" />
                           <span>{movie.rating || "8.5"}</span>
                           <Separator orientation="vertical" className="mx-2 h-3 bg-gray-700" />
                           <span>{movie.releaseYear}</span>

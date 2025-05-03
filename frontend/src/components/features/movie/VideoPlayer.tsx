@@ -166,6 +166,22 @@ export default function VideoPlayer({
 
   const togglePlay = ()=>{ const v=vRef.current; if(!v) return; v.paused? v.play(): v.pause() }
   const toggleMute = ()=>{ const v=vRef.current; if(!v) return; v.muted = !v.muted }
+  
+  // Hàm tính toán độ rộng của buffer đã tải
+  const getBuferredWidth = (): number => {
+    const v = vRef.current
+    if (!v || !dur || dur <= 0) return 0
+    
+    try {
+      if (v.buffered && v.buffered.length > 0) {
+        return (v.buffered.end(v.buffered.length - 1) / dur) * 100
+      }
+    } catch (e) {
+      console.error('Lỗi khi tính toán buffer:', e)
+    }
+    
+    return 0
+  }
 
   const setLvl = (idx:number)=>{
     if(!hlsRef.current) return
@@ -225,17 +241,36 @@ export default function VideoPlayer({
 
           {/* bottom bar */}
           <div className="absolute bottom-0 left-0 right-0 px-4 py-3 bg-gradient-to-t from-black/85 to-black/0 opacity-0 group-hover:opacity-100 transition-opacity">
-            {/* progress */}
-            <input
-              className="w-full h-2 appearance-none rounded-full bg-gray-700/60 cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-amber-400"
-              min={0} max={dur||0} step={0.1}
-              value={time}
-              onChange={e=>{ const v=vRef.current; if(v) v.currentTime=parseFloat(e.target.value) }}
-              style={{backgroundImage:`linear-gradient(to right,#f59e0b ${(time/(dur||1))*100}%,#4b5563 ${(time/(dur||1))*100}%)`}}
-            />
+            {/* progress bar container */}
+            <div className="relative mb-1 h-4 flex items-center group/progress">
+              {/* Progress background */}
+              <div className="absolute w-full h-1.5 bg-gray-700/70 rounded-full overflow-hidden">
+                {/* Buffer progress */}
+                <div className="absolute h-full bg-gray-400/30 rounded-full" 
+                     style={{width: `${getBuferredWidth()}%`}}>
+                </div>
+                {/* Played progress */}
+                <div className="absolute h-full bg-amber-500 rounded-full" 
+                     style={{width: `${(time/(dur||1))*100}%`}}></div>
+              </div>
+              
+              {/* Interactive slider - invisible but covers the progress bar */}
+              <input
+                type="range"
+                className="w-full h-4 absolute opacity-0 cursor-pointer z-10"
+                min={0} max={dur||0} step={0.1}
+                value={time}
+                onChange={e=>{ const v=vRef.current; if(v) v.currentTime=parseFloat(e.target.value) }}
+              />
+              
+              {/* Tooltip showing the current time position on hover */}
+              <div className="absolute h-3 w-3 rounded-full bg-amber-500 top-1/2 transform -translate-y-1/2 opacity-0 group-hover/progress:opacity-100 transition-opacity pointer-events-none"
+                   style={{left: `${(time/(dur||1))*100}%`}}>
+              </div>
+            </div>
 
             {/* control row */}
-            <div className="flex justify-between items-center mt-2 text-white select-none">
+            <div className="flex justify-between items-center mt-1 text-white select-none">
               {/* left cluster */}
               <div className="flex items-center gap-3">
                 <Button size="icon" variant="ghost" className="text-white hover:text-amber-400" aria-label="play" onClick={togglePlay}>
@@ -248,17 +283,30 @@ export default function VideoPlayer({
                   <SkipForward className="h-5 w-5"/>
                 </Button>
                 {/* volume */}
-                <div className="flex items-center gap-2 group">
+                <div className="flex items-center gap-2 group/volume">
                   <Button size="icon" variant="ghost" className="text-white hover:text-amber-400" onClick={toggleMute}>
                     {muted||vol===0? <VolumeX className="h-5 w-5"/> : <Volume2 className="h-5 w-5"/>}
                   </Button>
-                  <input
-                    type="range" min={0} max={1} step={0.01}
-                    value={muted?0:vol}
-                    onChange={e=>{ const v=vRef.current; if(!v) return; v.volume=parseFloat(e.target.value); v.muted=Number(e.target.value)===0 }}
-                    className="w-20 h-1.5 appearance-none rounded bg-gray-700/60 cursor-pointer group-hover:block hidden [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white"
-                  />
-                  <span className="text-xs tabular-nums ml-2 w-20">{fmt(time)} / {fmt(dur)}</span>
+                  
+                  <div className="relative w-20 h-1.5 hidden group-hover/volume:block">
+                    {/* Volume background */}
+                    <div className="absolute w-full h-full bg-gray-700/70 rounded-full"></div>
+                    {/* Volume level */}
+                    <div className="absolute h-full bg-amber-500 rounded-full" 
+                         style={{width: `${(muted ? 0 : vol) * 100}%`}}></div>
+                    {/* Volume slider */}
+                    <input
+                      type="range" min={0} max={1} step={0.01}
+                      value={muted?0:vol}
+                      onChange={e=>{ const v=vRef.current; if(!v) return; v.volume=parseFloat(e.target.value); v.muted=Number(e.target.value)===0 }}
+                      className="absolute w-full h-5 top-1/2 -translate-y-1/2 opacity-0 cursor-pointer"
+                    />
+                    {/* Volume handle */}
+                    <div className="absolute h-3 w-3 top-1/2 transform -translate-y-1/2 rounded-full bg-amber-500"
+                         style={{left: `${(muted ? 0 : vol) * 100}%`}}></div>
+                  </div>
+                  
+                  <span className="text-xs tabular-nums ml-2">{fmt(time)} / {fmt(dur)}</span>
                 </div>
               </div>
 
@@ -279,9 +327,9 @@ export default function VideoPlayer({
                     ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
-              )}
+                )}
 
-              {/* fullscreen */}
+                {/* fullscreen */}
                 <Button size="icon" variant="ghost" className="text-white hover:text-amber-400" onClick={fullScreen}>
                   {full? <Minimize className="h-5 w-5"/> : <Maximize className="h-5 w-5"/>}
                 </Button>

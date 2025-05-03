@@ -291,7 +291,7 @@ const ProfilePage = () => {
                 {item.movie && item.episode && (
                   <div className="mt-4">
                     <Link 
-                      href={`/watch/${item.movie.id}-${item.movie.title.toLowerCase().replace(/\s+/g, '-')}/episode/${item.episode.id}`}
+                      href={`/watch/${item.movie.id}-${item.movie.title.toLowerCase().replace(/\s+/g, '-')}?episode=${item.episode.id}&ep=${item.episode.episodeNumber}&progress=${item.progress}`}
                       className="inline-block bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm transition-colors"
                     >
                       {item.isCompleted ? 'Xem lại' : 'Tiếp tục xem'}

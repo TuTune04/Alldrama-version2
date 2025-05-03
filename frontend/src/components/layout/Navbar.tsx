@@ -20,6 +20,7 @@ import {
   Clapperboard,
   Bell,
   List,
+  Play,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -40,6 +41,7 @@ import { useAuth } from "@/hooks/api/useAuth"
 import { toast } from "react-hot-toast"
 import { useApiCache, CacheMatcher } from "@/hooks/api/useApiCache"
 import { API_ENDPOINTS } from "@/lib/api/endpoints"
+import { clearHomepageCache } from "@/hooks/api/useHomepageData"
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false)
@@ -54,6 +56,48 @@ const Navbar = () => {
   // Sử dụng useAuth hook thay vì auth store trực tiếp
   const { isAuthenticated, user, logout, loading } = useAuth()
   const { clearCache } = useApiCache()
+
+  // Desktop Navigation Button Component
+  const NavButton = ({
+    href,
+    active,
+    children,
+    onClick,
+  }: {
+    href: string
+    active: boolean
+    children: React.ReactNode
+    onClick?: () => void
+  }) => {
+    return (
+      <Button
+        variant="ghost"
+        size="default"
+        className={cn(
+          "gap-1.5 text-gray-300 hover:text-white hover:bg-gray-800/50 transition-colors",
+          active && "bg-amber-600 text-white hover:bg-amber-600/90 hover:text-white",
+        )}
+        onClick={onClick}
+        asChild
+      >
+        <Link href={href}>{children}</Link>
+      </Button>
+    )
+  }
+
+  // Handle logo click to clear cache when going to homepage
+  const handleLogoClick = (e: React.MouseEvent) => {
+    // Only do special handling if not already on homepage
+    if (pathname !== '/') {
+      e.preventDefault();
+      
+      // Clear the homepage data cache to ensure fresh data
+      clearHomepageCache();
+      
+      // Manually navigate to homepage
+      router.push('/');
+    }
+  };
 
   // Xử lý sự kiện scroll
   useEffect(() => {
@@ -163,7 +207,7 @@ const Navbar = () => {
         <div className="flex items-center justify-between h-16">
           {/* Logo and Desktop Navigation */}
           <div className="flex items-center gap-4 lg:gap-6">
-            <Link href="/" className="flex-shrink-0 flex items-center gap-2 group">
+            <Link href="/" className="flex-shrink-0 flex items-center gap-2 group" onClick={handleLogoClick}>
               <div className="w-9 h-9 sm:w-10 sm:h-10 relative overflow-hidden rounded-full bg-gradient-to-br from-amber-500 to-amber-600 p-0.5 transition-transform duration-300 group-hover:scale-110 shadow-lg shadow-amber-900/20">
                 <div className="absolute inset-0 bg-black rounded-full m-0.5"></div>
                 <Image
@@ -180,7 +224,11 @@ const Navbar = () => {
             </Link>
 
             <div className="hidden lg:flex items-center gap-1">
-              <NavButton href="/" active={pathname === "/"}>
+              <NavButton 
+                href="/" 
+                active={pathname === "/"}
+                onClick={() => pathname !== "/" && clearHomepageCache()}
+              >
                 <Home className="h-4 w-4 mr-1.5" />
                 Trang chủ
               </NavButton>
@@ -253,12 +301,52 @@ const Navbar = () => {
             <div className="flex items-center gap-2">
               {isAuthenticated ? (
                 <>
-                  <Button variant="ghost" size="icon" className="rounded-full h-9 w-9 text-gray-300 hover:text-white relative">
-                    <Bell className="h-5 w-5" />
-                    <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center bg-amber-600 text-[10px]">
-                      2
-                    </Badge>
-                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="rounded-full h-9 w-9 text-gray-300 hover:text-white relative">
+                        <Bell className="h-5 w-5" />
+                        <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center bg-amber-600 text-[10px]">
+                          2
+                        </Badge>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-72 bg-gray-900/95 backdrop-blur-sm border-gray-800 rounded-xl shadow-xl p-1">
+                      <div className="p-3 border-b border-gray-800 flex justify-between items-center">
+                        <div className="font-medium text-white">Thông báo</div>
+                        <Button variant="ghost" size="sm" className="text-xs text-amber-500 hover:text-amber-400 p-1 h-auto">
+                          Đánh dấu tất cả đã đọc
+                        </Button>
+                      </div>
+                      <div className="max-h-[300px] overflow-y-auto">
+                        {/* Thông báo 1 */}
+                        <div className="p-3 border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors cursor-pointer flex gap-3">
+                          <div className="flex-shrink-0 w-10 h-10 rounded-full bg-amber-600/20 flex items-center justify-center text-amber-500">
+                            <Film className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <p className="text-sm text-white">Phim mới <span className="font-medium text-amber-500">Tam Sinh Tam Thế</span> đã được phát hành!</p>
+                            <p className="text-xs text-gray-400 mt-1">2 giờ trước</p>
+                          </div>
+                        </div>
+                        
+                        {/* Thông báo 2 */}
+                        <div className="p-3 border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors cursor-pointer flex gap-3">
+                          <div className="flex-shrink-0 w-10 h-10 rounded-full bg-green-600/20 flex items-center justify-center text-green-500">
+                            <Play className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <p className="text-sm text-white">Tập mới của <span className="font-medium text-amber-500">Hạ Tiên Sinh</span> đã cập nhật!</p>
+                            <p className="text-xs text-gray-400 mt-1">1 ngày trước</p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="p-2 pt-1">
+                        <Button variant="ghost" className="w-full justify-center py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800/70 rounded-lg" asChild>
+                          <Link href="/notifications">Xem tất cả thông báo</Link>
+                        </Button>
+                      </div>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
 
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -390,17 +478,31 @@ const Navbar = () => {
             )}
 
             {isAuthenticated && (
-              <Link href="/profile" className="ml-1">
-                <Avatar className="h-8 w-8 border-2 border-amber-600/20 ring-2 ring-amber-500/10">
-                  {user?.avatar_url ? (
-                    <AvatarImage src={user.avatar_url} alt={user.full_name || "Avatar"} />
-                  ) : (
-                    <AvatarFallback className="bg-amber-600/10 text-amber-500 text-xs font-medium">
-                      {getUserInitial()}
-                    </AvatarFallback>
-                  )}
-                </Avatar>
-              </Link>
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="rounded-full h-9 w-9 text-gray-300 hover:text-white relative ml-1"
+                  onClick={() => router.push('/notifications')}
+                >
+                  <Bell className="h-5 w-5" />
+                  <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center bg-amber-600 text-[10px]">
+                    2
+                  </Badge>
+                </Button>
+                
+                <Link href="/profile" className="ml-1">
+                  <Avatar className="h-8 w-8 border-2 border-amber-600/20 ring-2 ring-amber-500/10">
+                    {user?.avatar_url ? (
+                      <AvatarImage src={user.avatar_url} alt={user.full_name || "Avatar"} />
+                    ) : (
+                      <AvatarFallback className="bg-amber-600/10 text-amber-500 text-xs font-medium">
+                        {getUserInitial()}
+                      </AvatarFallback>
+                    )}
+                  </Avatar>
+                </Link>
+              </>
             )}
 
             <Sheet>
@@ -413,19 +515,21 @@ const Navbar = () => {
               <SheetContent side="right" className="w-[280px] sm:w-[350px] bg-gray-900 border-gray-800 text-white p-0">
                 <SheetHeader className="p-4 border-b border-gray-800/50 mb-0 bg-gradient-to-b from-black to-transparent">
                   <SheetTitle className="flex items-center gap-2 text-white">
-                    <div className="w-8 h-8 relative overflow-hidden rounded-full bg-gradient-to-br from-amber-500 to-amber-600 p-0.5 shadow-md shadow-amber-900/20">
-                      <div className="absolute inset-0 bg-black rounded-full m-0.5"></div>
-                      <Image
-                        src="/logo.svg"
-                        alt="AllDrama Logo"
-                        width={32}
-                        height={32}
-                        className="object-contain relative z-20 p-1.5"
-                      />
-                    </div>
-                    <span className="text-xl font-normal bg-gradient-to-r from-amber-400 to-amber-500 text-transparent bg-clip-text font-fleur-de-leah">
-                      AllDrama
-                    </span>
+                    <Link href="/" onClick={(e) => { handleLogoClick(e); }} className="flex items-center gap-2">
+                      <div className="w-8 h-8 relative overflow-hidden rounded-full bg-gradient-to-br from-amber-500 to-amber-600 p-0.5 shadow-md shadow-amber-900/20">
+                        <div className="absolute inset-0 bg-black rounded-full m-0.5"></div>
+                        <Image
+                          src="/logo.svg"
+                          alt="AllDrama Logo"
+                          width={32}
+                          height={32}
+                          className="object-contain relative z-20 p-1.5"
+                        />
+                      </div>
+                      <span className="text-xl font-normal bg-gradient-to-r from-amber-400 to-amber-500 text-transparent bg-clip-text font-fleur-de-leah">
+                        AllDrama
+                      </span>
+                    </Link>
                   </SheetTitle>
                 </SheetHeader>
 
@@ -441,6 +545,7 @@ const Navbar = () => {
                             ? "bg-amber-600 hover:bg-amber-700 text-white"
                             : "text-gray-300 hover:text-white hover:bg-gray-800/50",
                         )}
+                        onClick={() => pathname !== "/" && clearHomepageCache()}
                         asChild
                       >
                         <Link href="/">
@@ -547,6 +652,23 @@ const Navbar = () => {
                           className="w-full justify-start text-gray-300 hover:text-white hover:bg-gray-800/50 rounded-lg"
                           asChild
                         >
+                          <Link href="/notifications">
+                            <Bell className="h-4 w-4 mr-2" />
+                            <div className="flex items-center gap-2">
+                              Thông báo
+                              <Badge className="h-5 w-5 p-0 flex items-center justify-center bg-amber-600 text-[10px]">
+                                2
+                              </Badge>
+                            </div>
+                          </Link>
+                        </Button>
+                      </SheetClose>
+                      <SheetClose asChild>
+                        <Button
+                          variant="ghost"
+                          className="w-full justify-start text-gray-300 hover:text-white hover:bg-gray-800/50 rounded-lg"
+                          asChild
+                        >
                           <Link href="/profile?tab=favorites">
                             <Heart className="h-4 w-4 mr-2" />
                             Phim yêu thích
@@ -619,31 +741,6 @@ const Navbar = () => {
         </div>
       </div>
     </nav>
-  )
-}
-
-// Desktop Navigation Button Component
-const NavButton = ({
-  href,
-  active,
-  children,
-}: {
-  href: string
-  active: boolean
-  children: React.ReactNode
-}) => {
-  return (
-    <Button
-      variant="ghost"
-      size="default"
-      className={cn(
-        "gap-1.5 text-gray-300 hover:text-white hover:bg-gray-800/50 transition-colors",
-        active && "bg-amber-600 text-white hover:bg-amber-600/90 hover:text-white",
-      )}
-      asChild
-    >
-      <Link href={href}>{children}</Link>
-    </Button>
   )
 }
 

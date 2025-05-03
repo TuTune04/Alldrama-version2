@@ -11,7 +11,7 @@ import {
 import { useAuthStore } from '@/store/authStore';
 
 // Cấu hình môi trường
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://alldramaz.com';
 
 // Mở rộng InternalAxiosRequestConfig để hỗ trợ _retry property
 interface ExtendedAxiosRequestConfig extends InternalAxiosRequestConfig {

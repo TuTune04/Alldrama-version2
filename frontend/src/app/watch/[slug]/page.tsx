@@ -1,7 +1,7 @@
 'use client'
 
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import axios from 'axios'
 
 import { API_ENDPOINTS } from '@/lib/api/endpoints'
@@ -15,6 +15,8 @@ import ContentInfoCard from '@/components/features/watch/ContentInfoCard'
 import CommentSection from '@/components/features/movie/CommentSection'
 import RelatedMovies from '@/components/features/watch/RelatedMovies'
 import { generateWatchUrl } from '@/utils/url'
+import { useWatchHistory } from '@/hooks/api/useWatchHistory'
+import { useAuth } from '@/hooks/api/useAuth'
 
 // Extend base types to include subtitles
 interface MovieWithSubtitles extends Movie {
@@ -42,6 +44,9 @@ export default function WatchPage() {
   const router        = useRouter()
 
   const episodeId = searchParams.get('episode')      // ?episode=123
+  const episodeNum = searchParams.get('ep')          // ?ep=1
+  const savedProgress = searchParams.get('progress') // ?progress=123 (thời gian đã xem trước đó)
+  
   /* ----------------- local state ----------------- */
   const [movie,  setMovie]  = useState<MovieWithSubtitles | null>(null)
   const [eps,    setEps]    = useState<EpisodeWithSubtitles[]>([])
@@ -55,6 +60,62 @@ export default function WatchPage() {
   /* ----------------- UI control ----------------- */
   const [showPanel, setShowPanel]   = useState(false)
   const [viewMode,  setViewMode]    = useState<'grid' | 'list'>('grid')
+  
+  /* ----------------- derived ----------------- */
+  const isSeries = Boolean(ep)
+  
+  /* ----------------- Auth & Watch History ----------------- */
+  const { isAuthenticated } = useAuth()
+  const { updateProgress } = useWatchHistory()
+  
+  // Debounce function to prevent excessive API calls
+  const debounce = <T extends (...args: any[]) => any>(func: T, delay: number) => {
+    let timer: NodeJS.Timeout
+    return (...args: Parameters<T>) => {
+      clearTimeout(timer)
+      timer = setTimeout(() => func(...args), delay)
+    }
+  }
+  
+  // Debounced update progress function
+  const debouncedUpdateProgress = useCallback(
+    debounce((time: number, duration: number) => {
+      if (!isAuthenticated || !movie) return
+      
+      // Kiểm tra đầu vào
+      try {
+        // Chuyển đổi các giá trị thành số
+        const movieIdNumber = Number(movie.id)
+        
+        // Xác định episodeId
+        let episodeIdNumber: number
+        if (isSeries && ep) {
+          episodeIdNumber = Number(ep.id)
+        } else {
+          // Đối với phim lẻ, sử dụng movieId làm episodeId
+          episodeIdNumber = movieIdNumber
+        }
+        
+        // Kiểm tra tính hợp lệ của thời gian xem và thời lượng
+        const validTime = isFinite(time) ? Math.floor(time) : 0
+        const validDuration = isFinite(duration) ? Math.floor(duration) : 0
+        
+        // Kiểm tra tính hợp lệ của ID
+        if (isNaN(movieIdNumber) || isNaN(episodeIdNumber) || movieIdNumber <= 0 || episodeIdNumber <= 0) {
+          console.error('ID không hợp lệ', { movieId: movieIdNumber, episodeId: episodeIdNumber })
+          return
+        }
+        
+        // Chỉ gửi yêu cầu nếu thời lượng hợp lệ
+        if (validDuration >= 5) {
+          updateProgress(movieIdNumber, episodeIdNumber, validTime, validDuration)
+        }
+      } catch (err) {
+        console.error('Lỗi khi xử lý tiến trình xem:', err)
+      }
+    }, 5000), // Update at most every 5 seconds
+    [isAuthenticated, movie, isSeries, ep, updateProgress]
+  )
 
   /* ----------------- fetch data ----------------- */
   useEffect(() => {
@@ -110,8 +171,7 @@ export default function WatchPage() {
     return <NotFoundMessage message="Không thể tải nội dung" description={err || ''} />
   }
 
-  /* ----------------- derived ----------------- */
-  const isSeries   = Boolean(ep)
+  /* ----------------- derived values ----------------- */
   const videoSrc   = isSeries ? ep!.playlistUrl : movie.playlistUrl
   const posterSrc  = (isSeries ? ep!.thumbnailUrl : movie.posterUrl) || '/placeholder.svg'
   const title      = isSeries
@@ -122,6 +182,20 @@ export default function WatchPage() {
   const subtitles = isSeries 
     ? (ep!.subtitles || [])
     : (movie.subtitles || [])
+  
+  // Xác định thời gian bắt đầu video (từ tiến độ lưu trước đó)
+  let startTime = 0
+  if (savedProgress) {
+    try {
+      const progress = parseInt(savedProgress, 10)
+      // Nếu thời gian hợp lệ và dưới 99% thời lượng của video (tránh bắt đầu gần kết thúc)
+      if (!isNaN(progress) && progress > 0) {
+        startTime = progress
+      }
+    } catch (e) {
+      console.error('Lỗi khi xử lý tiến độ xem đã lưu:', e)
+    }
+  }
 
   /* ----------------- render ----------------- */
   return (
@@ -160,17 +234,56 @@ export default function WatchPage() {
             useCustomControls={true}
             useTestVideo={!videoSrc}
             subtitles={subtitles}
-            initialTime={0}
+            initialTime={startTime}
             isHLS={true}
             onTimeUpdate={(time) => {
-              // Optional time update handling
-              console.log("Current time:", time);
+              try {
+                // Lấy duration từ video player
+                const videoElement = document.querySelector('video')
+                if (!videoElement) return
+                
+                const duration = videoElement.duration || 0
+                
+                // Nếu đã xác thực, cập nhật tiến trình xem
+                if (isAuthenticated) {
+                  debouncedUpdateProgress(time, duration)
+                }
+              } catch (error) {
+                console.error('Lỗi onTimeUpdate:', error)
+              }
             }}
             onEnded={() => {
-              if (nextEp) {
-                router.push(
-                  generateWatchUrl(movie.id, movie.title, nextEp.id, nextEp.episodeNumber)
-                )
+              try {
+                // Khi video kết thúc, cũng cập nhật progress để đánh dấu đã xem xong
+                if (isAuthenticated && movie) {
+                  const videoElement = document.querySelector('video')
+                  const duration = videoElement?.duration || 0
+                  
+                  const movieIdNumber = Number(movie.id)
+                  let episodeIdNumber: number
+                  
+                  if (isSeries && ep) {
+                    episodeIdNumber = Number(ep.id)
+                  } else {
+                    episodeIdNumber = movieIdNumber
+                  }
+                  
+                  // Kiểm tra tính hợp lệ của dữ liệu
+                  if (!isNaN(movieIdNumber) && !isNaN(episodeIdNumber) && 
+                      movieIdNumber > 0 && episodeIdNumber > 0 && 
+                      isFinite(duration) && duration > 0) {
+                    updateProgress(movieIdNumber, episodeIdNumber, duration, duration)
+                  }
+                }
+                
+                // Chuyển sang tập tiếp theo nếu có
+                if (nextEp) {
+                  router.push(
+                    generateWatchUrl(movie.id, movie.title, nextEp.id, nextEp.episodeNumber)
+                  )
+                }
+              } catch (error) {
+                console.error('Lỗi onEnded:', error)
               }
             }}
           />

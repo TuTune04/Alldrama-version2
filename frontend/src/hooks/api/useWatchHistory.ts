@@ -33,12 +33,58 @@ export const useWatchHistory = () => {
   const addOrUpdateWatchHistory = useCallback(
     async (data: WatchHistoryRequest) => {
       try {
-        const response = await watchHistoryService.addOrUpdateWatchHistory(data);
+        // Kiểm tra dữ liệu đầu vào
+        const { movieId, episodeId, progress, duration } = data;
+        
+        // Đảm bảo các giá trị là số hợp lệ
+        if (!movieId || isNaN(Number(movieId)) || Number(movieId) <= 0) {
+          console.error('movieId không hợp lệ:', movieId);
+          return null;
+        }
+        
+        if (!episodeId || isNaN(Number(episodeId)) || Number(episodeId) <= 0) {
+          console.error('episodeId không hợp lệ:', episodeId);
+          return null;
+        }
+        
+        if (progress < 0 || !isFinite(progress)) {
+          console.error('progress không hợp lệ:', progress);
+          return null;
+        }
+        
+        if (duration <= 0 || !isFinite(duration)) {
+          console.error('duration không hợp lệ:', duration);
+          return null;
+        }
+        
+        // Chuyển đổi số để đảm bảo dữ liệu hợp lệ
+        const validData: WatchHistoryRequest = {
+          movieId: Number(movieId),
+          episodeId: Number(episodeId),
+          progress: Math.floor(progress),
+          duration: Math.floor(duration)
+        };
+        
+        const response = await watchHistoryService.addOrUpdateWatchHistory(validData);
+        
         // Refresh watch history
         await mutate();
         return response.watchHistory;
-      } catch (err) {
+      } catch (err: any) {
+        // Hiển thị thông báo lỗi chi tiết hơn
+        const errorMessage = err?.response?.data?.message || 'Không thể cập nhật lịch sử xem';
         console.error('Không thể cập nhật lịch sử xem:', err);
+        
+        // Ghi nhật ký lỗi chi tiết
+        if (err?.response?.status) {
+          console.error(`Lỗi HTTP ${err.response.status}: ${errorMessage}`);
+        }
+        
+        // Nếu đã đăng nhập, hiển thị thông báo lỗi
+        if (err?.response?.status !== 401) {
+          // toast.error(errorMessage);
+        }
+        
         return null;
       }
     },

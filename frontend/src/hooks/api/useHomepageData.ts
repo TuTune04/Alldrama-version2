@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Movie } from '@/types';
 import { useMovies } from '@/hooks/api/useMovies';
 import { toast } from 'react-hot-toast';
 import { movieService } from '@/lib/api/services/movieService';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import useSWR, { mutate as globalMutate } from 'swr';
 
 interface HomepageData {
   newest: Movie[];
@@ -18,19 +19,27 @@ interface HomepageData {
 // Cache TTL in milliseconds (10 minutes)
 const CACHE_TTL = 10 * 60 * 1000;
 
-export const useHomepageData = () => {
-  const [data, setData] = useState<HomepageData>({ 
-    newest: [], 
-    popular: [], 
-    featured: [], 
-    trending: [],
-    genres: {} 
-  });
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+// SWR cache key for homepage data
+const SWR_CACHE_KEY = 'homepage_data';
+
+// Static method to clear homepage cache from anywhere
+export const clearHomepageCache = () => {
+  // Clear SWR cache
+  globalMutate(SWR_CACHE_KEY, undefined, { revalidate: false });
   
+  // Clear localStorage cache if available
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.removeItem('homepage_data');
+    } catch (e) {
+      console.error('Failed to clear homepage localStorage cache:', e);
+    }
+  }
+};
+
+export const useHomepageData = () => {
   // Lưu dữ liệu vào localStorage với TTL
-  const [cachedData, setCachedData] = useLocalStorage<{data: HomepageData, timestamp: number} | null>(
+  const [persistedData, setPersistedData] = useLocalStorage<{data: HomepageData, timestamp: number} | null>(
     'homepage_data',
     null
   );
@@ -49,56 +58,22 @@ export const useHomepageData = () => {
   } = useMovies();
 
   // Kiểm tra xem cache có hết hạn chưa
-  const isCacheValid = () => {
-    if (!cachedData) return false;
+  const isCacheValid = useCallback(() => {
+    if (!persistedData) return false;
     const now = Date.now();
-    return now - cachedData.timestamp < CACHE_TTL;
-  };
+    return now - persistedData.timestamp < CACHE_TTL;
+  }, [persistedData]);
 
-  useEffect(() => {
-    // Cleanup function để đảm bảo set isMounted = false khi component unmount
-    return () => {
-      isMounted.current = false;
-      // Hủy tất cả API requests đang chạy khi component unmount
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      // Nếu cache còn hạn, sử dụng cache data
-      if (isCacheValid()) {
-        setData(cachedData!.data);
-        setIsLoading(false);
-        
-        // Vẫn fetch data mới ngầm để cập nhật cache
-        fetchLatestData(false);
-        return;
-      }
-      
-      // Không có cache hoặc cache hết hạn, fetch data mới
-      fetchLatestData(true);
-    };
-
-    fetchData();
-  }, []);
-
-  const fetchLatestData = async (showLoading = true) => {
-      try {
-      if (showLoading) {
-        setIsLoading(true);
-      }
-        setError(null);
-        
-      // Tạo AbortController mới cho request này
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-      abortControllerRef.current = new AbortController();
-      const signal = abortControllerRef.current.signal;
-      
+  // Data fetcher for SWR
+  const fetchHomepageData = useCallback(async () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    
+    abortControllerRef.current = new AbortController();
+    const signal = abortControllerRef.current.signal;
+    
+    try {
       // 1. Gọi các API riêng lẻ song song với Promise.allSettled để tránh lỗi nếu 1 API không thành công
       const [newestResult, popularResult, featuredResult, trendingResult] = await Promise.allSettled([
         getNewestMovies(),
@@ -135,49 +110,77 @@ export const useHomepageData = () => {
         genres[3] = dramaResult.value.movies;
       } else {
         genres[3] = [];
-        }
-        
-      // Chỉ cập nhật state nếu component vẫn còn mounted
+      }
+
+      const newData = {
+        newest,
+        popular,
+        featured,
+        trending,
+        genres
+      };
+      
+      // Lưu vào localStorage với timestamp
       if (isMounted.current) {
-        const newData = {
-          newest,
-          popular,
-          featured,
-          trending,
-          genres
-        };
-        
-        setData(newData);
-        
-        // Lưu vào cache với timestamp
-        setCachedData({
+        setPersistedData({
           data: newData,
           timestamp: Date.now()
         });
-        
-        if (showLoading) {
-          setIsLoading(false);
-        }
       }
-      } catch (err) {
-        console.error('Error fetching homepage data:', err);
-      if (isMounted.current && showLoading) {
-        setError(err as Error);
-        setIsLoading(false);
-        toast.error('Không thể tải dữ liệu trang chủ');
-      }
-      }
-    };
+      
+      return newData;
+    } catch (err) {
+      console.error('Error fetching homepage data:', err);
+      throw err;
+    }
+  }, [getNewestMovies, getPopularMovies, getFeaturedMovies, getTrendingMovies, setPersistedData]);
 
-  // Thêm hàm refresh để có thể gọi lại API khi cần
-  const refreshData = () => {
-    fetchLatestData(true);
+  // Setup SWR with initial data from localStorage if valid
+  const initialData = isCacheValid() ? persistedData!.data : undefined;
+
+  // Configure SWR options
+  const swrOptions = {
+    revalidateOnFocus: false,       // Don't revalidate when window gains focus
+    revalidateOnReconnect: false,   // Don't revalidate when reconnecting
+    revalidateIfStale: true,        // Revalidate if data is stale
+    revalidateOnMount: !isCacheValid(), // Only revalidate on mount if cache is invalid
+    dedupingInterval: 5000,         // Dedupe requests within 5 seconds
+    fallbackData: initialData       // Use localStorage data as fallback
   };
 
+  // Use SWR for fetching and caching
+  const { 
+    data, 
+    error: swrError, 
+    isLoading: swrIsLoading, 
+    isValidating, 
+    mutate 
+  } = useSWR(
+    SWR_CACHE_KEY, 
+    fetchHomepageData, 
+    swrOptions
+  );
+
+  // Cleanup function to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      isMounted.current = false;
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
+
+  // Manual refresh function
+  const refreshData = useCallback(() => {
+    return mutate();
+  }, [mutate]);
+
   return {
-    ...data,
-    isLoading,
-    error,
+    ...data || initialData || { newest: [], popular: [], featured: [], trending: [], genres: {} },
+    isLoading: swrIsLoading && !initialData,
+    error: swrError,
+    isRefreshing: isValidating && !swrIsLoading,
     refreshData
   };
 };

@@ -51,9 +51,12 @@ const TopMoviesSection = ({
       <div className="py-10 bg-gradient-to-b from-[#0F111A] to-[#151823]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center mb-5">
-            <h2 className="text-2xl md:text-3xl font-bold text-white flex items-center">
-              <span className="bg-gradient-to-r from-amber-500 to-red-500 bg-clip-text text-transparent">{title}</span>
-            </h2>
+            {/* Tiêu đề không chứa bất kỳ phần tử con nào khác ngoài text */}
+            <div className="flex items-start">
+              <h3 className="text-2xl md:text-3xl font-bold">
+                <span className="bg-gradient-to-r from-amber-500 to-red-500 bg-clip-text text-transparent">{title}</span>
+              </h3>
+            </div>
           </div>
           
           <div className="flex gap-3 overflow-hidden pb-6">
@@ -72,20 +75,26 @@ const TopMoviesSection = ({
     <div className="py-10 bg-gradient-to-b from-[#0F111A] to-[#151823]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center mb-5">
-          <h2 className="text-2xl md:text-3xl font-bold text-white flex items-center">
-            <span className="bg-gradient-to-r from-amber-500 to-red-500 bg-clip-text text-transparent">{title}</span>
-          </h2>
+          {/* Tiêu đề Section */}
+          <div className="flex items-start">
+            <h3 className="text-2xl md:text-3xl font-bold">
+              <span className="bg-gradient-to-r from-amber-500 to-red-500 bg-clip-text text-transparent">{title}</span>
+            </h3>
+          </div>
           
+          {/* Nút điều hướng */}
           <div className="flex items-center gap-2">
             <button 
               onClick={handlePrevClick}
               className="p-2 rounded-full bg-gray-800/70 hover:bg-amber-600/80 text-white transition-colors"
+              aria-label="Previous"
             >
               <ChevronLeft size={18} />
             </button>
             <button 
               onClick={handleNextClick}
               className="p-2 rounded-full bg-gray-800/70 hover:bg-amber-600/80 text-white transition-colors"
+              aria-label="Next"
             >
               <ChevronRight size={18} />
             </button>
@@ -127,7 +136,7 @@ const TopMoviesSection = ({
                               src={"/images/test.jpg"} 
                               alt={movie.title}
                               fill
-                              className="object-cover linear-gradient(to bottom, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 1) 20%, rgba(0, 0, 0, 1) 80%, rgba(0, 0, 0, 0) 100%)"
+                              className="object-cover"
                               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 25vw, 20vw"
                               priority={index < 5}
                             />
@@ -185,7 +194,6 @@ const TopMoviesSection = ({
                               <Play fill="white" size={20} />
                             </div>
                           </div>
-                          
                         </div>
                       </Link>
                     </div>
