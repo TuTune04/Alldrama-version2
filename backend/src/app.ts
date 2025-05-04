@@ -21,7 +21,9 @@ import commentRoutes from "./routes/commentRoutes";
 const app = express();
 
 // Middleware
-app.use(express.json());
+// Tăng giới hạn kích thước body request lên 50MB
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(cookieParser());
 
 // Thêm middleware bảo mật
@@ -31,14 +33,22 @@ app.use(securityMiddleware);
 app.use(globalLimiter);
 
 // CORS middleware
+// app.use(cors({
+//   origin: process.env.NODE_ENV === 'production' 
+//     ? [process.env.FRONTEND_URL || 'https://alldrama.tech', 'https://next-auth.js.org']
+//     : ['http://localhost:3000', 'http://localhost:3001', 'https://next-auth.js.org'],
+//   credentials: true, // Quan trọng: cho phép gửi cookie qua CORS
+//   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+//   allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization', 'X-Worker-Secret', 'XSRF-TOKEN']
+// }));
+
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? [process.env.FRONTEND_URL || 'https://alldrama.tech', 'https://next-auth.js.org']
-    : ['http://localhost:3000', 'http://localhost:3001', 'https://next-auth.js.org'],
-  credentials: true, // Quan trọng: cho phép gửi cookie qua CORS
+  origin: 'http://localhost:3000',
+  credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization', 'X-Worker-Secret', 'XSRF-TOKEN']
 }));
+app.options('*', cors({ origin: 'http://localhost:3000', credentials: true }));
 
 // Swagger Documentation
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
