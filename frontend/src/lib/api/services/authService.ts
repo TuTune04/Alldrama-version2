@@ -3,6 +3,7 @@ import { apiClient } from '../apiClient';
 import { API_ENDPOINTS } from '../endpoints';
 import { refreshTokenEndpoint, refreshAccessToken } from '../authHelper';
 import { useAuthStore } from '@/store/authStore';
+import { jwtDecode } from 'jwt-decode';
 
 export const authService = {
   /**
@@ -114,26 +115,20 @@ export const authService = {
   },
 
   /**
-   * Lưu token vào localStorage và authStore
+   * Lưu token vào authStore
    * @param token JWT token
    */
   saveToken(token: string): void {
-    // Lưu vào cookie để middleware có thể đọc
-    document.cookie = `accessToken=${token}; path=/; max-age=86400; SameSite=Strict`;
-    
-    // Cập nhật authStore
+    // Chỉ lưu token vào Zustand store, không lưu vào cookie
     const authStore = useAuthStore.getState();
     authStore.setToken(token);
   },
 
   /**
-   * Xóa token khỏi localStorage và authStore
+   * Xóa token khỏi authStore
    */
   clearToken(): void {
-    // Xóa token khỏi cookie
-    document.cookie = 'accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-    
-    // Cập nhật authStore
+    // Chỉ xóa token khỏi Zustand store
     const authStore = useAuthStore.getState();
     authStore.setToken(null);
   },
@@ -186,5 +181,19 @@ export const authService = {
   getToken(): string | null {
     const authStore = useAuthStore.getState();
     return authStore.token;
+  },
+
+  /**
+   * Kiểm tra xem token đã hết hạn chưa
+   * @param token JWT token cần kiểm tra
+   * @returns true nếu token đã hết hạn hoặc không hợp lệ
+   */
+  isTokenExpired(token: string): boolean {
+    try {
+      const decoded = jwtDecode<{ exp: number }>(token);
+      return decoded.exp * 1000 < Date.now();
+    } catch {
+      return true;
+    }
   }
 };

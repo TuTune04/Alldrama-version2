@@ -18,9 +18,13 @@ class FavoriteCache {
   private cache: Record<string, boolean> = {};
   private timestamp: number = 0;
   private favorites: Favorite[] | null = null;
+  private isClient: boolean;
 
   private constructor() {
-    this.loadFromLocalStorage();
+    this.isClient = typeof window !== 'undefined';
+    if (this.isClient) {
+      this.loadFromLocalStorage();
+    }
   }
 
   public static getInstance(): FavoriteCache {
@@ -31,6 +35,8 @@ class FavoriteCache {
   }
 
   private loadFromLocalStorage(): void {
+    if (!this.isClient) return;
+    
     try {
       const cacheData = localStorage.getItem(FAVORITE_CACHE_KEY);
       if (cacheData) {
@@ -52,6 +58,8 @@ class FavoriteCache {
   }
 
   public saveToLocalStorage(favorites: Favorite[]): void {
+    if (!this.isClient) return;
+    
     try {
       const cacheData = {
         favorites,
@@ -110,7 +118,14 @@ class FavoriteCache {
     this.cache = {};
     this.favorites = null;
     this.timestamp = 0;
-    localStorage.removeItem(FAVORITE_CACHE_KEY);
+    
+    if (this.isClient) {
+      try {
+        localStorage.removeItem(FAVORITE_CACHE_KEY);
+      } catch (e) {
+        console.error('Error removing favorites from localStorage', e);
+      }
+    }
   }
 
   public isExpired(): boolean {
@@ -120,11 +135,16 @@ class FavoriteCache {
 
 export const useFavorites = () => {
   const { clearFavoritesCache, clearMoviesCache } = useApiCache();
-  const favoriteCache = FavoriteCache.getInstance();
+  const [favoriteCache, setFavoriteCache] = useState<FavoriteCache | null>(null);
   const errorCountRef = useRef(0);
   const lastErrorTimeRef = useRef(0);
   const [isFetchingFavorites, setIsFetchingFavorites] = useState(false);
   const { isAuthenticated } = useAuthStore();
+
+  // Initialize favorite cache only on client-side 
+  useEffect(() => {
+    setFavoriteCache(FavoriteCache.getInstance());
+  }, []);
 
   // Reset error count after timeout
   useEffect(() => {
@@ -139,8 +159,8 @@ export const useFavorites = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // SWR key for favorites
-  const key = isAuthenticated ? 'favorites' : null; // Only fetch if logged in
+  // SWR key for favorites - only fetch if logged in and in browser environment
+  const key = isAuthenticated && typeof window !== 'undefined' ? 'favorites' : null;
 
   // Kiểm tra xem có nên thử lại sau lỗi không
   const shouldRetryAfterError = () => {
@@ -169,7 +189,7 @@ export const useFavorites = () => {
           isFetchingFavorites ? 'already fetching' : 'too many errors');
         
         // Return cached data if available
-        const cachedFavorites = favoriteCache.getFavorites();
+        const cachedFavorites = favoriteCache?.getFavorites();
         return cachedFavorites || [];
       }
       
@@ -182,7 +202,7 @@ export const useFavorites = () => {
         
         // Save to cache if valid
         if (result && Array.isArray(result)) {
-          favoriteCache.saveToLocalStorage(result);
+          favoriteCache?.saveToLocalStorage(result);
         }
         
         return result;
@@ -194,13 +214,13 @@ export const useFavorites = () => {
         lastErrorTimeRef.current = Date.now();
         
         // Return from cache if available
-        const cachedFavorites = favoriteCache.getFavorites();
+        const cachedFavorites = favoriteCache?.getFavorites();
         return cachedFavorites || [];
       } finally {
         setIsFetchingFavorites(false);
       }
     },
-    [isFetchingFavorites, isAuthenticated]
+    [isFetchingFavorites, isAuthenticated, favoriteCache]
   );
 
   // Use SWR hook with optimized config
@@ -228,14 +248,14 @@ export const useFavorites = () => {
   // Check if movie is in favorites - optimized with cache
   const isFavorite = useCallback(
     async (movieId: string | number) => {
-      if (!movieId || !isAuthenticated) return false;
+      if (!movieId || !isAuthenticated || !favoriteCache) return false;
       
       const movieIdStr = String(movieId);
       
       // Check cache first
       const cachedStatus = favoriteCache.isMovieFavorite(movieIdStr);
-      if (cachedStatus !== null) {
-        return cachedStatus;
+      if (cachedStatus !== null && cachedStatus !== undefined) {
+        return Boolean(cachedStatus);
       }
       
       try {
@@ -256,131 +276,118 @@ export const useFavorites = () => {
         console.error('Error checking favorite status:', err);
         
         // Return cached value if available
-        return favoriteCache.isMovieFavorite(movieIdStr) || false;
+        const cachedFav = favoriteCache.isMovieFavorite(movieIdStr);
+        return cachedFav === true; // Ensure we return a boolean
       }
     },
-    [data, isAuthenticated]
+    [data, isAuthenticated, favoriteCache]
   );
 
-  // Toggle favorite status with optimistic update
+  // Toggle a movie's favorite status
   const toggleFavorite = useCallback(
     async (movieId: string | number) => {
-      if (!movieId || !isAuthenticated) return null;
+      // Skip if not authenticated or cache not initialized
+      if (!isAuthenticated || !favoriteCache) return false;
       
       const movieIdStr = String(movieId);
-      const currentStatus = await isFavorite(movieId);
       
       try {
+        // Get current status
+        const currentStatus = await isFavorite(movieId);
+        
         // Optimistic update - update UI immediately
         const newFavState = !currentStatus;
         favoriteCache.setMovieFavorite(movieIdStr, newFavState);
         
         // Update data optimistically
-        await mutate(
-          prev => {
-            if (!prev) return [];
-            
-            if (newFavState) {
-              // Add to favorites
-              if (!prev.some(fav => String(fav.movieId) === movieIdStr)) {
-                return [...prev, { id: Date.now(), movieId, favoritedAt: new Date().toISOString() } as Favorite];
-              }
-            } else {
-              // Remove from favorites
-              return prev.filter(fav => String(fav.movieId) !== movieIdStr);
-            }
-            return prev;
-          },
-          false // false = don't revalidate yet
-        );
+        if (data && Array.isArray(data)) {
+          const optimisticData = newFavState
+            ? [...data, { movieId, favoritedAt: new Date().toISOString() } as Favorite]
+            : data.filter(fav => String(fav.movieId) !== movieIdStr);
+          mutate(optimisticData, false);
+        }
         
-        console.log('Toggling favorite for movie:', movieId, 'to', newFavState);
-        
-        // Actual API call
+        // Call API
         const result = await favoriteService.toggleFavorite(movieId);
-        console.log('Toggle favorite result:', result);
         
         // Update cache with actual result
         favoriteCache.setMovieFavorite(movieIdStr, result.favorited);
         
         // Revalidate after API call succeeds
-        await mutate();
-        
-        toast.success(result.message);
+        mutate();
         return result.favorited;
-      } catch (err) {
-        console.error('Error toggling favorite:', err);
+      } catch (error) {
+        console.error('Error toggling favorite:', error);
         
-        // Revert optimistic update
-        favoriteCache.setMovieFavorite(movieIdStr, currentStatus);
-        await mutate(); // Revalidate to revert UI
+        try {
+          // Revert optimistic update
+          const currentStatus = await isFavorite(movieId);
+          favoriteCache.setMovieFavorite(movieIdStr, currentStatus);
+          await mutate(); // Revalidate to revert UI
+          
+          // Show error message
+          toast.error('Không thể cập nhật danh sách yêu thích');
+        } catch (revertError) {
+          console.error('Error reverting optimistic update:', revertError);
+        }
         
-        toast.error('Không thể thay đổi trạng thái yêu thích');
-        return null;
+        return false;
       }
     },
-    [mutate, isFavorite, isAuthenticated]
+    [mutate, isFavorite, isAuthenticated, favoriteCache, data]
   );
-
-  // Remove from favorites with optimistic update
-  const removeFromFavorites = useCallback(
+  
+  // Remove a movie from favorites
+  const removeFavorite = useCallback(
     async (movieId: string | number) => {
-      if (!movieId || !isAuthenticated) return false;
+      // Skip if not authenticated or cache not initialized
+      if (!isAuthenticated || !favoriteCache) return false;
       
       const movieIdStr = String(movieId);
-      const isCurrentlyFavorite = await isFavorite(movieId);
-      
-      // If it's not a favorite, nothing to do
-      if (!isCurrentlyFavorite) {
-        return true;
-      }
       
       try {
         // Optimistic update - update UI immediately
         favoriteCache.setMovieFavorite(movieIdStr, false);
         
         // Update data optimistically
-        await mutate(
-          prev => {
-            if (!prev) return [];
-            // Remove from favorites
-            return prev.filter(fav => String(fav.movieId) !== movieIdStr);
-          },
-          false // false = don't revalidate yet
-        );
+        if (data && Array.isArray(data)) {
+          const optimisticData = data.filter(fav => String(fav.movieId) !== movieIdStr);
+          mutate(optimisticData, false);
+        }
         
-        console.log('Removing favorite for movie:', movieId);
-        
-        // Actual API call
-        const result = await favoriteService.removeFromFavorites(movieId);
-        console.log('Remove favorite result:', result);
+        // Call API
+        await favoriteService.removeFromFavorites(movieId);
         
         // Revalidate after API call succeeds
-        await mutate();
-        
-        toast.success(result.message);
+        mutate();
         return true;
-      } catch (err) {
-        console.error('Error removing favorite:', err);
+      } catch (error) {
+        console.error('Error removing favorite:', error);
         
-        // Revert optimistic update
-        favoriteCache.setMovieFavorite(movieIdStr, true);
-        await mutate(); // Revalidate to revert UI
+        try {
+          // Revert optimistic update
+          favoriteCache.setMovieFavorite(movieIdStr, true);
+          await mutate(); // Revalidate to revert UI
+          
+          // Show error message
+          toast.error('Không thể xóa khỏi danh sách yêu thích');
+        } catch (revertError) {
+          console.error('Error reverting optimistic update:', revertError);
+        }
         
-        toast.error('Không thể xóa phim khỏi danh sách yêu thích');
         return false;
       }
     },
-    [mutate, isFavorite, isAuthenticated]
+    [mutate, isFavorite, isAuthenticated, favoriteCache, data]
   );
 
   // Clear all cache
   const clearFavoriteCache = useCallback(() => {
-    favoriteCache.clearCache();
+    favoriteCache?.clearCache();
     errorCountRef.current = 0;
     lastErrorTimeRef.current = 0;
     mutate([], false);
-  }, [mutate]);
+  }, [mutate, favoriteCache]);
 
   // Clear favorites when user logs out
   useEffect(() => {
@@ -390,14 +397,15 @@ export const useFavorites = () => {
   }, [isAuthenticated, clearFavoriteCache]);
 
   return {
-    favorites: data || [],
-    loading: isLoading,
+    data,
+    isLoading,
     isValidating,
     error,
     isFavorite,
     toggleFavorite,
-    removeFromFavorites,
+    removeFromFavorites: removeFavorite,
     refreshFavorites: mutate,
     clearFavoriteCache,
+    addToFavorites: (movieId: string | number) => toggleFavorite(movieId)
   };
 };

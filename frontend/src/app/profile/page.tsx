@@ -10,6 +10,7 @@ import { useWatchHistory } from '@/hooks/api/useWatchHistory';
 import { useAuth } from '@/hooks/api/useAuth';
 import { Favorite, WatchHistory } from '@/types';
 import { favoriteService } from '@/lib/api/services/favoriteService';
+import { authService } from '@/lib/api/services/authService';
 
 // Tabs
 type TabType = 'account' | 'history' | 'favorites' | 'settings';
@@ -35,6 +36,8 @@ const ProfileContent = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState('');
+  const [apiStatus, setApiStatus] = useState<{ status: string; message: string } | null>(null);
+  const [testingApi, setTestingApi] = useState(false);
   const searchParams = useSearchParams();
   const router = useRouter();
   
@@ -70,7 +73,7 @@ const ProfileContent = () => {
 
   // Lấy tab từ URL nếu có
   useEffect(() => {
-    const tabParam = searchParams.get('tab');
+    const tabParam = searchParams?.get('tab');
     if (tabParam) {
       switch (tabParam) {
         case 'history':
@@ -131,6 +134,10 @@ const ProfileContent = () => {
       // Gọi API đổi mật khẩu
       if (user?.id) {
         await changePassword(user.id, currentPassword, newPassword);
+        
+        // Sau khi đổi mật khẩu thành công, refresh token để lấy token mới
+        await authService.refreshToken();
+        
         setPasswordSuccess('Mật khẩu đã được cập nhật thành công!');
         setCurrentPassword('');
         setNewPassword('');
@@ -398,9 +405,6 @@ const ProfileContent = () => {
 
   // Render the settings tab
   const renderSettings = () => {
-    const [apiStatus, setApiStatus] = useState<{ status: string; message: string } | null>(null);
-    const [testingApi, setTestingApi] = useState(false);
-
     const testApiConnection = async () => {
       setTestingApi(true);
       setApiStatus(null);

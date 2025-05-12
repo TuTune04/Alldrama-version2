@@ -50,7 +50,7 @@ const Navbar = () => {
   const [searchQuery, setSearchQuery] = useState("")
   const [mobileSearchVisible, setMobileSearchVisible] = useState(false)
   const isMobile = useMobile()
-  const pathname = usePathname()
+  const pathname = usePathname() || '/'
   const router = useRouter()
 
   // Sử dụng useAuth hook thay vì auth store trực tiếp
@@ -105,7 +105,7 @@ const Navbar = () => {
       const currentScrollY = window.scrollY
       
       // Đối với trang watch
-      if (pathname.includes("/watch/")) {
+      if (pathname?.includes("/watch/")) {
         if (currentScrollY > 50) {
           // Cuộn xuống - ẩn navbar
           setIsNavbarVisible(false)
@@ -148,7 +148,7 @@ const Navbar = () => {
       setMobileSearchVisible(false)
       
       // Giữ lại giá trị tìm kiếm nếu ở trang search để dễ chỉnh sửa
-      if (!pathname.startsWith('/search')) {
+      if (!pathname?.startsWith('/search')) {
         setSearchQuery("")
       }
     }
@@ -157,12 +157,23 @@ const Navbar = () => {
   // Xử lý đăng xuất sử dụng useAuth hook
   const handleLogout = async () => {
     try {
-      await logout()
-      toast.success("Đăng xuất thành công!")
+      // Xóa cache trước khi đăng xuất
+      clearCache(() => true);
+      
+      // Đăng xuất
+      await logout();
+      
+      // Xóa các state liên quan đến người dùng
+      setSearchQuery("");
+      
+      // Thông báo thành công
+      toast.success("Đăng xuất thành công!");
+      
       // Chuyển hướng về trang chủ sau khi đăng xuất
-      router.push("/")
+      router.push("/");
     } catch (error) {
-      toast.error("Đã xảy ra lỗi khi đăng xuất")
+      console.error("Logout error:", error);
+      toast.error("Đã xảy ra lỗi khi đăng xuất");
     }
   }
 
@@ -186,7 +197,7 @@ const Navbar = () => {
   // Ẩn navbar trên mobile ở các trang khác khi cuộn xuống
   // Hoặc ẩn navbar khi đang ở trang watch và đang cuộn xuống
   if ((isMobile && pathname !== "/" && isScrolled) || 
-      (pathname.includes("/watch/") && !isNavbarVisible)) {
+      (pathname?.includes("/watch/") && !isNavbarVisible)) {
     return null
   }
 

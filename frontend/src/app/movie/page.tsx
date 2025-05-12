@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Movie } from '@/types/movie';
 import { Genre } from '@/types/genre';
 import MovieGrid from '@/components/features/movie/MovieGrid';
@@ -77,31 +77,38 @@ export default function MovieListPage() {
 
   // Debounced fetch function to prevent excessive API calls
   const debouncedFetchMovies = useCallback(
-    debounce(() => {
+    // Use regular function instead of debounce to eliminate potential issues
+    async () => {
+      if (!isFilterChanged) return; // Only proceed if filters have changed
+      
       try {
         const sortOptions: SortOptions = {
           sort: 'views', // Default to popular movies (views)
           order: 'DESC'
         };
         
-        // Clear cache for this endpoint to ensure fresh data
-        clearCache((key: string) => key.includes(API_ENDPOINTS.MOVIES.SEARCH));
+        // Clear cache only when needed, outside of the effect cycle
+        if (activeGenre !== 'all') {
+          clearCache((key: string) => key.includes(API_ENDPOINTS.MOVIES.SEARCH));
+        }
         
         // Search movies with genre filter
-        searchMovies({
+        await searchMovies({
           page: currentPage,
           limit: 20,
           genre: activeGenre !== 'all' ? Number(activeGenre) : undefined,
           ...sortOptions
         });
         
-        // Reset the filter changed flag
+        // Reset the filter changed flag AFTER the search is complete
         setIsFilterChanged(false);
       } catch (error) {
         console.error('Error fetching movies:', error);
+        // Still reset the flag to prevent loops even on error
+        setIsFilterChanged(false);
       }
-    }, 300),
-    [activeGenre, currentPage, searchMovies, clearCache]
+    },
+    [activeGenre, currentPage, searchMovies, isFilterChanged, clearCache]
   );
 
   // Handle genre change
@@ -117,18 +124,27 @@ export default function MovieListPage() {
     setIsFilterChanged(true);
   };
   
-  // Call fetchMovies when filter dependencies change (not on every render)
+  // Use ref to track if the component is mounted
+  const isMountedRef = useRef(true);
+  
+  // Initialize with useEffect with empty deps array (runs once)
   useEffect(() => {
-    // Only fetch if filters have actually changed
-    if (isFilterChanged) {
+    // Set initial filter flag
+    setIsFilterChanged(true);
+    
+    // Cleanup function
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+  
+  // Separate effect to handle filter changes
+  useEffect(() => {
+    // Only proceed if filters have changed and component is mounted
+    if (isFilterChanged && isMountedRef.current) {
       debouncedFetchMovies();
     }
-  }, [debouncedFetchMovies, isFilterChanged]);
-  
-  // Initial fetch when component mounts
-  useEffect(() => {
-    setIsFilterChanged(true);
-  }, []);
+  }, [isFilterChanged, debouncedFetchMovies]);
   
   // Process movies with type info
   useEffect(() => {

@@ -9,6 +9,7 @@ import { Star, Play, Film, Clock, Calendar, Eye, ChevronDown, ChevronUp, Info, H
 import { Button } from "@/components/ui/button"
 import CommentSection from "./CommentSection"
 import { useMovieDetail } from "@/hooks/api/useMovieDetail"
+import { useEpisodes } from "@/hooks/api/useEpisodes"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Separator } from "@/components/ui/separator"
@@ -31,7 +32,20 @@ interface MovieDetailProps {
 }
 
 const MovieDetail = ({ movieId, initialData }: MovieDetailProps) => {
-  const { movie, episodes, isLoading, error } = useMovieDetail(movieId, initialData)
+  const { movie, isLoading: movieLoading, error: movieError } = useMovieDetail(movieId, initialData)
+  const { 
+    episodes, 
+    loading: episodesLoading, 
+    error: episodesError,
+    getEpisode,
+    findNextEpisode,
+    findPreviousEpisode,
+    incrementView,
+    getProcessingStatus
+  } = useEpisodes(movieId)
+  
+  const isLoading = movieLoading || episodesLoading
+  const error = movieError || episodesError
   const [showFullDescription, setShowFullDescription] = useState(false)
   const [activeEpisode, setActiveEpisode] = useState<string | null>(null)
   const [isWatchlist, setIsWatchlist] = useState(false)
@@ -221,11 +235,19 @@ const MovieDetail = ({ movieId, initialData }: MovieDetailProps) => {
         {/* Poster for mobile */}
         <div className="absolute top-4 left-4 md:hidden w-32 h-48 rounded-xl overflow-hidden shadow-2xl shadow-indigo-500/10">
           <Image 
-            src={"/images/test.jpg"} 
+            src={movie.posterUrl ? `https://media.alldrama.tech/movies/${movie.id}/poster.png` : "/placeholder.svg"} 
             alt={movie.title} 
             fill 
             priority
             className="object-cover transform hover:scale-105 transition-transform duration-700" 
+            onError={(e) => {
+              console.log('MovieDetail Mobile - Image load error for URL:', movie.posterUrl);
+              const target = e.target as HTMLImageElement;
+              target.src = "/placeholder.svg";
+            }}
+            onLoad={() => {
+              console.log('MovieDetail Mobile - Image loaded successfully:', movie.posterUrl);
+            }}
           />
           <div className="absolute inset-0 ring-1 ring-indigo-500/20 rounded-xl hover:ring-indigo-500/40 transition-all"></div>
         </div>
@@ -237,10 +259,18 @@ const MovieDetail = ({ movieId, initialData }: MovieDetailProps) => {
               {/* Poster with glow effect */}
               <div className="hidden md:block w-48 h-72 md:w-64 md:h-96 flex-shrink-0 relative rounded-xl overflow-hidden shadow-2xl shadow-indigo-500/10 group">
                 <Image 
-                  src={ "/placeholder.svg"} 
+                  src={movie.posterUrl ? `https://media.alldrama.tech/movies/${movie.id}/poster.png` : "/placeholder.svg"} 
                   alt={movie.title} 
                   fill 
                   className="object-cover transform group-hover:scale-105 transition-transform duration-700" 
+                  onError={(e) => {
+                    console.log('MovieDetail Desktop - Image load error for URL:', movie.posterUrl);
+                    const target = e.target as HTMLImageElement;
+                    target.src = "/placeholder.svg";
+                  }}
+                  onLoad={() => {
+                    console.log('MovieDetail Desktop - Image loaded successfully:', movie.posterUrl);
+                  }}
                 />
                 <div className="absolute inset-0 ring-1 ring-indigo-500/20 rounded-xl group-hover:ring-indigo-500/40 transition-all"></div>
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-center pb-3">
@@ -404,14 +434,12 @@ const MovieDetail = ({ movieId, initialData }: MovieDetailProps) => {
                 >
                   <Info className="w-4 h-4 mr-2" /> Giới thiệu
                 </TabsTrigger>
-                {episodes.length > 0 && (
-                  <TabsTrigger 
-                    value="episodes" 
-                    className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-600 data-[state=active]:to-purple-600 data-[state=active]:text-white rounded-md py-2"
-                  >
-                    <Layers className="w-4 h-4 mr-2" /> Tập phim ({episodes.length})
-                  </TabsTrigger>
-                )}
+                <TabsTrigger 
+                  value="episodes" 
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-600 data-[state=active]:to-purple-600 data-[state=active]:text-white rounded-md py-2"
+                >
+                  <Layers className="w-4 h-4 mr-2" /> Tập phim ({episodes.length})
+                </TabsTrigger>
                 <TabsTrigger 
                   value="comments" 
                   className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-600 data-[state=active]:to-purple-600 data-[state=active]:text-white rounded-md py-2"
@@ -507,18 +535,31 @@ const MovieDetail = ({ movieId, initialData }: MovieDetailProps) => {
               </TabsContent>  
               
               {/* Episodes Tab */}
-              {episodes.length > 0 && (
-                <TabsContent value="episodes">
-                  <Card className="bg-gradient-to-br from-gray-800/60 to-gray-900/60 border-gray-700 overflow-hidden">
-                    <div className="absolute inset-0 bg-[url('/images/noise.png')] opacity-5 mix-blend-overlay pointer-events-none"></div>
-                    <CardContent className="p-6 relative">
-                      <h2 className="text-xl font-bold mb-4 flex items-center text-white">
-                        <Layers className="w-5 h-5 mr-2 text-indigo-400" />
-                        <span className="bg-gradient-to-r from-indigo-300 to-purple-300 bg-clip-text text-transparent">
-                          Danh sách tập phim
-                        </span>
-                      </h2>
-                      
+              <TabsContent value="episodes" className="space-y-4">
+                <Card className="bg-gradient-to-br from-gray-800/60 to-gray-900/60 border-gray-700 overflow-hidden">
+                  <div className="absolute inset-0 bg-[url('/images/noise.png')] opacity-5 mix-blend-overlay pointer-events-none"></div>
+                  <CardContent className="p-6 relative">
+                    <h2 className="text-sm sm:text-xl font-bold flex items-center text-white mb-4">
+                      <Layers className="w-5 h-5 mr-2 text-indigo-400" />
+                      <span className="bg-gradient-to-r from-indigo-300 to-purple-300 bg-clip-text text-transparent">
+                        Danh sách tập phim ({episodes.length})
+                      </span>
+                    </h2>
+                    
+                    {episodesLoading ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {[...Array(6)].map((_, i) => (
+                          <div key={i} className="animate-pulse">
+                            <div className="aspect-video bg-gray-800 rounded-xl mb-2"></div>
+                            <div className="h-4 bg-gray-800 rounded w-3/4"></div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : episodes.length === 0 ? (
+                      <div className="text-center py-8">
+                        <p className="text-gray-400">Chưa có tập phim nào</p>
+                      </div>
+                    ) : (
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         {episodes.map((episode) => (
                           <Link
@@ -543,31 +584,13 @@ const MovieDetail = ({ movieId, initialData }: MovieDetailProps) => {
                                     <Play className="h-4 w-4 text-indigo-400" />
                                   </div>
                                 </div>
-                                
-                                <div className="flex justify-between items-center text-sm text-gray-400 mt-2">
-                                  <div className="flex items-center">
-                                    <Clock className="w-4 h-4 mr-1" />
-                                    {Math.floor(episode.duration / 60)} phút
-                                  </div>
-                                  {episode.isProcessed ? (
-                                    <div className="flex items-center text-green-400">
-                                      <span className="w-2 h-2 rounded-full bg-green-400 mr-1"></span>
-                                      Sẵn sàng
-                                    </div>
-                                  ) : (
-                                    <div className="flex items-center text-amber-400">
-                                      <span className="w-2 h-2 rounded-full bg-amber-400 mr-1"></span>
-                                      Đang xử lý
-                                    </div>
-                                  )}
-                                </div>
                               </div>
                             ) : (
                               // Desktop view with thumbnails
                               <>
                                 <div className="relative aspect-video overflow-hidden">
                                   <Image 
-                                    src={episode.thumbnailUrl || "/placeholder.svg"} 
+                                    src={episode.thumbnailUrl ? `https://media.alldrama.tech/episodes/${movie.id}/${episode.episodeNumber}/thumbnail.jpg` : "/placeholder.svg"} 
                                     alt={episode.title}
                                     fill
                                     className="object-cover"
@@ -584,36 +607,15 @@ const MovieDetail = ({ movieId, initialData }: MovieDetailProps) => {
                                     <div className="font-medium text-white line-clamp-1">{episode.title}</div>
                                   </div>
                                 </div>
-
-                                {/* Episode info */}
-                                <div className="p-3 bg-gray-800/50 hover:bg-gradient-to-r hover:from-indigo-900/40 hover:to-purple-900/40">
-                                  <div className="flex justify-between items-center text-sm text-gray-400">
-                                    <div className="flex items-center">
-                                      <Clock className="w-4 h-4 mr-1" />
-                                      {Math.floor(episode.duration / 60)} phút
-                                    </div>
-                                    {episode.isProcessed ? (
-                                      <div className="flex items-center text-green-400">
-                                        <span className="w-2 h-2 rounded-full bg-green-400 mr-1"></span>
-                                        Sẵn sàng
-                                      </div>
-                                    ) : (
-                                      <div className="flex items-center text-amber-400">
-                                        <span className="w-2 h-2 rounded-full bg-amber-400 mr-1"></span>
-                                        Đang xử lý
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
                               </>
                             )}
                           </Link>
                         ))}
                       </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-              )}
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
               
               {/* Comments Tab */}
               <TabsContent value="comments">

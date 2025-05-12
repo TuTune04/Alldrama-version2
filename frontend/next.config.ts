@@ -5,7 +5,15 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://alldramaz.com';
 const nextConfig: NextConfig = {
   /* config options here */
   images: {
-    domains: ['localhost', '127.0.0.1', 'via.placeholder.com', 'image.tmdb.org', 'alldramaz.com'],
+    domains: [
+      'localhost', 
+      '127.0.0.1', 
+      'via.placeholder.com', 
+      'image.tmdb.org', 
+      'alldramaz.com',
+      '0343230127aedb8187f76ba76d48332e.r2.cloudflarestorage.com',
+      'media.alldrama.tech'
+    ],
   },
   
   // Cấu hình API proxy để chuyển hướng các yêu cầu từ /api/* sang backend
