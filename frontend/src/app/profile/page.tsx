@@ -46,8 +46,8 @@ const ProfileContent = () => {
 
   // Sử dụng API hooks
   const { 
-    favorites, 
-    loading: loadingFavorites, 
+    data: favorites, 
+    isLoading: loadingFavorites, 
     removeFromFavorites 
   } = useFavorites();
   
@@ -59,17 +59,30 @@ const ProfileContent = () => {
   // Kiểm tra nếu chưa đăng nhập, chuyển hướng đến trang đăng nhập
   useEffect(() => {
     const checkAuth = async () => {
-      if (!isAuthenticated) {
-        // Thử lấy thông tin user trước khi chuyển hướng
-        const currentUser = await fetchCurrentUser();
-        if (!currentUser) {
-          router.push('/login');
+      // Đang xử lý trường hợp khi token có trong cookie nhưng isAuthenticated chưa được cập nhật
+      if (!isAuthenticated && !user) {
+        try {
+          console.log("Đang kiểm tra xác thực...");
+          // Tăng thời gian chờ trước khi chuyển hướng
+          const currentUser = await fetchCurrentUser();
+          console.log("Kết quả kiểm tra:", currentUser ? "Đã xác thực" : "Chưa xác thực");
+          if (!currentUser) {
+            // Đợi một chút trước khi chuyển hướng để tránh race condition
+            setTimeout(() => {
+              router.push('/login');
+            }, 500);
+          }
+        } catch (error) {
+          console.error("Lỗi khi kiểm tra xác thực:", error);
+          setTimeout(() => {
+            router.push('/login');
+          }, 500);
         }
       }
     };
     
     checkAuth();
-  }, [isAuthenticated, router, fetchCurrentUser]);
+  }, [isAuthenticated, user, router, fetchCurrentUser]);
 
   // Lấy tab từ URL nếu có
   useEffect(() => {
@@ -349,55 +362,58 @@ const ProfileContent = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {favorites?.map((favorite) => favorite.movie && (
-            <div key={favorite.id} className="bg-gray-700 rounded-lg overflow-hidden">
-              <div className="relative w-full h-60">
-                <Image 
-                  src={'/placeholders/movie.png'} 
-                  alt={favorite.movie.title}
-                  width={400}
-                  height={240}
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute top-2 right-2">
-                  <button 
-                    className="bg-gray-800/80 hover:bg-red-600/80 p-2 rounded-full transition-colors"
-                    aria-label="Remove from favorites"
-                    onClick={() => handleRemoveFavorite(favorite.movieId)}
-                  >
-                    <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                      <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
-                    </svg>
-                  </button>
+          {favorites?.map((favorite) => {
+            if (!favorite.movie) return null;
+            return (
+              <div key={favorite.id} className="bg-gray-700 rounded-lg overflow-hidden">
+                <div className="relative w-full h-60">
+                  <Image 
+                    src={'/placeholders/movie.png'} 
+                    alt={favorite.movie.title}
+                    width={400}
+                    height={240}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute top-2 right-2">
+                    <button 
+                      className="bg-gray-800/80 hover:bg-red-600/80 p-2 rounded-full transition-colors"
+                      aria-label="Remove from favorites"
+                      onClick={() => handleRemoveFavorite(favorite.movieId)}
+                    >
+                      <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                        <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
-              </div>
-              <div className="p-4">
-                <Link 
-                  href={`/movie/${favorite.movie.id}-${favorite.movie.title.toLowerCase().replace(/\s+/g, '-')}`}
-                  className="text-lg font-semibold text-white hover:text-red-500 transition-colors line-clamp-1"
-                >
-                  {favorite.movie.title}
-                </Link>
-                <p className="text-gray-400 text-sm mt-1">
-                  Đã thêm vào: {formatDate(favorite.favoritedAt)}
-                </p>
-                <div className="mt-4 flex space-x-2">
+                <div className="p-4">
                   <Link 
                     href={`/movie/${favorite.movie.id}-${favorite.movie.title.toLowerCase().replace(/\s+/g, '-')}`}
-                    className="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-2 text-center rounded-md text-sm transition-colors"
+                    className="text-lg font-semibold text-white hover:text-red-500 transition-colors line-clamp-1"
                   >
-                    Chi tiết
+                    {favorite.movie.title}
                   </Link>
-                  <Link 
-                    href={`/watch/${favorite.movie.id}-${favorite.movie.title.toLowerCase().replace(/\s+/g, '-')}/episode/1`}
-                    className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 text-center rounded-md text-sm transition-colors"
-                  >
-                    Xem ngay
-                  </Link>
+                  <p className="text-gray-400 text-sm mt-1">
+                    Đã thêm vào: {formatDate(favorite.favoritedAt)}
+                  </p>
+                  <div className="mt-4 flex space-x-2">
+                    <Link 
+                      href={`/movie/${favorite.movie.id}-${favorite.movie.title.toLowerCase().replace(/\s+/g, '-')}`}
+                      className="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-2 text-center rounded-md text-sm transition-colors"
+                    >
+                      Chi tiết
+                    </Link>
+                    <Link 
+                      href={`/watch/${favorite.movie.id}-${favorite.movie.title.toLowerCase().replace(/\s+/g, '-')}/episode/1`}
+                      className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 text-center rounded-md text-sm transition-colors"
+                    >
+                      Xem ngay
+                    </Link>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

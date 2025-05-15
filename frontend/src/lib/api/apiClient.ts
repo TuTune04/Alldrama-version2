@@ -9,7 +9,8 @@ import {
   notifySubscribers,
   clearAuthHelperState
 } from './authHelper';
-import { useAuthStore } from '@/store/authStore';
+import { useAuthStore } from '@/store/auth';
+import { authService } from './services/authService';
 
 // In development, use relative URLs to leverage Next.js API proxy
 // In production, can use absolute URLs
@@ -57,8 +58,15 @@ class ApiClient {
     // Request interceptor - thêm token cho mỗi request
     this.client.interceptors.request.use(
       (config) => {
-        // Lấy token từ authStore
-        const token = useAuthStore.getState().token;
+        // Kiểm tra xem đang trong quá trình đăng xuất không
+        if (typeof window !== 'undefined' && (window as any).isLoggingOut) {
+          // Nếu đang đăng xuất, hủy request
+          const error = new Error('Cancel request because user is logging out');
+          return Promise.reject(error);
+        }
+        
+        // Lấy token từ authStore hoặc cookie
+        const token = authService.getToken();
         
         // Bỏ qua debug logging với môi trường production
         if (process.env.NODE_ENV !== 'production') {
@@ -224,8 +232,12 @@ class ApiClient {
         // Xử lý các lỗi khác
         const errorResponse = error.response?.data as ErrorResponse;
         
-        // Hiển thị thông báo lỗi (trừ lỗi 401 đã xử lý)
-        if (!isUnauthorized) {
+        // Kiểm tra xem đang trong quá trình đăng xuất không
+        const isLoggingOut = typeof window !== 'undefined' && (window as any).isLoggingOut;
+        const isLoginPage = typeof window !== 'undefined' && window.location.pathname.includes('/login');
+        
+        // Hiển thị thông báo lỗi (trừ lỗi 401 đã xử lý và trừ khi đang đăng xuất)
+        if (!isUnauthorized && !isLoggingOut && !isLoginPage) {
           const errorMessage = errorResponse?.message || 'Đã xảy ra lỗi không xác định';
           toast.error(errorMessage);
         }
@@ -244,6 +256,27 @@ class ApiClient {
     
     // Xóa toàn bộ trạng thái auth helper
     clearAuthHelperState();
+    
+    // Tránh hiển thị nhiều thông báo khi đang trong quá trình đăng xuất
+    // Kiểm tra xem đang ở trang login hay không
+    if (typeof window !== 'undefined') {
+      // Nếu đang ở trang login hoặc đang chuyển hướng đến trang login, không hiển thị thông báo
+      if (window.location.pathname.includes('/login')) {
+        return;
+      }
+      
+      // Kiểm tra xem đã hiển thị thông báo trong 3 giây qua chưa
+      const lastToastTime = window.localStorage.getItem('auth_last_toast_time');
+      const now = Date.now();
+      
+      if (lastToastTime && now - parseInt(lastToastTime) < 3000) {
+        // Nếu đã hiển thị thông báo trong 3 giây qua, không hiển thị nữa
+        return;
+      }
+      
+      // Lưu thời gian hiển thị thông báo cuối cùng
+      window.localStorage.setItem('auth_last_toast_time', now.toString());
+    }
     
     // Hiển thị thông báo không chặn trải nghiệm
     toast.error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại khi cần thiết.');
