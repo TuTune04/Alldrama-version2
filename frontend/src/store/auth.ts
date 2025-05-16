@@ -74,9 +74,9 @@ export const useAuthStore = create<AuthState>()(
 
           // Broadcast sự kiện đăng nhập thành công
           if (typeof window !== 'undefined') {
-            window.dispatchEvent(new CustomEvent('auth:login', {
-              detail: { sessionId }
-            }));
+          window.dispatchEvent(new CustomEvent('auth:login', {
+            detail: { sessionId }
+          }));
           }
           
           return { success: true };
@@ -100,11 +100,11 @@ export const useAuthStore = create<AuthState>()(
             customWindow._isHandlingLogout = true;
           }
           
-          try {
-            // Gọi API đăng xuất
-            await authService.logout();
-          } catch (error) {
-            console.error('Lỗi khi đăng xuất:', error);
+        try {
+          // Gọi API đăng xuất
+          await authService.logout();
+        } catch (error) {
+          console.error('Lỗi khi đăng xuất:', error);
           }
           
           // Xóa token 
@@ -127,7 +127,7 @@ export const useAuthStore = create<AuthState>()(
               
               // Sử dụng flag để ngăn vòng lặp vô hạn
               if (window && !window.opener) {
-                window.dispatchEvent(new CustomEvent('auth:logout'));
+          window.dispatchEvent(new CustomEvent('auth:logout'));
               }
               
               // Reset flag sau một khoảng thời gian

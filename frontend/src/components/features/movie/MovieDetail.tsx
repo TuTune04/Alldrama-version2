@@ -227,13 +227,13 @@ const MovieDetail = ({ movieId, initialData }: MovieDetailProps) => {
       <div className="relative w-full h-[50vh] md:h-[75vh] overflow-hidden">
         {/* Background Image with Overlay */}
         <div className="absolute inset-0 w-full h-full">
-          <div className="absolute inset-0 bg-gradient-to-r from-gray-800/40 to-gray-900/40 mix-blend-multiply z-5" />
-          <div className="absolute inset-0 bg-[url('/images/noise.png')] opacity-[0.02] mix-blend-overlay pointer-events-none z-5" />
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/90 to-background/30" />
+          <div className="absolute inset-0 bg-gradient-to-r from-gray-800/40 to-gray-900/40 mix-blend-multiply z-0" />
+          <div className="absolute inset-0 bg-[url('/images/noise.png')] opacity-[0.02] mix-blend-overlay pointer-events-none z-0" />
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/90 to-background/30 z-0" />
         </div>
 
         {/* Poster for mobile */}
-        <div className="absolute top-4 left-4 md:hidden w-32 h-48 rounded-xl overflow-hidden shadow-2xl shadow-indigo-500/10">
+        <div className="absolute top-4 left-4 md:hidden w-32 h-48 rounded-xl overflow-hidden shadow-2xl shadow-indigo-500/10 z-10">
           <Image 
             src={movie.posterUrl ? `https://media.alldrama.tech/movies/${movie.id}/poster.png` : "/placeholder.svg"} 
             alt={movie.title} 
@@ -253,7 +253,7 @@ const MovieDetail = ({ movieId, initialData }: MovieDetailProps) => {
         </div>
 
         {/* Movie Details */}
-        <div className="absolute inset-0 flex items-end">
+        <div className="absolute inset-0 flex items-end z-20">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full pb-6 md:pb-12">
             <div className="flex flex-col md:flex-row md:items-end gap-4 md:gap-6">
               {/* Poster with glow effect */}
@@ -273,11 +273,11 @@ const MovieDetail = ({ movieId, initialData }: MovieDetailProps) => {
                   }}
                 />
                 <div className="absolute inset-0 ring-1 ring-indigo-500/20 rounded-xl group-hover:ring-indigo-500/40 transition-all"></div>
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-center pb-3">
+                {/* <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-center pb-3">
                   <Button className="rounded-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg text-xs md:text-sm px-2 md:px-3 py-1 md:py-1.5">
                     <Play className="h-4 w-4 md:h-5 md:w-5 fill-current mr-1 md:mr-2" /> Xem ngay
                   </Button>
-                </div>
+                </div> */}
               </div>
 
               {/* Movie Info */}
@@ -327,7 +327,7 @@ const MovieDetail = ({ movieId, initialData }: MovieDetailProps) => {
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex flex-wrap gap-1 md:gap-3">
+                <div className="flex flex-wrap gap-1 md:gap-3 relative z-30">
                   {episodes.length > 0 ? (
                     <Button asChild size="sm" className="rounded-full gap-1 md:gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 border-none text-white shadow-lg px-2 md:px-4 py-1 md:py-3 text-xs md:text-base">
                       <Link href={generateEpisodeLink(movie, episodes[0])}>
@@ -663,10 +663,14 @@ const MovieDetail = ({ movieId, initialData }: MovieDetailProps) => {
                       </div>
                       <div className="w-16 h-22 flex-shrink-0 rounded-md overflow-hidden relative">
                         <Image
-                          src={"/placeholder.svg"}
+                          src={movie.posterUrl ? `https://media.alldrama.tech/movies/${movie.id}/poster.png` : "/placeholder.svg"}
                           alt={movie.title}
                           fill
                           className="object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = "/placeholder.svg";
+                          }}
                         />
                       </div>
                     </Link>

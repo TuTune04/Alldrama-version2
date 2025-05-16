@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { Favorite } from '@/types';
 import { favoriteService } from '@/lib/api/services/favoriteService';
 import { toast } from 'react-hot-toast';
@@ -16,28 +16,45 @@ export const useFavorites = () => {
     isFavorite: isFavoriteInStore 
   } = useFavoritesStore();
 
+  // Clear favorites when user logs out
+  useEffect(() => {
+    if (!isAuthenticated) {
+      clearFavorites();
+    }
+  }, [isAuthenticated, clearFavorites]);
+
   // Fetch favorites from API
   const fetchFavorites = useCallback(async () => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated) {
+      clearFavorites();
+      return [];
+            }
     
     try {
       const result = await favoriteService.getFavorites();
       setFavorites(result);
       return result;
-    } catch (error) {
+    } catch (error: any) {
+      // Ignore cancellation errors during logout
+      if (error?.message?.includes('Cancel request because user is logging out')) {
+        return [];
+        }
       console.error('Error fetching favorites:', error);
       toast.error('Không thể tải danh sách yêu thích');
       return [];
     }
-  }, [isAuthenticated, setFavorites]);
+  }, [isAuthenticated, setFavorites, clearFavorites]);
 
   // Toggle favorite status with optimistic updates
   const toggleFavorite = useCallback(async (movieId: string | number) => {
     if (!isAuthenticated) {
-      toast.error('Vui lòng đăng nhập để thêm vào yêu thích');
+      toast.error('Vui lòng đăng nhập để thêm vào yêu thích', {
+        duration: 4000,
+        icon: '🔒'
+      });
       return false;
-    }
-    
+  }
+
     const currentStatus = isFavoriteInStore(movieId);
     
     // Optimistic update
@@ -46,9 +63,9 @@ export const useFavorites = () => {
     } else {
       addFavorite({ 
         id: Date.now(), // Temporary ID
-        movieId, 
-        favoritedAt: new Date().toISOString() 
-      } as Favorite);
+          movieId,
+          favoritedAt: new Date().toISOString()
+        } as Favorite);
     }
     
     try {
@@ -57,29 +74,47 @@ export const useFavorites = () => {
       if (!result.favorited) {
         // Revert if failed
         fetchFavorites();
+      } else {
+        toast.success(currentStatus ? 'Đã xóa khỏi yêu thích' : 'Đã thêm vào yêu thích');
       }
       
-      return result.favorited;
-    } catch (error) {
+        return result.favorited;
+    } catch (error: any) {
+      // Ignore cancellation errors during logout
+      if (error?.message?.includes('Cancel request because user is logging out')) {
+        return false;
+      }
       console.error('Error toggling favorite:', error);
       // Revert on error
       fetchFavorites();
-      toast.error('Không thể cập nhật danh sách yêu thích');
       return false;
     }
   }, [isAuthenticated, isFavoriteInStore, addFavorite, removeFavorite, fetchFavorites]);
-
+  
   // Remove from favorites
   const removeFromFavorites = useCallback(async (movieId: string | number) => {
-    if (!isAuthenticated) return false;
+    if (!isAuthenticated) {
+      toast.error('Vui lòng đăng nhập để thực hiện thao tác này', {
+        duration: 4000,
+        icon: '🔒'
+      });
+      return false;
+    }
     
     // Optimistic update
     removeFavorite(movieId);
     
     try {
-      await favoriteService.removeFromFavorites(movieId);
-      return true;
-    } catch (error) {
+        await favoriteService.removeFromFavorites(movieId);
+      toast.success('Đã xóa khỏi danh sách yêu thích', {
+        duration: 2000
+      });
+        return true;
+    } catch (error: any) {
+      // Ignore cancellation errors during logout
+      if (error?.message?.includes('Cancel request because user is logging out')) {
+        return false;
+      }
       console.error('Error removing favorite:', error);
       // Revert on error
       fetchFavorites();

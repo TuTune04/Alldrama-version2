@@ -19,7 +19,6 @@ interface ContentInfoCardProps {
   nextEpisode?: any;
   isMovie: boolean;
   episodeListResponse: { episodes: any[] };
-  setShowEpisodeList: (show: boolean) => void;
 }
 
 export default function ContentInfoCard({
@@ -28,8 +27,7 @@ export default function ContentInfoCard({
   prevEpisode,
   nextEpisode,
   isMovie,
-  episodeListResponse,
-  setShowEpisodeList
+  episodeListResponse
 }: ContentInfoCardProps) {
   const isMobile = useMobile(768);
   const { isAuthenticated } = useAuth();
@@ -162,31 +160,36 @@ export default function ContentInfoCard({
             {/* Episode Navigation (only for TV shows) */}
             {!isMovie && currentEpisode && (
               <div className="mt-4">
-                <h3 className="text-sm font-medium text-gray-200 mb-1">
-                  Tập {currentEpisode.episodeNumber}: {currentEpisode.title}
-                </h3>
-                <div className="flex items-center gap-3 mt-2">
-                  {prevEpisode && (
-                    <Button 
-                      variant="outline" size="sm"
-                      className="border-gray-700 bg-gray-800 text-white hover:bg-gray-700"
-                      onClick={(e) => navigateToEpisode(e, prevEpisode.id, prevEpisode.episodeNumber)}
-                    >
-                      <ChevronLeft size={16} className="mr-1" />
-                      Tập trước
-                    </Button>
-                  )}
-                  
-                  {nextEpisode && (
-                    <Button 
-                      variant="outline" size="sm"
-                      className="border-gray-700 bg-gray-800 text-white hover:bg-gray-700"
-                      onClick={(e) => navigateToEpisode(e, nextEpisode.id, nextEpisode.episodeNumber)}
-                    >
-                      Tập sau
-                      <ChevronRight size={16} className="ml-1" />
-                    </Button>
-                  )}
+                <div className="flex flex-row items-center gap-2">
+                  <h3 className="text-sm font-medium text-gray-200 flex-shrink-0">
+                    Tập {currentEpisode.episodeNumber}:
+                  </h3>
+                  <p className="text-sm text-gray-300 flex-1 truncate">
+                    {currentEpisode.title}
+                  </p>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {prevEpisode && (
+                      <Button 
+                        variant="outline" size="sm"
+                        className="border-gray-700 bg-gray-800 text-white hover:bg-gray-700"
+                        onClick={(e) => navigateToEpisode(e, prevEpisode.id, prevEpisode.episodeNumber)}
+                      >
+                        <ChevronLeft size={16} className="mr-1" />
+                        Tập trước
+                      </Button>
+                    )}
+                    
+                    {nextEpisode && (
+                      <Button 
+                        variant="outline" size="sm"
+                        className="border-gray-700 bg-gray-800 text-white hover:bg-gray-700"
+                        onClick={(e) => navigateToEpisode(e, nextEpisode.id, nextEpisode.episodeNumber)}
+                      >
+                        Tập sau
+                        <ChevronRight size={16} className="ml-1" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
@@ -199,7 +202,7 @@ export default function ContentInfoCard({
             <Separator className="my-4 bg-gray-700/50" />
             <h3 className="text-sm font-medium text-gray-200 mb-3">Chọn tập phim</h3>
             <div className="flex flex-wrap gap-2 overflow-x-auto pb-1 max-w-full">
-              {episodeListResponse.episodes.slice(0, 12).map(ep => (
+              {episodeListResponse.episodes.map(ep => (
                 <a 
                   key={ep.id}
                   href={generateWatchUrl(movie.id, movie.title, ep.id, ep.episodeNumber)} 
@@ -213,16 +216,6 @@ export default function ContentInfoCard({
                   {ep.episodeNumber}
                 </a>
               ))}
-              
-              {episodeListResponse.episodes.length > 12 && (
-                <Button 
-                  variant="ghost" size="sm"
-                  className="text-white hover:bg-gray-700 px-2"
-                  onClick={() => setShowEpisodeList(true)}
-                >
-                  ...
-                </Button>
-              )}
             </div>
           </div>
         )}

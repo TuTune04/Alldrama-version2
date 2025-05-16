@@ -316,9 +316,9 @@ const Navbar = () => {
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon" className="rounded-full h-9 w-9 text-gray-300 hover:text-white relative">
                         <Bell className="h-5 w-5" />
-                        <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center bg-amber-600 text-[10px]">
+                        {/* <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center bg-amber-600 text-[10px]">
                           2
-                        </Badge>
+                        </Badge> */}
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-72 bg-gray-900/95 backdrop-blur-sm border-gray-800 rounded-xl shadow-xl p-1">
@@ -329,27 +329,9 @@ const Navbar = () => {
                         </Button>
                       </div>
                       <div className="max-h-[300px] overflow-y-auto">
-                        {/* Thông báo 1 */}
-                        <div className="p-3 border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors cursor-pointer flex gap-3">
-                          <div className="flex-shrink-0 w-10 h-10 rounded-full bg-amber-600/20 flex items-center justify-center text-amber-500">
-                            <Film className="h-5 w-5" />
-                          </div>
-                          <div>
-                            <p className="text-sm text-white">Phim mới <span className="font-medium text-amber-500">Tam Sinh Tam Thế</span> đã được phát hành!</p>
-                            <p className="text-xs text-gray-400 mt-1">2 giờ trước</p>
-                          </div>
-                        </div>
-                        
-                        {/* Thông báo 2 */}
-                        <div className="p-3 border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors cursor-pointer flex gap-3">
-                          <div className="flex-shrink-0 w-10 h-10 rounded-full bg-green-600/20 flex items-center justify-center text-green-500">
-                            <Play className="h-5 w-5" />
-                          </div>
-                          <div>
-                            <p className="text-sm text-white">Tập mới của <span className="font-medium text-amber-500">Hạ Tiên Sinh</span> đã cập nhật!</p>
-                            <p className="text-xs text-gray-400 mt-1">1 ngày trước</p>
-                          </div>
-                        </div>
+                        <p className="text-center text-sm text-gray-400 py-6">
+                          Hiện chưa có thông báo.
+                        </p>
                       </div>
                       <div className="p-2 pt-1">
                         <Button variant="ghost" className="w-full justify-center py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800/70 rounded-lg" asChild>

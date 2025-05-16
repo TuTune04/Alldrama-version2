@@ -5,7 +5,7 @@ import Hls, {Level, ErrorData} from 'hls.js'
 import {
   Play, Pause, SkipBack, SkipForward,
   Volume2, VolumeX, Maximize, Minimize,
-  Settings, Loader2
+  Settings, Loader2, PictureInPicture
 } from 'lucide-react'
 import {Button} from '@/components/ui/button'
 import {
@@ -85,6 +85,8 @@ export default function VideoPlayer({
   const [level,   setLevel]     = useState(-1)            // -1 = auto
   const [full,    setFull]      = useState(false)
   const [fatalErr,setFatalErr]  = useState(false)
+  const [playbackRate, setPlaybackRate] = useState(1)
+  const [isPiP, setIsPiP] = useState(false)
 
   /* ----------------------------------------------------------------
    * progress callback (throttled)
@@ -135,35 +137,53 @@ export default function VideoPlayer({
     const v = vRef.current
     if(!v || !videoSrc) return
     
-    // Skip reinitializing if video source hasn't actually changed
-    if (v.src === videoSrc && hlsRef.current) {
-      console.log('Video source unchanged, skipping reinitialization')
-      return
-    }
+    if(v.src === videoSrc && hlsRef.current) return
     
     if(hlsRef.current){ hlsRef.current.destroy(); hlsRef.current=null }
 
-    // Native HLS (Safari / iOS)
     if(!hlsStream || v.canPlayType('application/vnd.apple.mpegurl')){
-      v.src = testMode ? TEST_MP4 : videoSrc
+      v.src = videoSrc
       return
     }
 
     if(Hls.isSupported()){
-      const h = new Hls({ startLevel:-1, backBufferLength:60, enableWorker:true })
+      const h = new Hls({ 
+        startLevel:-1, 
+        enableWorker:true,
+        maxBufferLength: 30,
+        maxMaxBufferLength: 600,
+        maxBufferSize: 60 * 1000 * 1000, // 60MB
+        maxBufferHole: 0.5,
+        lowLatencyMode: false,
+        backBufferLength: 90
+      })
       h.attachMedia(v)
       h.loadSource(videoSrc)
-      h.on(Hls.Events.MANIFEST_PARSED,(_,d)=> setLevels(d.levels))
-      h.on(Hls.Events.LEVEL_SWITCHED,(_,d)=> setLevel(d.level))
-      h.on(Hls.Events.ERROR,(_e,d:ErrorData)=>{
-        if(!d.fatal) return
-        if(d.type === Hls.ErrorTypes.MEDIA_ERROR){ h.recoverMediaError(); return }
-        setFatalErr(true); h.destroy()
+      
+      // Xử lý sự kiện MANIFEST_PARSED để lấy thông tin độ phân giải
+      h.on(Hls.Events.MANIFEST_PARSED, (_, data) => {
+        setLevels(data.levels)
+        console.log('Available quality levels:', data.levels)
+      })
+
+      h.on(Hls.Events.LEVEL_SWITCHED, (_, data) => {
+        setLevel(data.level)
+        console.log('Switched to quality level:', data.level)
+      })
+
+      h.on(Hls.Events.ERROR, (_e, data: ErrorData) => {
+        if(!data.fatal) return
+        if(data.type === Hls.ErrorTypes.MEDIA_ERROR){ 
+          h.recoverMediaError()
+          return 
+        }
+        setFatalErr(true)
+        h.destroy()
       })
       hlsRef.current = h
     }
     return ()=>{ hlsRef.current?.destroy(); hlsRef.current=null }
-  },[videoSrc, hlsStream, testMode])
+  },[videoSrc, hlsStream])
 
   /* ----------------------------------------------------------------
    * helpers UI
@@ -196,12 +216,54 @@ export default function VideoPlayer({
     hlsRef.current.currentLevel = idx
   }
 
+  const setSpeed = (rate: number) => {
+    const v = vRef.current
+    if (!v) return
+    v.playbackRate = rate
+    setPlaybackRate(rate)
+  }
+
   const fullScreen = ()=>{
     const el = cRef.current
     if(!el) return
     if(!document.fullscreenElement){ el.requestFullscreen(); setFull(true) }
     else { document.exitFullscreen(); setFull(false) }
   }
+
+  const togglePiP = async () => {
+    const v = vRef.current
+    if (!v) return
+
+    try {
+      if (document.pictureInPictureElement) {
+        await document.exitPictureInPicture()
+        setIsPiP(false)
+      } else {
+        await v.requestPictureInPicture()
+        setIsPiP(true)
+      }
+    } catch (error) {
+      console.error('Error toggling PiP:', error)
+    }
+  }
+
+  // Add PiP event listeners
+  useEffect(() => {
+    const v = vRef.current
+    if (!v) return
+
+    const handlePiPChange = () => {
+      setIsPiP(document.pictureInPictureElement === v)
+    }
+
+    v.addEventListener('enterpictureinpicture', handlePiPChange)
+    v.addEventListener('leavepictureinpicture', handlePiPChange)
+
+    return () => {
+      v.removeEventListener('enterpictureinpicture', handlePiPChange)
+      v.removeEventListener('leavepictureinpicture', handlePiPChange)
+    }
+  }, [])
 
   /* ----------------------------------------------------------------
    * JSX
@@ -388,8 +450,7 @@ export default function VideoPlayer({
 
               {/* right cluster */}
               <div className="flex items-center gap-3">
-                {/* quality */}
-                {levels.length>0 && (
+                {/* Playback Speed */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button 
@@ -398,7 +459,7 @@ export default function VideoPlayer({
                       className="text-xs flex items-center gap-1 hover:text-amber-400"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      {level===-1? 'Auto': `${levels[level]?.height}p`} <Settings className="h-4 w-4"/>
+                      {playbackRate}x
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent 
@@ -406,13 +467,77 @@ export default function VideoPlayer({
                     className="bg-gray-800 border-gray-700 text-white text-sm"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <DropdownMenuItem onClick={(e)=>{e.stopPropagation(); setLvl(-1)}} className={cn('cursor-pointer', level===-1 && 'bg-amber-500/20 text-amber-400')}>Auto</DropdownMenuItem>
-                    {levels.map((l,i)=>(
-                      <DropdownMenuItem key={i} onClick={(e)=>{e.stopPropagation(); setLvl(i)}} className={cn('cursor-pointer', level===i && 'bg-amber-500/20 text-amber-400')}>{l.height}p</DropdownMenuItem>
+                    {[0.5, 0.75, 1, 1.25, 1.5, 1.75, 2].map((rate) => (
+                      <DropdownMenuItem 
+                        key={rate} 
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setSpeed(rate)
+                        }} 
+                        className={cn('cursor-pointer', playbackRate === rate && 'bg-amber-500/20 text-amber-400')}
+                      >
+                        {rate}x
+                      </DropdownMenuItem>
                     ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
+
+                {/* quality */}
+                {levels.length > 0 && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-xs flex items-center gap-1 hover:text-amber-400"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {level === -1 ? 'Auto' : `${levels[level]?.height}p`} <Settings className="h-4 w-4"/>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent 
+                      align="end" 
+                      className="bg-gray-800 border-gray-700 text-white text-sm"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <DropdownMenuItem 
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setLvl(-1)
+                        }} 
+                        className={cn('cursor-pointer', level === -1 && 'bg-amber-500/20 text-amber-400')}
+                      >
+                        Auto
+                      </DropdownMenuItem>
+                      {levels.map((l, i) => (
+                        <DropdownMenuItem 
+                          key={i} 
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setLvl(i)
+                          }} 
+                          className={cn('cursor-pointer', level === i && 'bg-amber-500/20 text-amber-400')}
+                        >
+                          {l.height}p ({Math.round(l.bitrate / 1000)}kbps)
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 )}
+
+                {/* PiP Button */}
+                <Button 
+                  size="icon" 
+                  variant="ghost" 
+                  className="text-white hover:text-amber-400" 
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    togglePiP()
+                  }}
+                  disabled={!document.pictureInPictureEnabled}
+                >
+                  <PictureInPicture className="h-5 w-5" />
+                </Button>
 
                 {/* fullscreen */}
                 <Button 
@@ -420,8 +545,8 @@ export default function VideoPlayer({
                   variant="ghost" 
                   className="text-white hover:text-amber-400" 
                   onClick={(e) => {
-                    e.stopPropagation();
-                    fullScreen();
+                    e.stopPropagation()
+                    fullScreen()
                   }}
                 >
                   {full? <Minimize className="h-5 w-5"/> : <Maximize className="h-5 w-5"/>}

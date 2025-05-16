@@ -68,7 +68,7 @@ export const authService = {
       
       // Thực hiện gọi API logout cuối cùng để xóa token ở server
       try {
-        const result = await apiClient.post<{ message: string }>(API_ENDPOINTS.AUTH.LOGOUT);
+    const result = await apiClient.post<{ message: string }>(API_ENDPOINTS.AUTH.LOGOUT);
         
         // Log thông tin xác nhận
         console.log('Đăng xuất thành công, đã xóa token.');
@@ -83,7 +83,7 @@ export const authService = {
     } catch (error) {
       console.error('Lỗi khi gọi API logout:', error);
       // Vẫn đảm bảo token được xóa ngay cả khi API fail
-      this.clearToken();
+    this.clearToken();
       
       // Trả về kết quả giả để tránh lỗi
       return { message: 'Đã đăng xuất cục bộ' };
@@ -150,7 +150,7 @@ export const authService = {
     userId: string | number, 
     data: { currentPassword: string; newPassword: string }
   ): Promise<{ message: string }> {
-    return apiClient.post<{ message: string }>(
+    return apiClient.put<{ message: string }>(
       API_ENDPOINTS.USERS.CHANGE_PASSWORD(userId), 
       data
     );
@@ -246,7 +246,7 @@ export const authService = {
     // Kiểm tra từ authStore
     const authStore = useAuthStore.getState();
     if (authStore.token) {
-      return authStore.token;
+    return authStore.token;
     }
     
     // Nếu không có trong store, thử lấy từ cookie
