@@ -5,7 +5,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { useState, useEffect } from "react"
 import { generateMovieUrl, generateWatchUrl } from "@/utils/url"
-import { Star, Play, Film, Clock, Calendar, Eye, ChevronDown, ChevronUp, Info, Heart, Bookmark, TrendingUp, BarChart3, Layers, Share, X } from "lucide-react"
+import { Star, Play, Film, Clock, Calendar, Eye, ChevronDown, ChevronUp, Info, Heart, Bookmark, TrendingUp, BarChart3, Layers, Share, X, MessageCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import CommentSection from "./CommentSection"
 import { useMovieDetail } from "@/hooks/api/useMovieDetail"
@@ -473,7 +473,7 @@ const MovieDetail = ({ movieId, initialData }: MovieDetailProps) => {
                   value="comments" 
                   className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-600 data-[state=active]:to-purple-600 data-[state=active]:text-white rounded-md py-2"
                 >
-                  <TrendingUp className="w-4 h-4 mr-2" /> Bình luận
+                  <MessageCircle className="w-4 h-4 mr-2" /> Bình luận
                 </TabsTrigger>
               </TabsList>
               
@@ -648,12 +648,7 @@ const MovieDetail = ({ movieId, initialData }: MovieDetailProps) => {
               
               {/* Comments Tab */}
               <TabsContent value="comments">
-                <Card className="bg-gradient-to-br from-gray-800/60 to-gray-900/60 border-gray-700 overflow-hidden">
-                  <div className="absolute inset-0 bg-[url('/images/noise.png')] opacity-5 mix-blend-overlay pointer-events-none"></div>
-                  <CardContent className="p-6 relative">
                     <CommentSection movieId={String(movie.id)} />
-                  </CardContent>
-                </Card>
               </TabsContent>
             </Tabs>
           </div>
