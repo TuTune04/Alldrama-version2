@@ -159,6 +159,19 @@ export const useMovies = (initialParams?: MovieSearchParams) => {
     await mutate();
   }, [mutate]);
 
+  // Get all movies at once
+  const getAllMovies = useCallback(async () => {
+    try {
+      const result = await movieService.getMovies({
+        limit: 1000 // Lấy tất cả phim
+      });
+      return result.movies;
+    } catch (err) {
+      toast.error('Không thể tải danh sách phim');
+      return [];
+    }
+  }, []);
+
   return {
     movies: data?.movies || [],
     pagination: data?.pagination || { total: 0, totalPages: 0, currentPage: 1, limit: 10 },
@@ -173,6 +186,7 @@ export const useMovies = (initialParams?: MovieSearchParams) => {
     getTrendingMovies,
     getNewestMovies,
     getSimilarMovies,
+    getAllMovies,
     refreshMovies: mutate
   };
 };
