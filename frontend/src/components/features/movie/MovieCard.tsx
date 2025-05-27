@@ -30,31 +30,14 @@ const MovieCard = ({
 }: MovieCardProps) => {
   const router = useRouter()
   const cardRef = useRef<HTMLDivElement>(null)
-  const [imageUrl, setImageUrl] = useState(movie.posterUrl ? `https://media.alldrama.tech/movies/${movie.id}/poster.png` : "/placeholder.svg")
   const isMobile = useMobile()
   const movieDetailUrl = generateMovieUrl(movie.id, movie.title)
-  const [imageLoaded, setImageLoaded] = useState(false)
-  const [imageError, setImageError] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [hasError, setHasError] = useState(false)
 
-  const handleImageLoad = () => {
-    console.log('MovieCard - Image loaded successfully:', imageUrl);
-    setImageLoaded(true)
-  }
-  const handleImageError = () => {
-    console.log('MovieCard - Image load error for URL:', imageUrl);
-    setImageError(true)
-    setImageUrl("/placeholder.svg")
-  }
-
-  // Update image URL when movie changes
-  useEffect(() => {
-    if (movie.posterUrl) {
-      console.log('MovieCard - Poster URL:', movie.posterUrl);
-      setImageUrl(`https://media.alldrama.tech/movies/${movie.id}/poster.png`)
-      setImageError(false)
-      setImageLoaded(false)
-    }
-  }, [movie.posterUrl])
+  const posterUrl = movie.posterUrl 
+    ? `https://media.alldrama.tech/movies/${movie.id}/poster.png`
+    : "/placeholder.svg"
 
   const handleCardClick = () => {
     router.push(movieDetailUrl)
@@ -65,17 +48,24 @@ const MovieCard = ({
     return (
       <Link href={movieDetailUrl} className="block">
         <div className={cn("flex items-center gap-3 group cursor-pointer hover:bg-gray-800/50 p-2 rounded transition-colors", className)}>
-          <div className="aspect-[2/3] overflow-hidden">
-            <img
-              src={imageUrl}
+          <div className="relative aspect-[2/3] w-24 overflow-hidden">
+            <Image
+              src={posterUrl}
               alt={movie.title}
-              className="h-full w-full object-cover transition-transform group-hover:scale-110"
-              onLoad={handleImageLoad}
-              onError={handleImageError}
+              fill
+              sizes="96px"
+              className="object-cover transition-transform group-hover:scale-110"
+              onLoadingComplete={() => setIsLoading(false)}
+              onError={() => {
+                setHasError(true)
+                setIsLoading(false)
+              }}
             />
+            {isLoading && (
+              <div className="absolute inset-0 bg-gray-800 animate-pulse" />
+            )}
           </div>
-          <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-80"></div>
-          <div className="absolute bottom-0 left-0 right-0 p-3">
+          <div className="flex-1 min-w-0">
             <h3 className="text-sm font-medium text-white truncate">{movie.title}</h3>
             <div className="flex items-center mt-1 text-xs text-gray-300 space-x-2">
               <span className="inline-block">{movie.releaseYear}</span>
@@ -110,35 +100,39 @@ const MovieCard = ({
         onClick={handleCardClick}
       >
         <div className={`absolute inset-0 ${variant === "trending" ? "bg-gradient-to-t from-indigo-600 via-indigo-500/30 to-transparent" : ""}`}>
-          <div 
-            className={`
-              h-full w-full relative
-              ${!imageLoaded ? "animate-pulse bg-gray-800" : ""}
-              ${trapezoid ? "trapezoid" : ""}
-            `}
-          >
-            <img
-              src={imageUrl}
+          <div className={cn(
+            "h-full w-full relative",
+            isLoading && "animate-pulse bg-gray-800",
+            trapezoid && "trapezoid"
+          )}>
+            <Image
+              src={posterUrl}
               alt={movie.title}
-              className={`
-                h-full w-full object-cover
-                ${imageLoaded ? "opacity-100" : "opacity-0"}
-                ${trapezoid ? "trapezoid-image" : ""}
-                ${variant === "featured" ? "duration-700 group-hover:scale-105" : ""}
-              `}
-              onLoad={handleImageLoad}
-              onError={handleImageError}
+              fill
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              className={cn(
+                "object-cover transition-transform duration-700",
+                isLoading ? "opacity-0" : "opacity-100",
+                trapezoid && "trapezoid-image",
+                variant === "featured" && "group-hover:scale-105"
+              )}
+              onLoadingComplete={() => setIsLoading(false)}
+              onError={() => {
+                setHasError(true)
+                setIsLoading(false)
+              }}
+              priority={variant === "featured" || variant === "trending"}
             />
           </div>
         </div>
 
         {/* Overlay and content */}
         <div 
-          className={`
-            absolute inset-0 flex flex-col justify-end
-            ${variant === "featured" ? "p-6" : "p-3"}
-            ${variant === "trending" ? "" : "bg-gradient-to-t from-black/90 via-black/70 to-black/0"}
-          `}
+          className={cn(
+            "absolute inset-0 flex flex-col justify-end",
+            variant === "featured" ? "p-6" : "p-3",
+            variant === "trending" ? "" : "bg-gradient-to-t from-black/90 via-black/70 to-black/0"
+          )}
         >
           {/* Rating badge - top right */}
           {variant !== "trending" && movie.rating !== undefined && (
@@ -159,12 +153,6 @@ const MovieCard = ({
 
           {/* Info */}
           <div className="flex items-center text-xs text-gray-300 space-x-2">
-            {/* {movie.rating !== undefined && (
-              <div className="flex items-center text-amber-400 gap-1">
-                <Star size={12} className="flex-shrink-0 fill-current" /> 
-                <span>{movie.rating}</span>
-              </div>
-            )} */}
             <span className="inline-block">{movie.releaseYear}</span>
             
             {(variant === "featured" || variant === "trending") && movie.genres && movie.genres[0] && (
@@ -189,7 +177,7 @@ const MovieCard = ({
       </div>
 
       {/* Title below card */}
-      <h3 className={`font-medium text-white line-clamp-1 text-sm group-hover:text-indigo-400 transition-colors`}>
+      <h3 className="font-medium text-white line-clamp-1 text-sm group-hover:text-indigo-400 transition-colors">
         {movie.title}
       </h3>
     </div>
