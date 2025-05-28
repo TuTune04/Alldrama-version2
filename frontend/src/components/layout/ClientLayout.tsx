@@ -4,11 +4,12 @@ import { useEffect, useState } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { SWRConfig } from 'swr';
 import { ThemeProvider } from 'next-themes';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { authService } from '@/lib/api';
 import { refreshAccessToken, onTokenRefreshed, onTokenRefreshFailed } from '@/lib/api/authHelper';
 import MainLayout from '@/components/layout/MainLayout';
-import { useAuthStore } from '@/store/auth';
+import { useAuth } from '@/hooks/api/useAuth';
+import CacheDebug from "@/components/debug/CacheDebug";
 
 export default function ClientLayout({
   children,
@@ -16,84 +17,60 @@ export default function ClientLayout({
   children: React.ReactNode
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const { isAuthenticated, token } = useAuthStore();
+  const { isAuthenticated, token } = useAuth();
 
-  // Xử lý refresh token khi cần thiết
+  // Scroll to top on route change
   useEffect(() => {
-    let isMounted = true;
+    window.scrollTo(0, 0);
+  }, [pathname]);
 
-    const handleTokenRefresh = async () => {
-      if (!isRefreshing) {
-        try {
+  // Token refresh logic
+  useEffect(() => {
+    if (!isAuthenticated || !token) return;
+
+    const checkTokenExpiry = async () => {
+      try {
+        // Check if token is expired instead of validateToken
+        const isExpired = authService.isTokenExpired(token);
+        if (isExpired && !isRefreshing) {
           setIsRefreshing(true);
-          
-          // Sử dụng authHelper để refresh token
-          const newToken = await refreshAccessToken();
-          
-          if (!isMounted) return;
-          
-          // Cập nhật access token
-          authService.saveToken(newToken);
-          
-          // Refresh trang hiện tại
-          router.refresh();
-        } catch (error) {
-          console.error('Failed to refresh token:', error);
-          if (!isMounted) return;
-          
-          // Nếu refresh token thất bại, redirect đến trang login
-          router.push('/login');
-        } finally {
-          if (isMounted) {
-            setIsRefreshing(false);
-          }
+          await refreshAccessToken();
+          setIsRefreshing(false);
         }
-      }
-    };
-
-    // Kiểm tra token và refresh nếu cần
-    const checkAndRefreshToken = async () => {
-      if (token && authService.isTokenExpired(token)) {
-        await handleTokenRefresh();
-      }
-    };
-
-    // Đăng ký các callback xử lý refresh token
-    onTokenRefreshed((newToken) => {
-      if (isMounted) {
-        authService.saveToken(newToken);
-        router.refresh();
-      }
-    });
-
-    onTokenRefreshFailed((error) => {
-      if (isMounted) {
-        console.error('Token refresh failed:', error);
+      } catch (error) {
+        console.error('Token validation failed:', error);
+        setIsRefreshing(false);
         router.push('/login');
       }
-    });
-
-    checkAndRefreshToken();
-
-    // Cleanup function
-    return () => {
-      isMounted = false;
     };
-  }, [router, isRefreshing, token]);
 
-  // Kiểm tra authentication khi component mount
+    // Check token validity on mount and periodically
+    checkTokenExpiry();
+    const interval = setInterval(checkTokenExpiry, 5 * 60 * 1000); // Check every 5 minutes
+
+    return () => clearInterval(interval);
+  }, [isAuthenticated, token, router, isRefreshing]);
+
+  // Token refresh event handlers
   useEffect(() => {
-    // Danh sách các route cần xác thực
-    const protectedRoutes = ['/profile', '/watch'];
-    
-    // Chỉ redirect nếu đang ở route cần xác thực và chưa đăng nhập
-    if (!isAuthenticated && 
-        !window.location.pathname.includes('/login') &&
-        protectedRoutes.some(route => window.location.pathname.startsWith(route))) {
+    const handleTokenRefreshed = () => {
+      setIsRefreshing(false);
+    };
+
+    const handleTokenRefreshFailed = () => {
+      setIsRefreshing(false);
       router.push('/login');
-    }
-  }, [isAuthenticated, router]);
+    };
+
+    onTokenRefreshed(handleTokenRefreshed);
+    onTokenRefreshFailed(handleTokenRefreshFailed);
+
+    return () => {
+      // Cleanup listeners if needed
+    };
+  }, [router]);
 
   return (
     <ThemeProvider 
@@ -106,15 +83,11 @@ export default function ClientLayout({
     >
       <SWRConfig
         value={{
-          provider: () => new Map(),
           revalidateOnFocus: false,
-          errorRetryCount: 3,
-          onError: (error) => {
-            // Xử lý lỗi 401 (Unauthorized)
-            if (error.status === 401) {
-              router.refresh();
-            }
-          }
+          revalidateOnReconnect: false,
+          dedupingInterval: 10000,
+          errorRetryCount: 2,
+          errorRetryInterval: 5000,
         }}
       >
         <MainLayout>
@@ -164,6 +137,7 @@ export default function ClientLayout({
             },
           }}
         />
+        <CacheDebug />
       </SWRConfig>
     </ThemeProvider>
   );

@@ -74,7 +74,8 @@ class ApiClient {
             url: config.url, 
             baseURL: config.baseURL || '(none)',
             fullUrl: config.baseURL ? `${config.baseURL}${config.url}` : config.url,
-            hasToken: !!token
+            hasToken: !!token,
+            timestamp: new Date().toISOString()
           });
         }
         
