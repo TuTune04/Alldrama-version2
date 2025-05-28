@@ -88,18 +88,18 @@ const MovieCard = ({
   // Render standard card variants
   return (
     <div className="flex flex-col gap-2">
-      <div 
-        ref={cardRef} 
-        className={cn(
+    <div 
+      ref={cardRef} 
+      className={cn(
           "group overflow-hidden relative rounded-md transition-all",
-          fullWidth ? "w-full" : "", 
-          variant === "featured" ? "aspect-[2/1]" : "aspect-[2/3]",
-          variant === "slider" ? "border border-gray-700 hover:border-indigo-500/30 hover:shadow-md hover:shadow-indigo-900/10" : "",
-          className
-        )}
-        onClick={handleCardClick}
-      >
-        <div className={`absolute inset-0 ${variant === "trending" ? "bg-gradient-to-t from-indigo-600 via-indigo-500/30 to-transparent" : ""}`}>
+        fullWidth ? "w-full" : "", 
+        variant === "featured" ? "aspect-[2/1]" : "aspect-[2/3]",
+        variant === "slider" ? "border border-gray-700 hover:border-indigo-500/30 hover:shadow-md hover:shadow-indigo-900/10" : "",
+        className
+      )}
+      onClick={handleCardClick}
+    >
+      <div className={`absolute inset-0 ${variant === "trending" ? "bg-gradient-to-t from-indigo-600 via-indigo-500/30 to-transparent" : ""}`}>
           <div className={cn(
             "h-full w-full relative",
             isLoading && "animate-pulse bg-gray-800",
@@ -107,7 +107,7 @@ const MovieCard = ({
           )}>
             <Image
               src={posterUrl}
-              alt={movie.title}
+            alt={movie.title}
               fill
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
               className={cn(
@@ -122,58 +122,58 @@ const MovieCard = ({
                 setIsLoading(false)
               }}
               priority={variant === "featured" || variant === "trending"}
-            />
-          </div>
+          />
         </div>
+      </div>
 
-        {/* Overlay and content */}
-        <div 
+      {/* Overlay and content */}
+      <div 
           className={cn(
             "absolute inset-0 flex flex-col justify-end",
             variant === "featured" ? "p-6" : "p-3",
             variant === "trending" ? "" : "bg-gradient-to-t from-black/90 via-black/70 to-black/0"
           )}
-        >
-          {/* Rating badge - top right */}
-          {variant !== "trending" && movie.rating !== undefined && (
+      >
+        {/* Rating badge - top right */}
+        {variant !== "trending" && movie.rating !== undefined && (
             <div className="absolute top-2 right-2 flex items-center bg-black/60 px-1.5 py-0.5 rounded-sm text-xs font-medium">
-              <Star size={12} className="text-amber-400 fill-current mr-0.5" /> 
-              <span className="text-white">{movie.rating}</span>
-            </div>
-          )}
+            <Star size={12} className="text-amber-400 fill-current mr-0.5" /> 
+            <span className="text-white">{movie.rating}</span>
+          </div>
+        )}
 
-          {/* Play button - center */}
-          {(variant === "featured" || variant === "trending") && (
-            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-              <div className="w-12 h-12 flex items-center justify-center bg-indigo-600/90 rounded-full">
-                <Play size={24} className="text-white ml-1" />
-              </div>
+        {/* Play button - center */}
+        {(variant === "featured" || variant === "trending") && (
+          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="w-12 h-12 flex items-center justify-center bg-indigo-600/90 rounded-full">
+              <Play size={24} className="text-white ml-1" />
             </div>
-          )}
+          </div>
+        )}
 
           {/* Info */}
-          <div className="flex items-center text-xs text-gray-300 space-x-2">
-            <span className="inline-block">{movie.releaseYear}</span>
-            
-            {(variant === "featured" || variant === "trending") && movie.genres && movie.genres[0] && (
-              <>
-                <span className="inline-block text-gray-500">•</span>
-                <span className="inline-block">
-                  {typeof movie.genres[0] === "string" ? movie.genres[0] : movie.genres[0].name}
-                </span>
-              </>
-            )}
-            {variant === "trending" && movie.rating !== undefined && (
-              <>
-                <span className="inline-block text-gray-500">•</span>
-                <span className="flex items-center gap-1">
-                  <Star size={10} className="flex-shrink-0 text-amber-400 fill-current" /> 
-                  <span>{movie.rating}</span>
-                </span>
-              </>
-            )}
-          </div>
+        <div className="flex items-center text-xs text-gray-300 space-x-2">
+          <span className="inline-block">{movie.releaseYear}</span>
+          
+          {(variant === "featured" || variant === "trending") && movie.genres && movie.genres[0] && (
+            <>
+              <span className="inline-block text-gray-500">•</span>
+              <span className="inline-block">
+                {typeof movie.genres[0] === "string" ? movie.genres[0] : movie.genres[0].name}
+              </span>
+            </>
+          )}
+          {variant === "trending" && movie.rating !== undefined && (
+            <>
+              <span className="inline-block text-gray-500">•</span>
+              <span className="flex items-center gap-1">
+                <Star size={10} className="flex-shrink-0 text-amber-400 fill-current" /> 
+                <span>{movie.rating}</span>
+              </span>
+            </>
+          )}
         </div>
+      </div>
       </div>
 
       {/* Title below card */}

@@ -61,20 +61,13 @@ const MovieDetail = ({ movieId, initialData }: MovieDetailProps) => {
 
   // Check if the movie is in favorites when component mounts or movie changes
   useEffect(() => {
-    const checkFavoriteStatus = async () => {
-      if (isAuthenticated && movie) {
-        try {
-          console.log('Checking favorite status for movie:', movie.id);
-          const favorited = await isFavorite(movie.id);
-          console.log('Movie favorite status:', favorited);
-          setIsLiked(favorited);
-        } catch (error) {
-          console.error('Error checking favorite status:', error);
-        }
-      }
+    if (isAuthenticated && movie) {
+      // Use store-based check instead of API call
+      const favorited = isFavorite(movie.id);
+      setIsLiked(favorited);
+    } else {
+      setIsLiked(false);
     }
-    
-    checkFavoriteStatus();
   }, [isAuthenticated, movie, isFavorite]);
 
   // Handle toggle favorite

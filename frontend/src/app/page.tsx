@@ -82,16 +82,16 @@ export default function Home() {
               className={visibleSections.has(section.type) ? 'block' : 'h-96'}
             >
               {visibleSections.has(section.type) && (
-                <MovieSlider 
+          <MovieSlider 
                   title={section.title}
                   movies={sections[section.type]}
-                  size="md"
+            size="md"
                   variant={section.type === 'newest' ? 'new' : 
                           section.type === 'popular' ? 'popular' :
                           section.type === 'featured' ? 'top' :
                           section.type === 'trending' ? 'trending' : 'default'}
-                />
-              )}
+            />
+          )}
             </div>
           ))}
         </section>
@@ -100,14 +100,14 @@ export default function Home() {
         <section className="py-8 mt-8">
           <GenreList />
         </section>
-        
-        <FeaturedContentSwitcher
+
+      <FeaturedContentSwitcher
           items={sections.featured}
-          title="Phim nổi bật"
-          variant="dark"
-          aspectRatio="video"
-          isLoading={isLoading}
-        />
+        title="Phim nổi bật"
+        variant="dark"
+        aspectRatio="video"
+        isLoading={isLoading}
+      />
       </div>
     </div>
   );

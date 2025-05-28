@@ -70,17 +70,11 @@ export default function ContentInfoCard({
   const handleBookmarkClick = async () => {
     if (!isAuthenticated || !movie) return;
     
-    if (!favoriteChecked && !isCheckingFavorite) {
-      setIsCheckingFavorite(true);
-      try {
-        const status = await isFavorite(movie.id);
-        setIsFavorited(status === true);
-        setFavoriteChecked(true);
-      } catch (err) {
-        console.error('Error checking favorite status:', err);
-      } finally {
-        setIsCheckingFavorite(false);
-      }
+    if (!favoriteChecked) {
+      // Use store-based check first
+      const status = isFavorite(movie.id);
+      setIsFavorited(status);
+      setFavoriteChecked(true);
     } else {
       try {
         const newStatus = await toggleFavorite(movie.id);
