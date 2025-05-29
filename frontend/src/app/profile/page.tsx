@@ -77,23 +77,23 @@ const ProfileContent = () => {
 
       try {
         // Nếu chưa authenticated và chưa có user
-        if (!isAuthenticated && !user) {
+      if (!isAuthenticated && !user) {
           console.log("Checking authentication...");
-          const currentUser = await fetchCurrentUser();
+        const currentUser = await fetchCurrentUser();
           
-          if (!currentUser) {
+        if (!currentUser) {
             console.log("No authenticated user found, redirecting to login");
             setRedirecting(true);
-            router.push('/login');
+              router.push('/login');
             return;
           }
         }
         
         setAuthChecked(true);
-      } catch (error) {
+        } catch (error) {
         console.error("Auth check error:", error);
         setRedirecting(true);
-        router.push('/login');
+          router.push('/login');
       }
     };
     
@@ -190,17 +190,17 @@ const ProfileContent = () => {
     
     try {
       // Gọi API đổi mật khẩu
-      const response = await changePassword(
-        user.id,
-        user.full_name || '',
-        user.email || '',
-        newPassword
-      );
-      
-      if (response) {
-        setPasswordSuccess('Mật khẩu đã được cập nhật thành công!');
-        setNewPassword('');
-        setConfirmPassword('');
+        const response = await changePassword(
+          user.id,
+          user.full_name || '',
+          user.email || '',
+          newPassword
+        );
+        
+        if (response) {
+          setPasswordSuccess('Mật khẩu đã được cập nhật thành công!');
+          setNewPassword('');
+          setConfirmPassword('');
       }
     } catch (error: any) {
       setPasswordError(error.message || 'Có lỗi xảy ra khi đổi mật khẩu. Vui lòng thử lại sau.');

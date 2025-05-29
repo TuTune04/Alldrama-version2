@@ -180,7 +180,7 @@ export default function CommentSection({ movieId }: CommentSectionProps) {
         role: 'user' as const,
         email: '',
         createdAt: comment.createdAt
-      }
+    }
     }));
     return formatted;
   }, [comments]);
@@ -189,7 +189,7 @@ export default function CommentSection({ movieId }: CommentSectionProps) {
     if (hasNextPage && !isValidating) {
       const nextPage = currentPage + 1;
       goToPage(nextPage);
-    }
+  }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -354,7 +354,7 @@ export default function CommentSection({ movieId }: CommentSectionProps) {
             
             return (
               <div key={comment.id} className="rounded-lg p-4 hover:bg-gray-800/40 transition-all duration-200 border border-transparent hover:border-gray-700/50">
-                <div className="flex gap-4">
+              <div className="flex gap-4">
                   <Avatar className="w-10 h-10 ring-2 ring-gray-600 hover:ring-indigo-400 transition-all duration-200">
                     <AvatarImage src={comment.user?.avatar_url} alt={comment.user?.full_name || 'User'} />
                     <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-semibold">
@@ -369,14 +369,14 @@ export default function CommentSection({ movieId }: CommentSectionProps) {
                             {comment.user?.full_name || comment.userName || 'Người dùng ẩn danh'}
                           </h4>
                           <span className="text-sm text-gray-400">• {formatDate(comment.createdAt)}</span>
-                        </div>
+                </div>
                         {/* User badges */}
                         <div className="flex flex-wrap gap-2">
                           {badges.map((badge, index) => (
                             <UserBadge key={index} badge={badge} />
                           ))}
-                        </div>
-                      </div>
+              </div>
+            </div>
                       {/* Delete button for comment owner or admin */}
                       {isAuthenticated && user && (comment.userId === user.id || user.role === 'admin') && (
                         <Button
@@ -388,7 +388,7 @@ export default function CommentSection({ movieId }: CommentSectionProps) {
                           Xóa
                         </Button>
                       )}
-                    </div>
+        </div>
                     <p className="text-gray-300 leading-relaxed bg-gray-800/30 rounded-lg p-3 border border-gray-700/50">
                       {comment.comment}
                     </p>

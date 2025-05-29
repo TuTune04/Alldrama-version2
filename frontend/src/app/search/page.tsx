@@ -69,7 +69,7 @@ const SearchContent = () => {
   const [selectedYear, setSelectedYear] = useState<string>(initialYear);
   const [sortBy, setSortBy] = useState<string>(initialSort);
   const [filtersVisible, setFiltersVisible] = useState(true);
-
+  
   // Fetch genres with SWR and cache
   const { data: genres } = useSWR(
     'genres-list',

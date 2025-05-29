@@ -46,7 +46,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-950 text-white min-h-screen p-0 m-0`}
       >
         <SWRConfig value={swrConfig}>
-          <ClientLayout>{children}</ClientLayout>
+        <ClientLayout>{children}</ClientLayout>
         </SWRConfig>
       </body>
     </html>

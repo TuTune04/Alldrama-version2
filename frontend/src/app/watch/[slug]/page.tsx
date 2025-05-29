@@ -298,7 +298,7 @@ export default function WatchPage() {
   const generateEpisodeLink = (movie: Movie, episode: Episode) => {
     return generateWatchUrl(movie.id, movie.title, episode.id, episode.episodeNumber);
   }
-
+  
   /* ----------------- render ----------------- */
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-950 via-gray-900 to-gray-800 pb-12">

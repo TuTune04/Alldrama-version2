@@ -68,7 +68,7 @@ const MoviePopover = ({
   
   // Check if the movie is in favorites when component mounts
   useEffect(() => {
-    if (isAuthenticated && movie) {
+      if (isAuthenticated && movie) {
       // Use store-based check instead of API call
       const favorited = isFavorite(movie.id);
       setIsLiked(favorited);
@@ -87,18 +87,18 @@ const MoviePopover = ({
       toast.error('Vui lòng đăng nhập để thêm phim yêu thích')
       return
     }
-
+    
     if (favoritesLoading) return
 
     try {
       if (isFavorite(movie.id)) {
         await removeFromFavorites(movie.id)
         toast.success('Đã xóa khỏi danh sách yêu thích')
-      } else {
+          } else {
         await toggleFavorite(movie.id)
         toast.success('Đã thêm vào danh sách yêu thích')
-      }
-    } catch (error) {
+        }
+      } catch (error) {
       console.error('Error toggling favorite:', error)
       toast.error('Có lỗi xảy ra, vui lòng thử lại')
     }

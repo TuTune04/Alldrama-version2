@@ -254,7 +254,7 @@ export default function EpisodeListPage() {
       }
 
       console.log('Fetching top episodes data from API');
-      const episodes = await statsService.getTopEpisodes(12);
+    const episodes = await statsService.getTopEpisodes(12);
       
       // Create a map of movies for faster lookup
       const movieMap = new Map(movies!.map(movie => [movie.id, movie]));
@@ -262,15 +262,15 @@ export default function EpisodeListPage() {
       // Enhance top episodes with movie information using cached data
       const enhancedTopEpisodes: EnhancedTopEpisode[] = episodes.map((ep) => {
         const movie = movieMap.get(ep.movieId) || ep.movie;
-        return {
-          id: ep.id,
-          movieId: ep.movieId,
-          episodeNumber: ep.episodeNumber,
-          views: ep.views,
+          return {
+            id: ep.id,
+            movieId: ep.movieId,
+            episodeNumber: ep.episodeNumber,
+            views: ep.views,
           movieTitle: movie?.title || 'Unknown Movie',
           moviePoster: movie?.posterUrl || "/placeholder-poster.jpg",
           thumbnailUrl: movie?.posterUrl || "/placeholder-poster.jpg"
-        };
+          };
       });
       
       // Cache the result
@@ -308,9 +308,9 @@ export default function EpisodeListPage() {
         const batch = movies!.slice(i, i + batchSize);
         console.log(`EpisodePage - Processing batch ${Math.floor(i/batchSize) + 1}, movies:`, batch.map(m => m.id));
         
-        await Promise.all(
+      await Promise.all(
           batch.map(async (movie) => {
-            try {
+          try {
               // Always check individual movie episode cache first
               let episodes: Episode[];
               const movieCacheKey = `episodes-${movie.id}`;
@@ -340,22 +340,22 @@ export default function EpisodeListPage() {
                 console.log(`EpisodePage - Adding ${latestEpisodes.length} latest episodes from movie ${movie.id}`);
                   
                 latestEpisodes.forEach((ep) =>
-                  all.push({
-                    ...ep,
-                    movieTitle: movie.title,
-                    moviePoster: movie.posterUrl || "/placeholder-poster.jpg",
-                    thumbnailUrl: ep.thumbnailUrl || movie.posterUrl || "/placeholder-poster.jpg"
-                  })
-                );
+              all.push({
+                ...ep,
+                movieTitle: movie.title,
+                moviePoster: movie.posterUrl || "/placeholder-poster.jpg",
+                thumbnailUrl: ep.thumbnailUrl || movie.posterUrl || "/placeholder-poster.jpg"
+              })
+            );
               } else {
                 console.log(`EpisodePage - No episodes found for movie ${movie.id} (${movie.title})`);
               }
-            } catch (err) {
+          } catch (err) {
               console.error(`EpisodePage - Error fetching episodes for movie ${movie.id} (${movie.title}):`, err);
               // Continue with other movies even if one fails
-            }
-          })
-        );
+          }
+        })
+      );
         
         // Add small delay between batches to avoid overwhelming API
         if (i + batchSize < movies!.length) {
@@ -406,9 +406,9 @@ export default function EpisodeListPage() {
     if (!enhancedEpisodes) return [];
     return enhancedEpisodes.filter(
       (ep: EnhancedEpisode) =>
-        ep.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        ep.movieTitle.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+      ep.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      ep.movieTitle.toLowerCase().includes(searchQuery.toLowerCase())
+  );
   }, [enhancedEpisodes, searchQuery]);
 
   const latestEpisodes = useMemo(() => 
@@ -510,7 +510,7 @@ export default function EpisodeListPage() {
             error={episodesError}
           >
             {latestEpisodes.length > 0 ? (
-              <EpisodeGrid episodes={latestEpisodes} />
+            <EpisodeGrid episodes={latestEpisodes} />
             ) : !isPageLoading && !episodesError ? (
               <div className="text-center py-12">
                 <Clock className="w-16 h-16 text-gray-500 mx-auto mb-4" />
@@ -592,7 +592,7 @@ function Section({
       {isLoading ? (
         <div>
           <p className="text-gray-400 mb-4">Đang tải {title.toLowerCase()}...</p>
-          <SkeletonGrid />
+        <SkeletonGrid />
         </div>
       ) : error ? (
         <div className="bg-red-900/20 border border-red-800 rounded-lg p-4">

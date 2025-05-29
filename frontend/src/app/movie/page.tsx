@@ -25,7 +25,7 @@ export default function MovieListPage() {
     sort: 'views' as const,
     order: 'DESC' as const,
   });
-
+  
   // Use infinite scroll hook for movies
   const { 
     movies, 
@@ -93,7 +93,7 @@ export default function MovieListPage() {
     
     // Navigate to search page for better UX
     if (genre !== 'all') {
-      router.push(`/search?genre=${encodeURIComponent(genre)}`);
+    router.push(`/search?genre=${encodeURIComponent(genre)}`);
     }
   }, [activeGenre, searchMovies, router]);
   
@@ -102,11 +102,11 @@ export default function MovieListPage() {
     if (!movies) return [];
     
     return movies.map(movie => ({
-      ...movie,
-      type: movie.totalEpisodes > 0 ? 'series' : 'movie'
-    })) as ProcessedMovie[];
+        ...movie,
+        type: movie.totalEpisodes > 0 ? 'series' : 'movie'
+      })) as ProcessedMovie[];
   }, [movies]);
-
+  
   // Loading skeleton component
   const LoadingSkeleton = () => (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
@@ -217,11 +217,11 @@ export default function MovieListPage() {
             <LoadingSkeleton />
           ) : (
             <>
-              <MovieGrid
+          <MovieGrid
                 isLoading={false}
-                movies={allMovies}
+            movies={allMovies}
                 showPagination={false} // Disable pagination for infinite scroll
-                totalPages={pagination?.totalPages || 1}
+            totalPages={pagination?.totalPages || 1}
                 currentPage={1}
                 onPageChange={() => {}} // Not used with infinite scroll
               />

@@ -22,7 +22,7 @@ export const useMovieDetail = (movieId: string | number, initialData?: Movie) =>
   
   // Add flag to track if episode fetch was already initiated
   const episodesFetchedRef = useRef(false)
-  
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -36,26 +36,6 @@ export const useMovieDetail = (movieId: string | number, initialData?: Movie) =>
   // Cache TTL check
   const isCacheValid = (key: string) => {
     return cacheManager.getMovieDetails(key) !== null;
-  }
-
-  // Function to increment view count
-  const incrementViewCount = async (movie: Movie) => {
-    try {
-      // Only increment if we haven't done so recently
-      const viewKey = `view_${movie.id}_${Date.now().toString().slice(0, -5)}` // Round to 10 seconds
-      const recentView = cacheManager.getStats(viewKey);
-      
-      if (!recentView) {
-        // Use a generic POST endpoint for view tracking
-        await apiClient.post(`/api/movies/${movie.id}/view`, {
-          progress: 0,
-          duration: movie.duration || 0
-        });
-        cacheManager.setStats(viewKey, true, 10000); // Cache for 10 seconds
-      }
-    } catch (err) {
-      console.error('Error incrementing view count:', err);
-    }
   }
 
   // Function to fetch both movie and episodes
@@ -111,11 +91,6 @@ export const useMovieDetail = (movieId: string | number, initialData?: Movie) =>
         }
       }
 
-      // Track view count
-      if (movieData) {
-        incrementViewCount(movieData);
-      }
-
       setIsLoading(false);
     } catch (err: any) {
       if (err.name === 'AbortError' || err.name === 'CanceledError') {
@@ -151,11 +126,6 @@ export const useMovieDetail = (movieId: string | number, initialData?: Movie) =>
       
       // Cache episodes for 10 minutes
       cacheManager.setEpisodes(movieId, fetchedEpisodes, 10 * 60 * 1000);
-      
-      // Track view even with initialData
-      if (movie) {
-        incrementViewCount(movie);
-      }
     } catch (err: any) {
       // Properly handle AbortError without logging them as real errors
       if (err.name === 'AbortError' || err.name === 'CanceledError') {
@@ -167,7 +137,7 @@ export const useMovieDetail = (movieId: string | number, initialData?: Movie) =>
       console.error('Error fetching episodes:', err);
     }
   };
-
+  
   // Main effect to fetch data
   useEffect(() => {
     if (!movieId) return;
@@ -175,7 +145,7 @@ export const useMovieDetail = (movieId: string | number, initialData?: Movie) =>
     // Create new AbortController for this effect
     abortControllerRef.current = new AbortController();
     const signal = abortControllerRef.current.signal;
-
+      
     if (initialData) {
       // If we have initial movie data, just fetch episodes
       if (!episodesFetchedRef.current) {
@@ -188,7 +158,7 @@ export const useMovieDetail = (movieId: string | number, initialData?: Movie) =>
       
       if (cachedMovie) {
         setMovie(cachedMovie);
-        setIsLoading(false);
+          setIsLoading(false);
         
         // Still fetch episodes if not cached
         const cachedEpisodes = cacheManager.getEpisodes(movieId);
@@ -201,9 +171,9 @@ export const useMovieDetail = (movieId: string | number, initialData?: Movie) =>
       } else {
         // Fetch both movie and episodes
         fetchMovieAndEpisodes(signal);
-      }
     }
-
+  }
+  
     // Cleanup function
     return () => {
       if (abortControllerRef.current) {
@@ -212,10 +182,10 @@ export const useMovieDetail = (movieId: string | number, initialData?: Movie) =>
     };
   }, [movieId, initialData]);
 
-  return {
-    movie,
-    episodes,
-    isLoading,
+  return { 
+    movie, 
+    episodes, 
+    isLoading, 
     error,
     // Expose cache stats for debugging
     cacheStats: process.env.NODE_ENV === 'development' ? cacheManager.getCacheStats() : undefined,

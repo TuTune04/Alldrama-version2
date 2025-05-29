@@ -52,7 +52,14 @@ export const useMovies = (initialParams?: MovieSearchParams) => {
 
     // Build query string
     const queryString = new URLSearchParams(queryParams).toString();
-    return queryString ? `${endpoint}?${queryString}` : endpoint;
+    const finalKey = queryString ? `${endpoint}?${queryString}` : endpoint;
+    
+    // Debug logging
+    if (process.env.NODE_ENV === 'development') {
+      console.log('useMovies - SWR key generated:', finalKey);
+    }
+    
+    return finalKey;
   }, [searchParams]);
 
   // Fetcher function for SWR
@@ -222,8 +229,8 @@ export const useMovies = (initialParams?: MovieSearchParams) => {
     // Only update if params actually changed
     const paramsChanged = JSON.stringify(params) !== JSON.stringify(searchParams);
     if (paramsChanged) {
-      setSearchParams(params);
-      await mutate();
+    setSearchParams(params);
+    await mutate();
     }
   }, [mutate, searchParams]);
 
