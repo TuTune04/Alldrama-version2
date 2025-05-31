@@ -43,12 +43,10 @@ export default function MovieDetailPage() {
       // Check cache first
       const cached = cacheManager.getMovieDetails(movieId);
       if (cached) {
-        console.log(`Using cached movie data for ID: ${movieId}`);
         return cached;
       }
       
       // Fetch from API if not cached
-      console.log(`Fetching movie data from API for ID: ${movieId}`);
       const movieData = await movieService.getMovieById(movieId);
       
       // Cache the result for 30 minutes
