@@ -1,6 +1,7 @@
 "use client"
 
 import type React from "react"
+import { Suspense } from "react"
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
@@ -47,7 +48,7 @@ import { cacheManager } from "@/lib/cache/cacheManager"
 import { Genre } from "@/types"
 import useSWR from "swr"
 
-const Navbar = () => {
+const NavbarContent = () => {
   const [isScrolled, setIsScrolled] = useState(false)
   const [isNavbarVisible, setIsNavbarVisible] = useState(true)
   const [lastScrollY, setLastScrollY] = useState(0)
@@ -787,6 +788,33 @@ const Navbar = () => {
         </div>
       </div>
     </nav>
+  )
+}
+
+const Navbar = () => {
+  return (
+    <Suspense fallback={
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-black/95 backdrop-blur-md border-b border-gray-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center gap-8">
+              <div className="h-8 w-32 bg-gray-800 rounded animate-pulse" />
+              <div className="hidden md:flex items-center gap-4">
+                <div className="h-8 w-16 bg-gray-800 rounded animate-pulse" />
+                <div className="h-8 w-16 bg-gray-800 rounded animate-pulse" />
+                <div className="h-8 w-20 bg-gray-800 rounded animate-pulse" />
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="h-8 w-64 bg-gray-800 rounded animate-pulse hidden sm:block" />
+              <div className="h-8 w-8 bg-gray-800 rounded-full animate-pulse" />
+            </div>
+          </div>
+        </div>
+      </nav>
+    }>
+      <NavbarContent />
+    </Suspense>
   )
 }
 
