@@ -4,11 +4,12 @@ import Link from "next/link"
 import Image from "next/image"
 import type { Movie } from "@/types"
 import { generateMovieUrl, generateWatchUrl } from "@/utils/url"
-import { getSafePosterUrl } from "@/utils/image"
+import { getSafePosterUrl, getImageInfo } from "@/utils/image"
 import { Star, Play, Heart, Info, Calendar, Clock, Film, User } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
+import { Skeleton } from "@/components/ui/skeleton"
 import { useState, useRef, useEffect } from "react"
 import { useMobile } from '@/hooks/use-mobile'
 import { useAuth } from '@/hooks/api/useAuth'
@@ -56,8 +57,8 @@ const MoviePopover = ({
   const movieDetailUrl = generateMovieUrl(movie.id, movie.title)
   const watchUrl = generateWatchUrl(movie.id, movie.title)
   
-  // Use the safe poster URL utility
-  const imageUrl = getSafePosterUrl(movie.posterUrl, movie.id)
+  // Use the safe poster URL utility and check if skeleton should be shown
+  const imageInfo = getImageInfo(movie.posterUrl, movie.id, 'poster')
 
   // Clean up timer on unmount
   useEffect(() => {
@@ -185,13 +186,20 @@ const MoviePopover = ({
               left: '55%',
               transform: 'translateX(-50%)',
               boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.9)',
-              backgroundImage: `url(${imageUrl})`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center'
+              ...(imageInfo.shouldShowSkeleton ? {} : {
+                backgroundImage: `url(${imageInfo.url})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center'
+              })
             }}
           >
+            {/* Background skeleton or overlay */}
+            {imageInfo.shouldShowSkeleton ? (
+              <Skeleton className="w-full h-full absolute inset-0" />
+            ) : null}
+            
             {/* Overlay */}
-            <div className="w-full h-full bg-black/80">
+            <div className="w-full h-full bg-black/80 relative">
               <div className="p-4">
                 {/* Rating badge */}
                 <Badge className="bg-amber-600/90 text-white mb-3 inline-flex items-center">

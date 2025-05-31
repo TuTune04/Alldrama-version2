@@ -31,6 +31,7 @@ import { statsService, TopEpisode } from "@/lib/api/services/statsService";
 import { cacheManager } from "@/lib/cache/cacheManager";
 import { useAuth } from "@/hooks/api/useAuth";
 import { useFavorites } from "@/hooks/api/useFavorites";
+import { getSafePosterUrl, getEpisodeThumbnailUrl } from '@/utils/image'
 
 // Enhanced episode type with additional movie information
 type EnhancedEpisode = Episode & {
@@ -266,8 +267,8 @@ export default function EpisodeListPage() {
             episodeNumber: ep.episodeNumber,
             views: ep.views,
           movieTitle: movie?.title || 'Unknown Movie',
-          moviePoster: movie?.posterUrl || "/placeholder-poster.jpg",
-          thumbnailUrl: movie?.posterUrl || "/placeholder-poster.jpg"
+          moviePoster: movie?.posterUrl || getSafePosterUrl(null, ep.movieId),
+          thumbnailUrl: movie?.posterUrl || getSafePosterUrl(null, ep.movieId)
           };
       });
       
@@ -341,8 +342,8 @@ export default function EpisodeListPage() {
               all.push({
                 ...ep,
                 movieTitle: movie.title,
-                moviePoster: movie.posterUrl || "/placeholder-poster.jpg",
-                thumbnailUrl: ep.thumbnailUrl || movie.posterUrl || "/placeholder-poster.jpg"
+                moviePoster: movie.posterUrl || getSafePosterUrl(null, movie.id),
+                thumbnailUrl: ep.thumbnailUrl || movie.posterUrl || getSafePosterUrl(null, movie.id)
               })
             );
               } else {
@@ -656,12 +657,12 @@ function EpisodeGrid({
           <Card className="relative bg-gray-800/40 border-gray-700 hover:border-gray-500 transition-all overflow-hidden h-[280px] group">
             {/* Poster */}
             <img
-              src={ep.thumbnailUrl || ep.moviePoster || "/placeholder-poster.jpg"}
+              src={ep.thumbnailUrl || ep.moviePoster || getSafePosterUrl(null, ep.movieId)}
               alt={`Episode ${ep.episodeNumber}`}
               className="absolute inset-0 w-full h-full object-cover"
               onError={(e) => {
                 console.log('Image load error for episode', ep.id, 'using fallback');
-                e.currentTarget.src = "/placeholder-poster.jpg";
+                e.currentTarget.src = "/placeholder.svg";
               }}
             />
             {/* Dark overlay */}
@@ -840,9 +841,9 @@ function MovieEpisodes({
         >
           <Card className="relative bg-gray-800/40 border-gray-700 hover:border-gray-500 transition-all overflow-hidden h-[280px] group">
             <img
-              src={ep.thumbnailUrl || posterUrl || "/placeholder-poster.jpg"}
-              alt={ep.title}
-              className="absolute inset-0 w-full h-full object-cover"
+              src={ep.thumbnailUrl || posterUrl || getSafePosterUrl(null, movieId)}
+              alt={`Tập ${ep.episodeNumber}`}
+              className="w-full h-full object-cover"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/50 to-transparent" />
             <div className="relative z-10 h-full flex flex-col justify-end p-3">

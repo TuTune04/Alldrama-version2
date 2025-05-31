@@ -5,7 +5,6 @@ import Link from "next/link"
 import Image from "next/image"
 import { useState, useEffect, useMemo, useCallback } from "react"
 import { generateMovieUrl, generateWatchUrl } from "@/utils/url"
-import { getSafePosterUrl, getSafeBackdropUrl } from "@/utils/image"
 import { Star, Play, Film, Clock, Calendar, Eye, ChevronDown, ChevronUp, Info, Heart, Bookmark, TrendingUp, BarChart3, Layers, Share, X, MessageCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import CommentSection from "./CommentSection"
@@ -32,6 +31,7 @@ import { useMovieDetail } from '@/hooks/api/useMovieDetail'
 import { useEpisodes } from '@/hooks/api/useEpisodes'
 import { useMovies } from '@/hooks/api/useMovies'
 import VideoPlayer from './VideoPlayer'
+import { getImageInfo } from "@/utils/image"
 
 interface MovieDetailProps {
   movieId: string | number
@@ -342,21 +342,24 @@ const MovieDetail = ({ movieId, initialData }: MovieDetailProps) => {
           <>
             {/* Poster for mobile */}
             <div className="absolute top-4 left-4 md:hidden w-32 h-48 rounded-xl overflow-hidden shadow-2xl shadow-indigo-500/10 z-10">
-              <Image 
-                src={getSafePosterUrl(movie.posterUrl, movie.id)} 
-                alt={movie.title} 
-                fill 
-                priority
-                className="object-cover transform hover:scale-105 transition-transform duration-700" 
-                onError={(e) => {
-                  console.log('MovieDetail Mobile - Image load error for URL:', movie.posterUrl);
-                  const target = e.target as HTMLImageElement;
-                  target.src = "/placeholder.svg";
-                }}
-                onLoad={() => {
-                  console.log('MovieDetail Mobile - Image loaded successfully:', movie.posterUrl);
-                }}
-              />
+              {(() => {
+                const imageInfo = getImageInfo(movie.posterUrl, movie.id, 'poster')
+                
+                return imageInfo.shouldShowSkeleton ? (
+                  <Skeleton className="w-full h-full" />
+                ) : (
+                  <Image 
+                    src={imageInfo.url} 
+                    alt={movie.title} 
+                    fill 
+                    priority
+                    className="object-cover transform hover:scale-105 transition-transform duration-700" 
+                    onError={() => {
+                      console.log('MovieDetail Mobile - Image load error for movie:', movie.id);
+                    }}
+                  />
+                )
+              })()}
               <div className="absolute inset-0 ring-1 ring-indigo-500/20 rounded-xl hover:ring-indigo-500/40 transition-all"></div>
             </div>
 
@@ -366,20 +369,23 @@ const MovieDetail = ({ movieId, initialData }: MovieDetailProps) => {
                 <div className="flex flex-col md:flex-row md:items-end gap-4 md:gap-6">
                   {/* Poster with glow effect */}
                   <div className="hidden md:block w-48 h-72 md:w-64 md:h-96 flex-shrink-0 relative rounded-xl overflow-hidden shadow-2xl shadow-indigo-500/10 group">
-                    <Image 
-                      src={getSafePosterUrl(movie.posterUrl, movie.id)} 
-                      alt={movie.title} 
-                      fill 
-                      className="object-cover transform group-hover:scale-105 transition-transform duration-700" 
-                      onError={(e) => {
-                        console.log('MovieDetail Desktop - Image load error for URL:', movie.posterUrl);
-                        const target = e.target as HTMLImageElement;
-                        target.src = "/placeholder.svg";
-                      }}
-                      onLoad={() => {
-                        console.log('MovieDetail Desktop - Image loaded successfully:', movie.posterUrl);
-                      }}
-                    />
+                    {(() => {
+                      const imageInfo = getImageInfo(movie.posterUrl, movie.id, 'poster')
+                      
+                      return imageInfo.shouldShowSkeleton ? (
+                        <Skeleton className="w-full h-full" />
+                      ) : (
+                        <Image 
+                          src={imageInfo.url} 
+                          alt={movie.title} 
+                          fill 
+                          className="object-cover transform group-hover:scale-105 transition-transform duration-700" 
+                          onError={() => {
+                            console.log('MovieDetail Desktop - Image load error for movie:', movie.id);
+                          }}
+                        />
+                      )
+                    })()}
                     <div className="absolute inset-0 ring-1 ring-indigo-500/20 rounded-xl group-hover:ring-indigo-500/40 transition-all"></div>
                   </div>
 
@@ -753,16 +759,23 @@ const MovieDetail = ({ movieId, initialData }: MovieDetailProps) => {
                                 // Desktop view with thumbnails
                                 <>
                                   <div className="relative aspect-video overflow-hidden">
-                                    <Image 
-                                      src={episode.thumbnailUrl ? `https://media.alldrama.tech/episodes/${movie.id}/${episode.episodeNumber}/thumbnail.jpg` : "/placeholder.svg"} 
-                                      alt={episode.title}
-                                      fill
-                                      className="object-cover"
-                                      onError={(e) => {
-                                        const target = e.target as HTMLImageElement;
-                                        target.src = "/placeholder.svg";
-                                      }}
-                                    />
+                                    {(() => {
+                                      const imageInfo = getImageInfo(episode.thumbnailUrl, movie.id, 'thumbnail')
+                                      
+                                      return imageInfo.shouldShowSkeleton ? (
+                                        <Skeleton className="w-full h-full" />
+                                      ) : (
+                                        <Image 
+                                          src={imageInfo.url} 
+                                          alt={episode.title}
+                                          fill
+                                          className="object-cover"
+                                          onError={(e) => {
+                                            console.log('MovieDetail - Episode thumbnail load error for URL:', imageInfo.url);
+                                          }}
+                                        />
+                                      )
+                                    })()}
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                       <div className="w-12 h-12 rounded-full bg-indigo-600/80 flex items-center justify-center">
                                         <Play className="h-6 w-6 text-white fill-current ml-1" />
@@ -833,12 +846,23 @@ const MovieDetail = ({ movieId, initialData }: MovieDetailProps) => {
                         </div>
                       </div>
                       <div className="w-16 h-22 flex-shrink-0 rounded-md overflow-hidden relative">
-                        <Image
-                          src={getSafePosterUrl(movie.posterUrl, movie.id)}
-                          alt={movie.title}
-                          fill
-                          className="object-cover"
-                        />
+                        {(() => {
+                          const imageInfo = getImageInfo(movie.posterUrl, movie.id, 'poster')
+                          
+                          return imageInfo.shouldShowSkeleton ? (
+                            <Skeleton className="w-full h-full" />
+                          ) : (
+                            <Image
+                              src={imageInfo.url}
+                              alt={movie.title}
+                              fill
+                              className="object-cover"
+                              onError={() => {
+                                console.log('MovieDetail Sidebar - Image load error for movie:', movie.id);
+                              }}
+                            />
+                          )
+                        })()}
                       </div>
                     </Link>
                   ))}

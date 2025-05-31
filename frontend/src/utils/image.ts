@@ -6,6 +6,98 @@
 const SUPPORTED_FORMATS = ['jpg', 'jpeg', 'png', 'webp'];
 
 /**
+ * Check if should show skeleton instead of image
+ * @param imageUrl - The image URL to check
+ * @returns boolean indicating if skeleton should be shown
+ */
+export function shouldShowSkeleton(imageUrl: string | null | undefined): boolean {
+  return !imageUrl || 
+         imageUrl.trim() === '' || 
+         imageUrl === '/placeholder.svg' ||
+         imageUrl === 'null' ||
+         imageUrl === 'undefined';
+}
+
+/**
+ * Get image info with skeleton flag
+ * @param imageUrl - The image URL
+ * @param movieId - Movie ID for auto-detection
+ * @param type - Type of image
+ * @returns Object with url and shouldShowSkeleton flag
+ */
+export function getImageInfo(
+  imageUrl: string | null | undefined,
+  movieId?: number | string,
+  type: 'poster' | 'backdrop' | 'thumbnail' = 'poster'
+): { url: string; shouldShowSkeleton: boolean } {
+  // Check if should show skeleton first
+  if (shouldShowSkeleton(imageUrl)) {
+    // If no movieId either, definitely show skeleton
+    if (!movieId) {
+      return { url: '', shouldShowSkeleton: true };
+    }
+    
+    // Try auto-detection with movieId
+    const autoUrl = getAutoDetectedImageUrl(`https://media.alldrama.tech/movies/${movieId}/${type}`);
+    return { url: autoUrl, shouldShowSkeleton: false };
+  }
+  
+  // If we have a valid URL, use it
+  if (imageUrl && imageUrl.trim() !== '' && imageUrl.startsWith('http')) {
+    return { url: imageUrl, shouldShowSkeleton: false };
+  }
+  
+  // If we have movieId, try auto-detection
+  if (movieId) {
+    const autoUrl = getAutoDetectedImageUrl(`https://media.alldrama.tech/movies/${movieId}/${type}`);
+    return { url: autoUrl, shouldShowSkeleton: false };
+  }
+  
+  // Fallback to skeleton
+  return { url: '', shouldShowSkeleton: true };
+}
+
+/**
+ * SIMPLE PATTERN TO FIX ReactDOM.preload() ERRORS:
+ * 
+ * // 1. Import utilities and Skeleton
+ * import { getImageInfo } from '@/utils/image'
+ * import { Skeleton } from '@/components/ui/skeleton'
+ * 
+ * // 2. In your component, replace:
+ * // OLD: <img src={movie.posterUrl || '/placeholder.svg'} />
+ * // NEW:
+ * const imageInfo = getImageInfo(movie.posterUrl, movie.id, 'poster')
+ * 
+ * {imageInfo.shouldShowSkeleton ? (
+ *   <Skeleton className="w-full h-full" />
+ * ) : (
+ *   <img src={imageInfo.url} alt="..." className="..." />
+ * )}
+ * 
+ * // 3. For episode thumbnails:
+ * const thumbInfo = getImageInfo(episode.thumbnailUrl, movieId, 'thumbnail')
+ * 
+ * // This prevents ReactDOM.preload() errors by never passing empty URLs to Image components
+ */
+
+/**
+ * Auto-detect the actual image format available on server
+ * @param baseUrl - Base URL without extension
+ * @param preferredFormats - Array of preferred formats in order
+ * @returns The URL with the correct extension
+ */
+export function getAutoDetectedImageUrl(
+  baseUrl: string, 
+  preferredFormats: string[] = ['jpg', 'jpeg', 'png', 'webp']
+): string {
+  // For now, return the first preferred format
+  // In a real implementation, you might want to check server response
+  // But since we can't make async calls in most React contexts, we'll use jpg as default
+  return `${baseUrl}.jpg`;
+}
+
+/**
  * Get the best available image format for a given URL
  * @param baseUrl - Base URL without extension
  * @param preferredFormats - Array of preferred formats in order
@@ -13,7 +105,7 @@ const SUPPORTED_FORMATS = ['jpg', 'jpeg', 'png', 'webp'];
  */
 export async function getBestImageFormat(
   baseUrl: string, 
-  preferredFormats: string[] = ['webp', 'jpg', 'png']
+  preferredFormats: string[] = ['jpg', 'jpeg', 'png', 'webp']
 ): Promise<string> {
   for (const format of preferredFormats) {
     const testUrl = `${baseUrl}.${format}`;
@@ -55,34 +147,33 @@ export function getSafePosterUrl(
   fallback: string = "/placeholder.svg"
 ): string {
   // Check if posterUrl is valid and not empty
-  if (!posterUrl || posterUrl.trim() === '') {
+  if (shouldShowSkeleton(posterUrl)) {
+    if (movieId) {
+      // Auto-detect format for movie poster
+      return getAutoDetectedImageUrl(`https://media.alldrama.tech/movies/${movieId}/poster`);
+    }
     return fallback;
   }
 
   // If it's already a full URL, return it
-  if (posterUrl.startsWith('http://') || posterUrl.startsWith('https://')) {
+  if (posterUrl && posterUrl.startsWith('http://') || posterUrl && posterUrl.startsWith('https://')) {
     return posterUrl;
   }
 
   // If we have a movieId, construct the full URL
   if (movieId) {
     // Check if posterUrl already has an extension
-    const extension = getImageExtension(posterUrl);
+    const extension = getImageExtension(posterUrl!);
     if (extension) {
       return `https://media.alldrama.tech/movies/${movieId}/poster.${extension}`;
     }
     
-    // Try different formats - prefer webp for better compression
-    const formats = ['webp', 'jpg', 'jpeg', 'png'];
-    for (const format of formats) {
-      const testUrl = `https://media.alldrama.tech/movies/${movieId}/poster.${format}`;
-      // Return the first format (webp) as default, actual format detection would need async
-      return testUrl;
-    }
+    // Auto-detect format
+    return getAutoDetectedImageUrl(`https://media.alldrama.tech/movies/${movieId}/poster`);
   }
 
   // If it's a relative path, return it as is
-  if (posterUrl.startsWith('/')) {
+  if (posterUrl && posterUrl.startsWith('/')) {
     return posterUrl;
   }
 
@@ -105,7 +196,7 @@ export function getSafeBackdropUrl(
   fallback: string = "/placeholder.svg"
 ): string {
   // Try backdrop first
-  if (backdropUrl && backdropUrl.trim() !== '') {
+  if (backdropUrl && !shouldShowSkeleton(backdropUrl)) {
     if (backdropUrl.startsWith('http://') || backdropUrl.startsWith('https://')) {
       return backdropUrl;
     }
@@ -116,9 +207,8 @@ export function getSafeBackdropUrl(
         return `https://media.alldrama.tech/movies/${movieId}/backdrop.${extension}`;
       }
       
-      // Try different formats for backdrop
-      const formats = ['webp', 'jpg', 'jpeg', 'png'];
-      return `https://media.alldrama.tech/movies/${movieId}/backdrop.${formats[0]}`;
+      // Auto-detect format for backdrop
+      return getAutoDetectedImageUrl(`https://media.alldrama.tech/movies/${movieId}/backdrop`);
     }
   }
 
@@ -132,7 +222,7 @@ export function getSafeBackdropUrl(
  * @param movieId - Movie ID for constructing URL if needed
  * @param type - Type of image ('poster' | 'backdrop' | 'thumbnail')
  * @param fallback - Fallback image path
- * @param preferredFormat - Preferred image format
+ * @param preferredFormat - Preferred image format (deprecated, auto-detected now)
  * @returns A safe URL
  */
 export function getImageUrl(
@@ -140,29 +230,47 @@ export function getImageUrl(
   movieId?: number | string,
   type: 'poster' | 'backdrop' | 'thumbnail' = 'poster',
   fallback: string = "/placeholder.svg",
-  preferredFormat: string = 'webp'
+  preferredFormat: string = 'jpg'
 ): string {
-  if (!imageUrl || imageUrl.trim() === '') {
+  if (shouldShowSkeleton(imageUrl)) {
+    if (movieId) {
+      // Auto-detect format
+      return getAutoDetectedImageUrl(`https://media.alldrama.tech/movies/${movieId}/${type}`);
+    }
     return fallback;
   }
 
-  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+  if (imageUrl && (imageUrl.startsWith('http://') || imageUrl.startsWith('https://'))) {
     return imageUrl;
   }
 
   if (movieId) {
     // Check if imageUrl already has an extension
-    const extension = getImageExtension(imageUrl);
+    const extension = getImageExtension(imageUrl!);
     if (extension) {
       return `https://media.alldrama.tech/movies/${movieId}/${type}.${extension}`;
     }
     
-    // Use preferred format or default to webp
-    const format = SUPPORTED_FORMATS.includes(preferredFormat) ? preferredFormat : 'webp';
-    return `https://media.alldrama.tech/movies/${movieId}/${type}.${format}`;
+    // Auto-detect format
+    return getAutoDetectedImageUrl(`https://media.alldrama.tech/movies/${movieId}/${type}`);
   }
 
-  return imageUrl.startsWith('/') ? imageUrl : fallback;
+  return (imageUrl && imageUrl.startsWith('/')) ? imageUrl : fallback;
+}
+
+/**
+ * Get episode thumbnail URL with auto-detection
+ * @param movieId - Movie ID
+ * @param episodeNumber - Episode number
+ * @param fallback - Fallback image path
+ * @returns Episode thumbnail URL
+ */
+export function getEpisodeThumbnailUrl(
+  movieId: number | string,
+  episodeNumber: number | string,
+  fallback: string = "/placeholder.svg"
+): string {
+  return getAutoDetectedImageUrl(`https://media.alldrama.tech/episodes/${movieId}/${episodeNumber}/thumbnail`);
 }
 
 /**
@@ -175,7 +283,7 @@ export function getImageUrl(
 export function getImageUrlsWithFallback(
   movieId: number | string,
   type: 'poster' | 'backdrop' | 'thumbnail' = 'poster',
-  formats: string[] = ['webp', 'jpg', 'jpeg', 'png']
+  formats: string[] = ['jpg', 'jpeg', 'png', 'webp']
 ): string[] {
   return formats.map(format => 
     `https://media.alldrama.tech/movies/${movieId}/${type}.${format}`
