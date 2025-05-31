@@ -135,7 +135,7 @@ const SearchContent = () => {
   // Perform search function
   const performSearch = useCallback(async (query = searchQuery, genre = selectedGenre, year = selectedYear, sort = sortBy) => {
     // Generate search key for caching
-    const params = new URLSearchParams();
+      const params = new URLSearchParams();
     if (query) params.set('q', query);
     if (genre) params.set('genre', genre);
     if (year) params.set('year', year);
@@ -255,7 +255,7 @@ const SearchContent = () => {
         performSearch(searchQuery, selectedGenre, '', sortBy);
       } else if (type === 'sort') {
         performSearch(searchQuery, selectedGenre, selectedYear, '');
-      }
+    }
     }, 0);
   };
   
@@ -279,7 +279,7 @@ const SearchContent = () => {
   // Extract data from search results
   const movies = searchResults?.movies || [];
   const total = searchResults?.total || 0;
-
+  
   return (
     <div className="min-h-screen bg-gray-900 pt-20 pb-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
