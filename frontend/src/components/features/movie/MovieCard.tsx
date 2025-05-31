@@ -4,6 +4,7 @@ import Link from "next/link"
 import Image from "next/image"
 import type { Movie } from "@/types"
 import { generateMovieUrl } from "@/utils/url"
+import { getSafePosterUrl } from "@/utils/image"
 import { Star, Play } from "lucide-react"
 import { useEffect, useState, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
@@ -35,9 +36,8 @@ const MovieCard = ({
   const [isLoading, setIsLoading] = useState(true)
   const [hasError, setHasError] = useState(false)
 
-  const posterUrl = movie.posterUrl 
-    ? `https://media.alldrama.tech/movies/${movie.id}/poster.png`
-    : "/placeholder.svg"
+  // Use the safe poster URL utility
+  const posterUrl = getSafePosterUrl(movie.posterUrl, movie.id)
 
   const handleCardClick = () => {
     router.push(movieDetailUrl)

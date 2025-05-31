@@ -95,6 +95,38 @@ const MovieSlider = ({
     setTouchEnd(0);
   };
   
+  // Handle mouse wheel scroll functionality
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    // Only handle horizontal scroll on desktop when not on mobile
+    if (isMobile || totalPages <= 1) return;
+    
+    e.preventDefault();
+    
+    // Determine scroll direction
+    const deltaY = e.deltaY;
+    const deltaX = e.deltaX;
+    
+    // Check if it's horizontal scroll or vertical scroll being converted to horizontal
+    const isHorizontalScroll = Math.abs(deltaX) > Math.abs(deltaY) || deltaY !== 0;
+    
+    if (isHorizontalScroll) {
+      // Use deltaX if available, otherwise use deltaY for horizontal scrolling
+      const scrollDirection = deltaX !== 0 ? deltaX : deltaY;
+      
+      if (scrollDirection > 0) {
+        // Scroll right (next page)
+        if (currentPage < totalPages - 1) {
+          handleNextPage();
+        }
+      } else {
+        // Scroll left (previous page)
+        if (currentPage > 0) {
+          handlePrevPage();
+        }
+      }
+    }
+  }, [isMobile, totalPages, currentPage, handleNextPage, handlePrevPage]);
+  
   return (
     <div className={cn("w-full mb-8 md:mb-12", className)}>
       <div className="flex justify-between items-center mb-4">
@@ -215,8 +247,12 @@ const MovieSlider = ({
               ))}
             </div>
           ) : (
-            // Desktop view with grid layout
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-3 md:gap-4">
+            // Desktop view with grid layout and mouse wheel scroll
+            <div 
+              className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-3 md:gap-4"
+              onWheel={handleWheel}
+              style={{ cursor: totalPages > 1 ? 'grab' : 'default' }}
+            >
               {displayMovies.map((movie, index) => (
                 <motion.div
                   key={String(movie.id)}

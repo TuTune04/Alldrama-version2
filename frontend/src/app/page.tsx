@@ -50,7 +50,6 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gray-950">
       <Hero />
-      
       {/* Top 10 Movies Section with trapezoid cards */}
       <TopMoviesSection 
         movies={sections.trending} 
@@ -72,7 +71,13 @@ export default function Home() {
             ))}
           </div>
         </section>
-
+        <FeaturedContentSwitcher
+          items={sections.featured}
+        title="Phim nổi bật"
+        variant="dark"
+        aspectRatio="video"
+        isLoading={isLoading}
+      />
         {/* Section for featured movie sliders */}
         <section className="py-4 space-y-12">
           {DEFAULT_SECTIONS.map((section) => (
@@ -100,14 +105,6 @@ export default function Home() {
         <section className="py-8 mt-8">
           <GenreList />
         </section>
-
-      <FeaturedContentSwitcher
-          items={sections.featured}
-        title="Phim nổi bật"
-        variant="dark"
-        aspectRatio="video"
-        isLoading={isLoading}
-      />
       </div>
     </div>
   );

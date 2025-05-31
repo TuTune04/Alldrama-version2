@@ -11,6 +11,7 @@ import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
 import { Movie } from '@/types'
 import { generateMovieUrl } from '@/utils/url'
+import { getSafePosterUrl } from '@/utils/image'
 import { useMobile } from '@/hooks/use-mobile'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -271,11 +272,15 @@ const FeaturedContentSwitcher = ({
                     className="absolute inset-0"
                   >
                     <Image
-                      src={selectedItem ? `https://media.alldrama.tech/movies/${selectedItem.id}/poster.png` : "/placeholder.svg"}
+                      src={selectedItem ? getSafePosterUrl(selectedItem.posterUrl, selectedItem.id) : "/placeholder.svg"}
                       alt={selectedItem?.title || "Movie poster"}
                       fill
                       priority
                       className="object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = "/placeholder.svg";
+                      }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
                   </motion.div>
@@ -359,9 +364,13 @@ const FeaturedContentSwitcher = ({
                       onClick={() => handleItemSelect(index)}
                     >
                       <img
-                        src={item ? `https://media.alldrama.tech/movies/${item.id}/poster.png` : "/placeholder.svg"}
+                        src={item ? getSafePosterUrl(item.posterUrl, item.id) : "/placeholder.svg"}
                         alt={item?.title || `Movie ${index + 1}`}
                         className="w-full h-full object-cover"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = "/placeholder.svg";
+                        }}
                       />
                       <div className={cn(
                         "absolute bottom-0 left-0 right-0 py-1 px-1.5 text-[10px] font-medium truncate",
@@ -435,13 +444,7 @@ const FeaturedContentSwitcher = ({
       </section>
     )
   }
-  if (isLoading) {
-    return (
-      <div className="h-[70vh] bg-gray-950 animate-pulse flex items-center justify-center">
-        <Skeleton className="w-full h-[80%] rounded-xl" />
-      </div>
-    );
-  }
+  
   return content
 }
 

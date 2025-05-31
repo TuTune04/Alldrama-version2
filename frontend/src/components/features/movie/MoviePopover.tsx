@@ -4,6 +4,7 @@ import Link from "next/link"
 import Image from "next/image"
 import type { Movie } from "@/types"
 import { generateMovieUrl, generateWatchUrl } from "@/utils/url"
+import { getSafePosterUrl } from "@/utils/image"
 import { Star, Play, Heart, Info, Calendar, Clock, Film, User } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -32,7 +33,7 @@ const MoviePopover = ({
   size = 'md',
   variant = 'default',
   showPopover = true,
-  hoverDelay = 500 // Default 250ms delay
+  hoverDelay = 500 // Default 500ms delay
 }: MoviePopoverProps) => {
   const [open, setOpen] = useState(false)
   const [isLiked, setIsLiked] = useState(false)
@@ -55,7 +56,8 @@ const MoviePopover = ({
   const movieDetailUrl = generateMovieUrl(movie.id, movie.title)
   const watchUrl = generateWatchUrl(movie.id, movie.title)
   
-  const imageUrl = "/images/test.jpg"
+  // Use the safe poster URL utility
+  const imageUrl = getSafePosterUrl(movie.posterUrl, movie.id)
 
   // Clean up timer on unmount
   useEffect(() => {
@@ -68,7 +70,7 @@ const MoviePopover = ({
   
   // Check if the movie is in favorites when component mounts
   useEffect(() => {
-      if (isAuthenticated && movie) {
+    if (isAuthenticated && movie) {
       // Use store-based check instead of API call
       const favorited = isFavorite(movie.id);
       setIsLiked(favorited);
@@ -94,31 +96,14 @@ const MoviePopover = ({
       if (isFavorite(movie.id)) {
         await removeFromFavorites(movie.id)
         toast.success('Đã xóa khỏi danh sách yêu thích')
-          } else {
+      } else {
         await toggleFavorite(movie.id)
         toast.success('Đã thêm vào danh sách yêu thích')
-        }
-      } catch (error) {
+      }
+    } catch (error) {
       console.error('Error toggling favorite:', error)
       toast.error('Có lỗi xảy ra, vui lòng thử lại')
     }
-  }
-
-  // Auth guard for watch history
-  const handleWatchClick = (e: React.MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    
-    // Allow watching without authentication, but show different message
-    if (!isAuthenticated) {
-      toast('Đăng nhập để lưu lịch sử xem phim', {
-        icon: 'ℹ️',
-        duration: 2000
-      })
-    }
-    
-    // Continue with watch action regardless of auth status
-    window.location.href = `/watch/${movie.title.toLowerCase().replace(/\s+/g, '-')}-${movie.id}`
   }
 
   // Handle mouse enter with delay

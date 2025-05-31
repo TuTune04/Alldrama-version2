@@ -5,6 +5,7 @@ import Image from "next/image"
 import { Star, Play, Eye, ChevronLeft, ChevronRight } from "lucide-react"
 import { useEffect, useState, useRef } from "react"
 import { generateMovieUrl } from "@/utils/url"
+import { getSafePosterUrl } from "@/utils/image"
 import { Movie } from "@/types"
 import MoviePopover from "./MoviePopover"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -50,7 +51,7 @@ const TopMoviesSection = ({
   if (isLoading || topMovies.length === 0) {
     return (
       <div className="py-10 bg-gray-950">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center mb-5">
             <div className="flex items-start">
               <h3 className="text-2xl md:text-3xl font-bold">
@@ -85,7 +86,7 @@ const TopMoviesSection = ({
   
   return (
     <div className="py-10 bg-gray-950">
-      <div className=" mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center mb-5">
           <div className="flex items-start">
             <h3 className="text-2xl md:text-3xl font-bold">
@@ -146,7 +147,7 @@ const TopMoviesSection = ({
                               </div>
                             )}
                             <Image 
-                              src={`https://media.alldrama.tech/movies/${movie.id}/poster.png`}
+                              src={getSafePosterUrl(movie.posterUrl, movie.id)}
                               alt={movie.title}
                               fill
                               className={`object-cover transition-opacity duration-300 ${
@@ -156,6 +157,10 @@ const TopMoviesSection = ({
                               priority={index < 3}
                               loading={index < 3 ? "eager" : "lazy"}
                               onLoad={() => setImagesLoaded(prev => ({ ...prev, [movie.id]: true }))}
+                              onError={() => {
+                                console.log('TopMoviesSection - Image load error for movie:', movie.id);
+                                setImagesLoaded(prev => ({ ...prev, [movie.id]: true }));
+                              }}
                               quality={75}
                             />
                             
