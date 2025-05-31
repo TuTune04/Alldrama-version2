@@ -1,5 +1,6 @@
 'use client';
 
+import { Metadata } from 'next';
 import { Suspense } from 'react';
 import MovieDetail from '@/components/features/movie/MovieDetail';
 import { useMovies } from '@/hooks/api/useMovies';
@@ -14,6 +15,45 @@ import { useFavorites } from '@/hooks/api/useFavorites';
 import { cacheManager } from '@/lib/cache/cacheManager';
 import useSWR from 'swr';
 import { movieService } from '@/lib/api/services/movieService';
+import { generateMovieMetadata, generateMovieJsonLd } from '@/lib/metadata';
+import Head from 'next/head';
+
+interface PageProps {
+  params: { slug: string };
+}
+
+// Generate metadata for this page
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { slug } = params;
+  
+  try {
+    const movieId = getIdFromSlug(slug);
+    if (!movieId || isNaN(Number(movieId))) {
+      return {
+        title: 'Phim không tồn tại | AllDrama',
+        description: 'Phim bạn đang tìm không tồn tại hoặc đã bị xóa.',
+      };
+    }
+
+    // Fetch movie data for metadata
+    const movie = await movieService.getMovieById(Number(movieId));
+    
+    if (!movie) {
+      return {
+        title: 'Phim không tồn tại | AllDrama',
+        description: 'Phim bạn đang tìm không tồn tại hoặc đã bị xóa.',
+      };
+    }
+
+    return generateMovieMetadata(movie);
+  } catch (error) {
+    console.error('Error generating metadata:', error);
+    return {
+      title: 'Lỗi tải phim | AllDrama',
+      description: 'Đã xảy ra lỗi khi tải thông tin phim.',
+    };
+  }
+}
 
 export default function MovieDetailPage() {
   // Get slug from route params
@@ -107,6 +147,9 @@ export default function MovieDetailPage() {
     setError(null);
   }, [slug, movieId, movieError]);
 
+  // Generate JSON-LD structured data
+  const movieJsonLd = movie ? generateMovieJsonLd(movie) : null;
+
   // Show loading state
   if (isLoading) {
     return (
@@ -133,14 +176,27 @@ export default function MovieDetailPage() {
   }
 
   return (
-    <div>
-      <Suspense fallback={
-        <div className="h-[70vh] bg-gray-800/50 animate-pulse flex items-center justify-center">
-          <Skeleton className="w-3/4 h-[80%] max-w-7xl mx-auto rounded-xl" />
-        </div>
-      }>
-        <MovieDetail movieId={movieId} initialData={movie} />
-      </Suspense>
-    </div>
+    <>
+      {movieJsonLd && (
+        <Head>
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{
+              __html: JSON.stringify(movieJsonLd),
+            }}
+          />
+        </Head>
+      )}
+      
+      <div>
+        <Suspense fallback={
+          <div className="h-[70vh] bg-gray-800/50 animate-pulse flex items-center justify-center">
+            <Skeleton className="w-3/4 h-[80%] max-w-7xl mx-auto rounded-xl" />
+          </div>
+        }>
+          <MovieDetail movieId={movieId} initialData={movie} />
+        </Suspense>
+      </div>
+    </>
   );
 }

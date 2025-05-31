@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iOS Compatibility Test</title>
+    <style>
+        :root {
+            /* Fallback colors for older browsers (HSL) */
+            --background: hsl(0, 0%, 100%);
+            --foreground: hsl(0, 0%, 14.5%);
+            --primary: hsl(0, 0%, 20.5%);
+            --primary-foreground: hsl(0, 0%, 98.5%);
+            --destructive: hsl(0, 62.8%, 57.7%);
+            --border: hsl(0, 0%, 92.2%);
+        }
+
+        /* Modern browsers with OKLCH support */
+        @supports (color: oklch(0% 0 0)) {
+            :root {
+                --background: oklch(1 0 0);
+                --foreground: oklch(0.145 0 0);
+                --primary: oklch(0.205 0 0);
+                --primary-foreground: oklch(0.985 0 0);
+                --destructive: oklch(0.577 0.245 27.325);
+                --border: oklch(0.922 0 0);
+            }
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--background);
+            color: var(--foreground);
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .test-section {
+            margin-bottom: 40px;
+            padding: 20px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+        }
+
+        .test-title {
+            color: var(--primary);
+            margin-bottom: 15px;
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+
+        /* OKLCH Color Test */
+        .color-test {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .color-box {
+            width: 50px;
+            height: 50px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+            text-align: center;
+        }
+
+        .oklch-box {
+            background-color: var(--destructive);
+        }
+
+        /* Backdrop Filter Test */
+        .backdrop-test {
+            position: relative;
+            height: 200px;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .backdrop-overlay {
+            /* Fallback: solid background for older browsers */
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        /* Apply backdrop-filter only for supporting browsers */
+        @supports (backdrop-filter: blur(1px)) {
+            .backdrop-overlay {
+                background-color: rgba(0, 0, 0, 0.4);
+                backdrop-filter: blur(8px);
+            }
+        }
+
+        /* Gap Property Test */
+        .gap-test {
+            /* Fallback: use margin for older browsers */
+            margin: -10px;
+            display: flex;
+            flex-wrap: wrap;
+        }
+
+        .gap-test > * {
+            margin: 10px;
+            background-color: var(--primary);
+            color: var(--primary-foreground);
+            padding: 15px;
+            border-radius: 4px;
+            flex: 1;
+            min-width: 120px;
+            text-align: center;
+        }
+
+        /* Apply gap only for supporting browsers */
+        @supports (gap: 1px) {
+            .gap-test {
+                margin: 0;
+                gap: 20px;
+            }
+            .gap-test > * {
+                margin: 0;
+            }
+        }
+
+        /* Aspect Ratio Test */
+        .aspect-test {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .aspect-square {
+            /* Fallback: use padding-bottom trick */
+            position: relative;
+            width: 100px;
+            height: 0;
+            padding-bottom: 100px;
+            background-color: var(--primary);
+            border-radius: 8px;
+        }
+
+        .aspect-square-content {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary-foreground);
+            font-weight: bold;
+        }
+
+        .aspect-video {
+            position: relative;
+            width: 200px;
+            height: 0;
+            padding-bottom: 112.5px; /* 16:9 ratio */
+            background-color: var(--destructive);
+            border-radius: 8px;
+        }
+
+        .aspect-video-content {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        /* Apply aspect-ratio only for supporting browsers */
+        @supports (aspect-ratio: 1) {
+            .aspect-square {
+                height: auto;
+                padding-bottom: 0;
+                aspect-ratio: 1 / 1;
+            }
+
+            .aspect-square-content {
+                position: static;
+                width: auto;
+                height: auto;
+            }
+
+            .aspect-video {
+                height: auto;
+                padding-bottom: 0;
+                aspect-ratio: 16 / 9;
+            }
+
+            .aspect-video-content {
+                position: static;
+                width: auto;
+                height: auto;
+            }
+        }
+
+        /* Support Detection */
+        .support-indicator {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        .supported {
+            background-color: #10b981;
+            color: white;
+        }
+
+        .fallback {
+            background-color: #f59e0b;
+            color: white;
+        }
+
+        .not-supported {
+            background-color: #ef4444;
+            color: white;
+        }
+
+        .info {
+            background-color: #f3f4f6;
+            color: var(--foreground);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            border-left: 4px solid var(--primary);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>iOS Compatibility Test</h1>
+        <p>Trang này kiểm tra các CSS features và fallbacks cho iOS cũ.</p>
+
+        <!-- OKLCH Color Test -->
+        <div class="test-section">
+            <div class="test-title">
+                1. OKLCH Color Space Test
+                <span id="oklch-support" class="support-indicator">Đang kiểm tra...</span>
+            </div>
+            <div class="color-test">
+                <div class="color-box oklch-box">OKLCH</div>
+                <div style="background-color: hsl(0, 62.8%, 57.7%); width: 50px; height: 50px; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px;">HSL</div>
+            </div>
+            <div class="info">
+                <strong>OKLCH:</strong> Màu sắc chính xác hơn, hỗ trợ từ Safari 15.4+ (iOS 15.4+)<br>
+                <strong>HSL Fallback:</strong> Tương thích với tất cả trình duyệt
+            </div>
+        </div>
+
+        <!-- Backdrop Filter Test -->
+        <div class="test-section">
+            <div class="test-title">
+                2. Backdrop Filter Test
+                <span id="backdrop-support" class="support-indicator">Đang kiểm tra...</span>
+            </div>
+            <div class="backdrop-test">
+                <div class="backdrop-overlay">
+                    <div>Backdrop Blur Effect</div>
+                    <div style="font-size: 14px; margin-top: 5px;">Nền mờ hoặc solid background</div>
+                </div>
+            </div>
+            <div class="info">
+                <strong>Backdrop Filter:</strong> Hiệu ứng blur đẹp, hỗ trợ từ Safari 9+ (iOS 9+)<br>
+                <strong>Solid Background Fallback:</strong> Nền đặc, dễ đọc trên tất cả thiết bị
+            </div>
+        </div>
+
+        <!-- Gap Property Test -->
+        <div class="test-section">
+            <div class="test-title">
+                3. Gap Property Test
+                <span id="gap-support" class="support-indicator">Đang kiểm tra...</span>
+            </div>
+            <div class="gap-test">
+                <div>Item 1</div>
+                <div>Item 2</div>
+                <div>Item 3</div>
+            </div>
+            <div class="info">
+                <strong>CSS Gap:</strong> Layout hiện đại, hỗ trợ từ Safari 14.1+ (iOS 14.5+)<br>
+                <strong>Margin Fallback:</strong> Sử dụng margin, tương thích với tất cả thiết bị
+            </div>
+        </div>
+
+        <!-- Aspect Ratio Test -->
+        <div class="test-section">
+            <div class="test-title">
+                4. Aspect Ratio Test
+                <span id="aspect-support" class="support-indicator">Đang kiểm tra...</span>
+            </div>
+            <div class="aspect-test">
+                <div class="aspect-square">
+                    <div class="aspect-square-content">1:1</div>
+                </div>
+                <div class="aspect-video">
+                    <div class="aspect-video-content">16:9</div>
+                </div>
+            </div>
+            <div class="info">
+                <strong>CSS Aspect Ratio:</strong> Hiện đại và hiệu quả, hỗ trợ từ Safari 15+ (iOS 15+)<br>
+                <strong>Padding-Bottom Fallback:</strong> Kỹ thuật cổ điển, tương thích với tất cả thiết bị
+            </div>
+        </div>
+
+        <!-- Browser Info -->
+        <div class="test-section">
+            <div class="test-title">5. Thông tin trình duyệt</div>
+            <div id="browser-info" class="info">
+                Đang tải thông tin trình duyệt...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Feature detection
+        function checkSupport() {
+            // OKLCH support
+            const oklchSupported = CSS.supports('color', 'oklch(0% 0 0)');
+            document.getElementById('oklch-support').textContent = oklchSupported ? 'Hỗ trợ OKLCH' : 'Sử dụng HSL Fallback';
+            document.getElementById('oklch-support').className = 'support-indicator ' + (oklchSupported ? 'supported' : 'fallback');
+
+            // Backdrop filter support
+            const backdropSupported = CSS.supports('backdrop-filter', 'blur(1px)');
+            document.getElementById('backdrop-support').textContent = backdropSupported ? 'Hỗ trợ Backdrop Filter' : 'Sử dụng Solid Background';
+            document.getElementById('backdrop-support').className = 'support-indicator ' + (backdropSupported ? 'supported' : 'fallback');
+
+            // Gap support
+            const gapSupported = CSS.supports('gap', '1px');
+            document.getElementById('gap-support').textContent = gapSupported ? 'Hỗ trợ CSS Gap' : 'Sử dụng Margin Fallback';
+            document.getElementById('gap-support').className = 'support-indicator ' + (gapSupported ? 'supported' : 'fallback');
+
+            // Aspect ratio support
+            const aspectSupported = CSS.supports('aspect-ratio', '1');
+            document.getElementById('aspect-support').textContent = aspectSupported ? 'Hỗ trợ Aspect Ratio' : 'Sử dụng Padding Fallback';
+            document.getElementById('aspect-support').className = 'support-indicator ' + (aspectSupported ? 'supported' : 'fallback');
+        }
+
+        // Browser info
+        function getBrowserInfo() {
+            const ua = navigator.userAgent;
+            const isIOS = /iPad|iPhone|iPod/.test(ua);
+            const isSafari = /Safari/.test(ua) && !/Chrome/.test(ua);
+            
+            let browserInfo = `
+                <strong>User Agent:</strong> ${ua}<br>
+                <strong>iOS Device:</strong> ${isIOS ? 'Có' : 'Không'}<br>
+                <strong>Safari:</strong> ${isSafari ? 'Có' : 'Không'}<br>
+                <strong>Screen Size:</strong> ${screen.width}x${screen.height}<br>
+                <strong>Viewport:</strong> ${window.innerWidth}x${window.innerHeight}
+            `;
+
+            if (isIOS) {
+                const match = ua.match(/OS (\d+)_(\d+)/);
+                if (match) {
+                    const majorVersion = parseInt(match[1]);
+                    const minorVersion = parseInt(match[2]);
+                    browserInfo += `<br><strong>iOS Version:</strong> ${majorVersion}.${minorVersion}`;
+                    
+                    // Compatibility warnings
+                    if (majorVersion < 15) {
+                        browserInfo += `<br><span style="color: #ef4444; font-weight: bold;">⚠️ iOS ${majorVersion} - OKLCH và Aspect Ratio không được hỗ trợ</span>`;
+                    }
+                    if (majorVersion < 15 || (majorVersion === 14 && minorVersion < 5)) {
+                        browserInfo += `<br><span style="color: #f59e0b; font-weight: bold;">⚠️ iOS ${majorVersion}.${minorVersion} - CSS Gap không được hỗ trợ</span>`;
+                    }
+                }
+            }
+
+            document.getElementById('browser-info').innerHTML = browserInfo;
+        }
+
+        // Run tests
+        checkSupport();
+        getBrowserInfo();
+    </script>
+</body>
+</html> 

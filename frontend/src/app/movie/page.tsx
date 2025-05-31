@@ -12,6 +12,7 @@ import { useMoviesInfinite } from '@/hooks/useMoviesInfinite';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
+import Head from 'next/head';
 
 interface ProcessedMovie extends Movie {
   type: 'movie' | 'series';
@@ -132,124 +133,150 @@ export default function MovieListPage() {
     </div>
   );
 
+  // Generate page title based on active genre
+  const pageTitle = activeGenre === 'all' 
+    ? 'Khám phá phim - AllDrama' 
+    : `Phim ${activeGenre} - AllDrama`;
+  
+  const pageDescription = activeGenre === 'all'
+    ? 'Khám phá thư viện phim đa dạng với nhiều thể loại hấp dẫn tại AllDrama. Xem phim chất lượng HD với phụ đề tiếng Việt.'
+    : `Xem các bộ phim ${activeGenre} chất lượng cao tại AllDrama. Cập nhật liên tục những tác phẩm ${activeGenre} mới nhất.`;
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950">
-      {/* Hero Section */}
-      <div className="w-full bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 border-b border-gray-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
-          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
-            <div>
-              <h1 className="text-3xl md:text-4xl font-bold text-white mb-3">Khám phá phim</h1>
-              <p className="text-gray-400 text-lg max-w-2xl">
-                Thư viện phim đa dạng với nhiều thể loại hấp dẫn, cập nhật liên tục những bộ phim mới nhất.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+    <>
+      <Head>
+        <title>{pageTitle}</title>
+        <meta name="description" content={pageDescription} />
+        <meta property="og:title" content={pageTitle} />
+        <meta property="og:description" content={pageDescription} />
+        <meta property="og:type" content="website" />
+        <meta name="twitter:title" content={pageTitle} />
+        <meta name="twitter:description" content={pageDescription} />
+      </Head>
       
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Filters Bar */}
-        <div className="mb-8 bg-gray-800/80 backdrop-blur-sm rounded-lg p-4 border border-gray-700/50 sticky top-0 z-20">
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-wrap justify-between items-center gap-3">
-              <h3 className="text-white font-medium">Thể loại phim</h3>
-              {isValidating && (
-                <div className="flex items-center gap-2 text-sm text-gray-400">
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  Đang tải...
-                </div>
-              )}
-            </div>
-            
-            {/* Genre Tags */}
-            <div className="overflow-x-auto scrollbar-hide pb-2 -mx-4 px-4 md:mx-0 md:px-0">
-              <div className="flex flex-nowrap md:flex-wrap gap-2 min-w-max md:min-w-0">
-                <Badge 
-                  variant={activeGenre === 'all' ? "default" : "outline"}
-                  className={`px-4 py-2 rounded-full cursor-pointer text-sm font-normal whitespace-nowrap ${
-                    activeGenre === 'all' 
-                      ? 'bg-indigo-600 hover:bg-indigo-700 text-white' 
-                      : 'bg-gray-800 text-gray-300 border-gray-700 hover:bg-gray-700'
-                  }`}
-                  onClick={() => handleGenreChange('all')}
-                >
-                  Tất cả
-                </Badge>
-                
-                {genresLoading ? (
-                  <div className="flex gap-2">
-                    {[1, 2, 3, 4, 5].map(i => (
-                      <div key={i} className="h-9 bg-gray-800 rounded-full w-20 animate-pulse"></div>
-                    ))}
-                  </div>
-                ) : (
-                  genres.map((genre) => (
-                    <Badge 
-                      key={genre.id}
-                      variant={activeGenre === genre.name ? "default" : "outline"}
-                      className={`px-4 py-2 rounded-full cursor-pointer text-sm font-normal whitespace-nowrap ${
-                        activeGenre === genre.name 
-                          ? 'bg-indigo-600 hover:bg-indigo-700 text-white' 
-                          : 'bg-gray-800 text-gray-300 border-gray-700 hover:bg-gray-700'
-                      }`}
-                      onClick={() => handleGenreChange(genre.name)}
-                    >
-                      {genre.name}
-                    </Badge>
-                  ))
-                )}
+      <div className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950">
+        {/* Hero Section */}
+        <div className="w-full bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 border-b border-gray-800">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
+            <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+              <div>
+                <h1 className="text-3xl md:text-4xl font-bold text-white mb-3">
+                  {activeGenre === 'all' ? 'Khám phá phim' : `Phim ${activeGenre}`}
+                </h1>
+                <p className="text-gray-400 text-lg max-w-2xl">
+                  {activeGenre === 'all' 
+                    ? 'Thư viện phim đa dạng với nhiều thể loại hấp dẫn, cập nhật liên tục những bộ phim mới nhất.'
+                    : `Khám phá các bộ phim ${activeGenre} chất lượng cao, cập nhật liên tục những tác phẩm mới nhất.`
+                  }
+                </p>
               </div>
             </div>
           </div>
         </div>
         
-        {/* Movie Grid */}
-        <div className="grid grid-cols-1 gap-8">
-          {isLoading ? (
-            <LoadingSkeleton />
-          ) : (
-            <>
-          <MovieGrid
-                isLoading={false}
-            movies={allMovies}
-                showPagination={false} // Disable pagination for infinite scroll
-                totalPages={pagination?.totalPages || 1}
-                currentPage={pagination?.currentPage || 1}
-                onPageChange={() => {}} // Not used with infinite scroll
-              />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Filters Bar */}
+          <div className="mb-8 bg-gray-800/80 backdrop-blur-sm rounded-lg p-4 border border-gray-700/50 sticky top-0 z-20">
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-wrap justify-between items-center gap-3">
+                <h3 className="text-white font-medium">Thể loại phim</h3>
+                {isValidating && (
+                  <div className="flex items-center gap-2 text-sm text-gray-400">
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    Đang tải...
+                  </div>
+                )}
+              </div>
               
-              {/* Infinite scroll trigger element */}
-              {hasMore && (
-                <div ref={lastElementRef} className="w-full h-10 flex items-center justify-center">
-                  {isFetching && <LoadMoreSkeleton />}
-                </div>
-              )}
-              
-              {/* End of results message */}
-              {!hasMore && allMovies.length > 0 && (
-                <div className="text-center py-8">
-                  <p className="text-gray-400">Đã hiển thị tất cả {allMovies.length} phim</p>
-                </div>
-              )}
-              
-              {/* No results message */}
-              {!isLoading && allMovies.length === 0 && (
-                <div className="text-center py-12">
-                  <p className="text-gray-400 text-lg">Không tìm thấy phim nào</p>
-                  <Button 
-                    variant="outline" 
-                    className="mt-4"
+              {/* Genre Tags */}
+              <div className="overflow-x-auto scrollbar-hide pb-2 -mx-4 px-4 md:mx-0 md:px-0">
+                <div className="flex flex-nowrap md:flex-wrap gap-2 min-w-max md:min-w-0">
+                  <Badge 
+                    variant={activeGenre === 'all' ? "default" : "outline"}
+                    className={`px-4 py-2 rounded-full cursor-pointer text-sm font-normal whitespace-nowrap ${
+                      activeGenre === 'all' 
+                        ? 'bg-indigo-600 hover:bg-indigo-700 text-white' 
+                        : 'bg-gray-800 text-gray-300 border-gray-700 hover:bg-gray-700'
+                    }`}
                     onClick={() => handleGenreChange('all')}
                   >
-                    Xem tất cả phim
-                  </Button>
+                    Tất cả
+                  </Badge>
+                  
+                  {genresLoading ? (
+                    <div className="flex gap-2">
+                      {[1, 2, 3, 4, 5].map(i => (
+                        <div key={i} className="h-9 bg-gray-800 rounded-full w-20 animate-pulse"></div>
+                      ))}
+                    </div>
+                  ) : (
+                    genres.map((genre) => (
+                      <Badge 
+                        key={genre.id}
+                        variant={activeGenre === genre.name ? "default" : "outline"}
+                        className={`px-4 py-2 rounded-full cursor-pointer text-sm font-normal whitespace-nowrap ${
+                          activeGenre === genre.name 
+                            ? 'bg-indigo-600 hover:bg-indigo-700 text-white' 
+                            : 'bg-gray-800 text-gray-300 border-gray-700 hover:bg-gray-700'
+                        }`}
+                        onClick={() => handleGenreChange(genre.name)}
+                      >
+                        {genre.name}
+                      </Badge>
+                    ))
+                  )}
                 </div>
-              )}
-            </>
-          )}
+              </div>
+            </div>
+          </div>
+          
+          {/* Movie Grid */}
+          <div className="grid grid-cols-1 gap-8">
+            {isLoading ? (
+              <LoadingSkeleton />
+            ) : (
+              <>
+            <MovieGrid
+                  isLoading={false}
+              movies={allMovies}
+                  showPagination={false} // Disable pagination for infinite scroll
+                  totalPages={pagination?.totalPages || 1}
+                  currentPage={pagination?.currentPage || 1}
+                  onPageChange={() => {}} // Not used with infinite scroll
+                />
+                
+                {/* Infinite scroll trigger element */}
+                {hasMore && (
+                  <div ref={lastElementRef} className="w-full h-10 flex items-center justify-center">
+                    {isFetching && <LoadMoreSkeleton />}
+                  </div>
+                )}
+                
+                {/* End of results message */}
+                {!hasMore && allMovies.length > 0 && (
+                  <div className="text-center py-8">
+                    <p className="text-gray-400">Đã hiển thị tất cả {allMovies.length} phim</p>
+                  </div>
+                )}
+                
+                {/* No results message */}
+                {!isLoading && allMovies.length === 0 && (
+                  <div className="text-center py-12">
+                    <p className="text-gray-400 text-lg">Không tìm thấy phim nào</p>
+                    <Button 
+                      variant="outline" 
+                      className="mt-4"
+                      onClick={() => handleGenreChange('all')}
+                    >
+                      Xem tất cả phim
+                    </Button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

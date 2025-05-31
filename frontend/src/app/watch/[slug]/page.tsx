@@ -1,5 +1,6 @@
 'use client'
 
+import { Metadata } from 'next';
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { ArrowLeft } from 'lucide-react'
@@ -19,6 +20,8 @@ import { movieService, episodeService } from '@/lib/api'
 import { cacheManager } from '@/lib/cache/cacheManager'
 import useSWR from 'swr'
 import { getSafePosterUrl, getEpisodeThumbnailUrl } from '@/utils/image'
+import { generateEpisodeMetadata, generateMovieJsonLd } from '@/lib/metadata'
+import Head from 'next/head'
 
 // Extend base types to include subtitles
 interface MovieWithSubtitles extends Movie {
@@ -37,6 +40,77 @@ interface EpisodeWithSubtitles extends Episode {
     lang: string;
     default?: boolean;
   }>;
+}
+
+interface PageProps {
+  params: { slug: string };
+  searchParams: { [key: string]: string | string[] | undefined };
+}
+
+// Generate metadata for this page
+export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
+  const { slug } = params;
+  const episodeParam = searchParams.ep || searchParams.episode;
+  
+  try {
+    const movieId = slug.split('-').pop();
+    if (!movieId || isNaN(Number(movieId))) {
+      return {
+        title: 'Xem phim | AllDrama',
+        description: 'Xem phim chất lượng HD với phụ đề tiếng Việt tại AllDrama.',
+      };
+    }
+
+    // Fetch movie data for metadata
+    const movie = await movieService.getMovieById(Number(movieId));
+    
+    if (!movie) {
+      return {
+        title: 'Phim không tồn tại | AllDrama',
+        description: 'Phim bạn đang tìm không tồn tại hoặc đã bị xóa.',
+      };
+    }
+
+    // If it's an episode, generate episode metadata
+    if (episodeParam && movie.totalEpisodes > 0) {
+      const episodeNumber = Number(episodeParam);
+      if (!isNaN(episodeNumber)) {
+        return generateEpisodeMetadata(movie, episodeNumber);
+      }
+    }
+
+    // Otherwise, generate movie metadata for single movies
+    return {
+      title: `Xem ${movie.title} | AllDrama`,
+      description: `Xem phim ${movie.title} chất lượng HD với phụ đề tiếng Việt tại AllDrama. ${movie.summary || ''}`,
+      keywords: [
+        `xem ${movie.title}`,
+        movie.title,
+        'xem phim online',
+        'phim HD',
+        'phụ đề việt',
+        ...movie.genres?.map(g => g.name) || []
+      ],
+      openGraph: {
+        title: `Xem ${movie.title}`,
+        description: `Xem phim ${movie.title} chất lượng HD với phụ đề tiếng Việt tại AllDrama.`,
+        images: [movie.backdropUrl || movie.posterUrl || '/images/og-default.jpg'],
+        type: 'video.movie',
+      },
+      twitter: {
+        card: 'summary_large_image',
+        title: `Xem ${movie.title}`,
+        description: `Xem phim ${movie.title} chất lượng HD với phụ đề tiếng Việt tại AllDrama.`,
+        images: [movie.backdropUrl || movie.posterUrl || '/images/og-default.jpg'],
+      },
+    };
+  } catch (error) {
+    console.error('Error generating watch page metadata:', error);
+    return {
+      title: 'Xem phim | AllDrama',
+      description: 'Xem phim chất lượng HD với phụ đề tiếng Việt tại AllDrama.',
+    };
+  }
 }
 
 export default function WatchPage() {
@@ -153,6 +227,9 @@ export default function WatchPage() {
     setPrevEp(idx > 0 ? episodes[idx - 1] : null);
     setNextEp(idx < episodes.length - 1 ? episodes[idx + 1] : null);
   }, [episodes, episodeId]);
+  
+  // Generate JSON-LD structured data
+  const movieJsonLd = movie ? generateMovieJsonLd(movie) : null;
   
   // Debounce function to prevent excessive API calls
   const debounce = <T extends (...args: any[]) => any>(func: T, delay: number) => {
@@ -303,6 +380,14 @@ export default function WatchPage() {
   /* ----------------- render ----------------- */
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-950 via-gray-900 to-gray-800 pb-12">
+      <Head>
+        {movieJsonLd && (
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(movieJsonLd) }}
+          />
+        )}
+      </Head>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6 pt-6">
         {/* Back button */}
         <div className="flex items-center">
